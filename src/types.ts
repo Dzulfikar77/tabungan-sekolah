@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type UserRole = 'Developer' | 'Super Admin' | 'Admin' | 'Viewer';
+export type UserRole = 'Developer' | 'Super Admin' | 'Admin' | 'Wali Kelas' | 'Viewer';
 
 export interface User {
   id: string;
@@ -11,6 +11,7 @@ export interface User {
   name: string;
   role: UserRole;
   studentId?: string; // If role is Viewer, linked student NIS/ID
+  assignedClass?: ClassGrade; // If role is Wali Kelas
 }
 
 export type ClassGrade =
@@ -45,7 +46,12 @@ export interface Student {
 }
 
 export type TransactionType = 'Setoran' | 'Penarikan' | 'Potongan Bulanan';
-export type TransactionStatus = 'Disetujui' | 'Menunggu Persetujuan' | 'Ditolak';
+export type TransactionStatus =
+  | 'Disetujui'
+  | 'Menunggu Persetujuan'
+  | 'Menunggu Approval Admin'
+  | 'Menunggu Approval Super Admin'
+  | 'Ditolak';
 
 export interface Transaction {
   id: string;
@@ -58,6 +64,10 @@ export interface Transaction {
   amount: number;
   status: TransactionStatus;
   reason: string;
+  approvedByAdmin?: boolean;
+  approvedByAdminName?: string;
+  approvedBySuperAdmin?: boolean;
+  approvedBySuperAdminName?: string;
   createdById: string;
   createdByName: string;
   createdByRole: UserRole;
@@ -69,44 +79,61 @@ export interface Transaction {
   createdAt: string; // ISO String
 }
 
-export type BookCategory = 'LKS' | 'Buku Penunjang';
+export type KoperasiKegiatanType = 'Koperasi' | 'Kegiatan';
 
-export interface Book {
+export interface KoperasiKegiatanItem {
   id: string;
   title: string;
-  category: BookCategory;
-  classGrade: ClassGrade;
+  type: KoperasiKegiatanType; // 'Koperasi' | 'Kegiatan'
+  category: string; // 'Buku', 'Seragam', 'Alat Tulis', 'Outing Class', 'Outbound', or custom
+  classGrade: ClassGrade | 'Semua Kelas';
   price: number;
   stock?: number;
+  description?: string;
 }
 
-export interface BookDistribution {
+// Backward compatibility alias
+export type BookCategory = string;
+export type Book = KoperasiKegiatanItem;
+
+export interface KoperasiKegiatanDistribution {
   id: string;
-  bookId: string;
+  itemId: string; // bookId / itemId
+  bookId?: string;
   studentId: string;
   received: boolean;
   receivedAt?: string;
 }
+export type BookDistribution = KoperasiKegiatanDistribution;
 
 export type PaymentMethod = 'Tunai' | 'Potong Tabungan';
 
-export interface BookPayment {
+export interface KoperasiKegiatanPayment {
   id: string;
-  transactionNumber: string; // e.g. BK/2026/00001
-  bookId: string;
-  bookTitle: string;
+  transactionNumber: string; // e.g. KK/2026/00001
+  itemId: string;
+  bookId?: string; // backward compat
+  itemTitle: string;
+  bookTitle?: string; // backward compat
+  itemType: KoperasiKegiatanType; // 'Koperasi' | 'Kegiatan'
+  category: string;
   studentId: string;
   studentName: string;
   studentNis: string;
   classGrade: ClassGrade;
   amount: number;
   paymentMethod: PaymentMethod;
-  status: TransactionStatus; // Tunai is Disetujui instantly, Potong Tabungan follows approval
+  status: TransactionStatus; // 'Disetujui', 'Menunggu Approval Admin', 'Menunggu Approval Super Admin', 'Ditolak'
+  approvedByAdmin?: boolean;
+  approvedByAdminName?: string;
+  approvedBySuperAdmin?: boolean;
+  approvedBySuperAdminName?: string;
   savingsTransactionId?: string; // Linked savings deduction transaction ID
   createdByName: string;
   createdAt: string;
   academicYearId: string;
 }
+export type BookPayment = KoperasiKegiatanPayment;
 
 export interface AcademicYear {
   id: string;

@@ -403,7 +403,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const trNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length);
 
-    // CRITICAL: Status = Menunggu Persetujuan. Saldo siswa BELUM BERUBAH sama sekali!
+    let initialStatus: TransactionStatus = 'Menunggu Approval Admin';
+    let isAdminApproved = false;
+    let adminName: string | undefined = undefined;
+    let isSuperAdminApproved = false;
+    let superAdminName: string | undefined = undefined;
+
+    if (currentUser.role === 'Wali Kelas' || currentUser.role === 'Admin') {
+      initialStatus = 'Menunggu Approval Super Admin';
+      isAdminApproved = true;
+      adminName = currentUser.name;
+    } else if (currentUser.role === 'Super Admin' || currentUser.role === 'Developer') {
+      initialStatus = 'Disetujui';
+      isAdminApproved = true;
+      adminName = currentUser.name;
+      isSuperAdminApproved = true;
+      superAdminName = currentUser.name;
+    }
+
     const newTx: Transaction = {
       id: `tr-${Date.now()}`,
       transactionNumber: trNum,
@@ -413,8 +430,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       classGrade: student.classGrade,
       type: 'Penarikan',
       amount,
-      status: 'Menunggu Persetujuan',
+      status: initialStatus,
       reason,
+      approvedByAdmin: isAdminApproved,
+      approvedByAdminName: adminName,
+      approvedBySuperAdmin: isSuperAdminApproved,
+      approvedBySuperAdminName: superAdminName,
       createdById: currentUser.id,
       createdByName: currentUser.name,
       createdByRole: currentUser.role,
@@ -422,29 +443,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
+    // If Super Admin/Dev requested directly, deduct balance immediately
+    if (initialStatus === 'Disetujui') {
+      const balanceAfter = student.balance - amount;
+      setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: balanceAfter } : s)));
+    }
+
     setTransactions((prev) => [newTx, ...prev]);
 
     addAuditLog(
       'Pengajuan Penarikan',
-      'Status: Menunggu Persetujuan',
-      'Status: Menunggu Persetujuan',
-      `Pengajuan penarikan Rp ${amount.toLocaleString('id-ID')} untuk ${student.name} (${trNum}). Saldo siswa tetap Rp ${student.balance.toLocaleString('id-ID')} hingga disetujui.`
+      `Saldo ${student.name}: Rp ${student.balance.toLocaleString('id-ID')}`,
+      `Status: ${initialStatus}`,
+      `Pengajuan penarikan Rp ${amount.toLocaleString('id-ID')} untuk ${student.name} (${trNum}). Status: ${initialStatus}`
     );
 
     return { success: true, transaction: newTx };
   };
 
   const approveWithdrawal = (transactionId: string) => {
-    if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer') {
-      return { success: false, error: 'Hanya Super Admin & Developer yang memiliki akses persetujuan (approval).' };
-    }
-
     const tx = transactions.find((t) => t.id === transactionId);
     if (!tx) {
       return { success: false, error: 'Transaksi tidak ditemukan.' };
     }
-    if (tx.status !== 'Menunggu Persetujuan') {
-      return { success: false, error: 'Transaksi ini sudah diproses sebelumnya.' };
+    if (tx.status === 'Disetujui' || tx.status === 'Ditolak') {
+      return { success: false, error: 'Transaksi ini sudah selesai diproses.' };
     }
 
     const student = students.find((s) => s.id === tx.studentId);
@@ -452,52 +475,111 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Data siswa tidak ditemukan.' };
     }
 
-    if (student.balance < tx.amount) {
-      return {
-        success: false,
-        error: `Saldo siswa saat ini (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi nominal potongan (Rp ${tx.amount.toLocaleString('id-ID')}).`,
-      };
+    // Role Wali Kelas / Admin approval (Tier 1)
+    if (currentUser.role === 'Wali Kelas' || currentUser.role === 'Admin') {
+      if (tx.approvedByAdmin) {
+        return { success: false, error: 'Transaksi ini sudah disetujui oleh Admin/Wali Kelas. Menunggu persetujuan Kepala Sekolah.' };
+      }
+
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === transactionId
+            ? {
+                ...t,
+                status: 'Menunggu Approval Super Admin',
+                approvedByAdmin: true,
+                approvedByAdminName: currentUser.name,
+              }
+            : t
+        )
+      );
+
+      setBookPayments((prev) =>
+        prev.map((bp) =>
+          bp.savingsTransactionId === transactionId
+            ? {
+                ...bp,
+                status: 'Menunggu Approval Super Admin',
+                approvedByAdmin: true,
+                approvedByAdminName: currentUser.name,
+              }
+            : bp
+        )
+      );
+
+      addAuditLog(
+        'Approval Penarikan (Admin / Wali Kelas)',
+        'Status: Menunggu Approval Admin',
+        'Status: Menunggu Approval Super Admin',
+        `Disetujui tahap 1 oleh ${currentUser.name} (${currentUser.role}). Menunggu persetujuan akhir Kepala Sekolah.`
+      );
+
+      return { success: true };
     }
 
-    const balanceBefore = student.balance;
-    const balanceAfter = balanceBefore - tx.amount;
+    // Role Super Admin / Developer approval (Tier 2 / Final)
+    if (currentUser.role === 'Super Admin' || currentUser.role === 'Developer') {
+      if (student.balance < tx.amount) {
+        return {
+          success: false,
+          error: `Saldo siswa saat ini (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi nominal potongan (Rp ${tx.amount.toLocaleString('id-ID')}).`,
+        };
+      }
 
-    // Deduct student balance and update transaction status to Disetujui
-    setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: balanceAfter } : s)));
-    setTransactions((prev) =>
-      prev.map((t) =>
-        t.id === transactionId
-          ? {
-              ...t,
-              status: 'Disetujui',
-              approvedById: currentUser.id,
-              approvedByName: currentUser.name,
-              approvedByRole: currentUser.role,
-            }
-          : t
-      )
-    );
+      const balanceBefore = student.balance;
+      const balanceAfter = balanceBefore - tx.amount;
 
-    // If this withdrawal was linked to a book payment, update book payment status as well
-    setBookPayments((prev) =>
-      prev.map((bp) =>
-        bp.savingsTransactionId === transactionId ? { ...bp, status: 'Disetujui' } : bp
-      )
-    );
+      // Deduct balance & finalize approval
+      setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: balanceAfter } : s)));
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === transactionId
+            ? {
+                ...t,
+                status: 'Disetujui',
+                approvedByAdmin: true,
+                approvedByAdminName: t.approvedByAdminName || currentUser.name,
+                approvedBySuperAdmin: true,
+                approvedBySuperAdminName: currentUser.name,
+                approvedById: currentUser.id,
+                approvedByName: currentUser.name,
+                approvedByRole: currentUser.role,
+              }
+            : t
+        )
+      );
 
-    addAuditLog(
-      'Approval Penarikan Disetujui',
-      `Saldo ${student.name}: Rp ${balanceBefore.toLocaleString('id-ID')}`,
-      `Saldo ${student.name}: Rp ${balanceAfter.toLocaleString('id-ID')}`,
-      `Disetujui oleh ${currentUser.name} (${currentUser.role}). Potongan Rp ${tx.amount.toLocaleString('id-ID')} (${tx.transactionNumber}) berhasil dipotong.`
-    );
+      setBookPayments((prev) =>
+        prev.map((bp) =>
+          bp.savingsTransactionId === transactionId
+            ? {
+                ...bp,
+                status: 'Disetujui',
+                approvedByAdmin: true,
+                approvedByAdminName: bp.approvedByAdminName || currentUser.name,
+                approvedBySuperAdmin: true,
+                approvedBySuperAdminName: currentUser.name,
+              }
+            : bp
+        )
+      );
 
-    return { success: true };
+      addAuditLog(
+        'Approval Penarikan Final (Super Admin)',
+        `Saldo ${student.name}: Rp ${balanceBefore.toLocaleString('id-ID')}`,
+        `Saldo ${student.name}: Rp ${balanceAfter.toLocaleString('id-ID')}`,
+        `Persetujuan final disetujui oleh Kepala Sekolah (${currentUser.name}). Saldo Rp ${tx.amount.toLocaleString('id-ID')} (${tx.transactionNumber}) resmi dipotong.`
+      );
+
+      return { success: true };
+    }
+
+    return { success: false, error: 'Akses ditolak. Anda tidak memiliki wewenang untuk menyetujui transaksi.' };
   };
 
   const rejectWithdrawal = (transactionId: string, rejectionReason?: string) => {
-    if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer') {
-      return { success: false, error: 'Hanya Super Admin & Developer yang bisa menolak pengajuan.' };
+    if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer' && currentUser.role !== 'Admin' && currentUser.role !== 'Wali Kelas') {
+      return { success: false, error: 'Anda tidak memiliki hak untuk menolak pengajuan.' };
     }
 
     const tx = transactions.find((t) => t.id === transactionId);
@@ -511,7 +593,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ? {
               ...t,
               status: 'Ditolak',
-              rejectionReason: rejectionReason || 'Ditolak oleh pimpinan',
+              rejectionReason: rejectionReason || 'Ditolak',
               approvedById: currentUser.id,
               approvedByName: currentUser.name,
               approvedByRole: currentUser.role,
@@ -520,18 +602,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
 
-    // If linked to book payment, update book payment status to Ditolak
     setBookPayments((prev) =>
       prev.map((bp) =>
-        bp.savingsTransactionId === transactionId ? { ...bp, status: 'Ditolak' } : bp
+        bp.savingsTransactionId === transactionId ? { ...bp, status: 'Ditolak', rejectionReason } : bp
       )
     );
 
     addAuditLog(
       'Approval Penarikan Ditolak',
-      'Status: Menunggu Persetujuan',
+      `Status: ${tx.status}`,
       'Status: Ditolak',
-      `Penarikan ${tx.transactionNumber} ditolak oleh ${currentUser.name}. Saldo siswa tidak berkurang.`
+      `Pengajuan ${tx.transactionNumber} ditolak oleh ${currentUser.name} (${currentUser.role}). Alasan: ${rejectionReason || 'Ditolak'}`
     );
 
     return { success: true };
@@ -665,26 +746,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBookPayment = (bookId: string, studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan') => {
-    const book = books.find((b) => b.id === bookId);
+    const item = books.find((b) => b.id === bookId);
     const student = students.find((s) => s.id === studentId && !s.isDeleted);
 
-    if (!book || !student) {
-      return { success: false, error: 'Data buku atau siswa tidak ditemukan.' };
+    if (!item || !student) {
+      return { success: false, error: 'Data item (Koperasi/Kegiatan) atau siswa tidak ditemukan.' };
     }
 
-    const trNum = generateTransactionNumber('BK', currentAcademicYear.year, bookPayments.length);
+    const trNum = generateTransactionNumber('KK', currentAcademicYear.year, bookPayments.length);
 
     if (paymentMethod === 'Tunai') {
       const newPayment: BookPayment = {
         id: `bp-${Date.now()}`,
         transactionNumber: trNum,
-        bookId,
-        bookTitle: book.title,
+        itemId: item.id,
+        bookId: item.id,
+        itemTitle: item.title,
+        bookTitle: item.title,
+        itemType: item.type || 'Koperasi',
+        category: item.category,
         studentId,
         studentName: student.name,
         studentNis: student.nis,
         classGrade: student.classGrade,
-        amount: book.price,
+        amount: item.price,
         paymentMethod: 'Tunai',
         status: 'Disetujui',
         createdByName: currentUser.name,
@@ -694,51 +779,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setBookPayments((prev) => [newPayment, ...prev]);
 
-      // Automatically mark book distribution as received
-      toggleBookDistribution(bookId, studentId);
+      // Automatically mark distribution as received
+      toggleBookDistribution(item.id, studentId);
 
       addAuditLog(
-        'Pembayaran Buku Tunai',
+        `Pembayaran ${item.type || 'Koperasi'} Tunai`,
         '-',
-        `Lunas Tunai: Rp ${book.price.toLocaleString('id-ID')}`,
-        `Pembayaran buku ${book.title} oleh siswa ${student.name} secara tunai.`
+        `Lunas Tunai: Rp ${item.price.toLocaleString('id-ID')}`,
+        `Pembayaran ${item.type || 'Koperasi'} (${item.title}) oleh siswa ${student.name} secara tunai.`
       );
 
       return { success: true };
     } else {
-      // Potong Tabungan -> must request withdrawal & go through approval!
-      if (student.balance < book.price) {
+      // Potong Tabungan -> must request withdrawal & go through 2-tier approval!
+      if (student.balance < item.price) {
         return {
           success: false,
-          error: `Saldo tabungan siswa (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi harga buku (Rp ${book.price.toLocaleString('id-ID')}).`,
+          error: `Saldo tabungan siswa (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi harga ${item.type.toLowerCase()} (Rp ${item.price.toLocaleString('id-ID')}).`,
         };
       }
 
-      // 1. Generate savings withdrawal transaction with status Menunggu Persetujuan
+      // 1. Generate savings withdrawal transaction with status based on role
       const withdrawalRes = requestWithdrawal(
         studentId,
-        book.price,
-        `Pembayaran Buku (${book.title}) via Potong Tabungan`
+        item.price,
+        `Pembayaran ${item.type} (${item.title}) via Potong Tabungan`
       );
 
       if (!withdrawalRes.success || !withdrawalRes.transaction) {
         return { success: false, error: withdrawalRes.error || 'Gagal mengajukan potongan tabungan.' };
       }
 
+      const tx = withdrawalRes.transaction;
+
       // 2. Generate BookPayment linked to withdrawal transaction ID
       const newPayment: BookPayment = {
         id: `bp-${Date.now()}`,
         transactionNumber: trNum,
-        bookId,
-        bookTitle: book.title,
+        itemId: item.id,
+        bookId: item.id,
+        itemTitle: item.title,
+        bookTitle: item.title,
+        itemType: item.type || 'Koperasi',
+        category: item.category,
         studentId,
         studentName: student.name,
         studentNis: student.nis,
         classGrade: student.classGrade,
-        amount: book.price,
+        amount: item.price,
         paymentMethod: 'Potong Tabungan',
-        status: 'Menunggu Persetujuan',
-        savingsTransactionId: withdrawalRes.transaction.id,
+        status: tx.status,
+        approvedByAdmin: tx.approvedByAdmin,
+        approvedByAdminName: tx.approvedByAdminName,
+        approvedBySuperAdmin: tx.approvedBySuperAdmin,
+        approvedBySuperAdminName: tx.approvedBySuperAdminName,
+        savingsTransactionId: tx.id,
         createdByName: currentUser.name,
         createdAt: new Date().toISOString(),
         academicYearId: currentAcademicYear.id,
@@ -747,10 +842,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setBookPayments((prev) => [newPayment, ...prev]);
 
       addAuditLog(
-        'Pengajuan Pembayaran Buku Potong Tabungan',
-        'Status: Menunggu Persetujuan',
-        'Status: Menunggu Persetujuan',
-        `Pengajuan pembayaran buku ${book.title} via potong tabungan. Menunggu approval Super Admin.`
+        `Pengajuan Pembayaran ${item.type} Potong Tabungan`,
+        `Status: ${tx.status}`,
+        `Status: ${tx.status}`,
+        `Pengajuan pembayaran ${item.type.toLowerCase()} (${item.title}) via potong tabungan. Status: ${tx.status}.`
       );
 
       return { success: true };

@@ -41,7 +41,9 @@ export const initialUsers: User[] = [
   { id: 'u-dev', username: 'developer', name: 'Tim Developer (Dev)', role: 'Developer' },
   { id: 'u-super', username: 'kepsek', name: 'Dra. Endang Rahayu (Kepala Sekolah)', role: 'Super Admin' },
   { id: 'u-admin', username: 'bendahara', name: 'Budi Santoso, S.Pd (Bendahara)', role: 'Admin' },
-  { id: 'u-viewer', username: 'orangtua', name: 'Orang Tua / Siswa (Ahmad Fauzi)', role: 'Viewer', studentId: 'st-1' },
+  { id: 'u-wali1', username: 'walikelas1a', name: 'Siti Rahma, S.Pd (Wali Kelas 1A)', role: 'Wali Kelas', assignedClass: 'Kelas 1A' },
+  { id: 'u-wali2', username: 'walikelas2a', name: 'Hendra Kusuma, S.Pd (Wali Kelas 2A)', role: 'Wali Kelas', assignedClass: 'Kelas 2A' },
+  { id: 'u-viewer', username: 'orangtua', name: 'Orang Tua / Siswa (Ahmad Fauzi)', role: 'Viewer', studentId: 'st-15' },
 ];
 
 const sampleStudentNames = [
@@ -90,26 +92,30 @@ export const initialStudents: Student[] = ALL_CLASSES.flatMap((classGrade, class
 });
 
 export const initialBooks: Book[] = [
-  { id: 'bk-1', title: 'Buku Mewarnai & Mengenal Huruf', category: 'Buku Penunjang', classGrade: 'TK A', price: 25000, stock: 100 },
-  { id: 'bk-2', title: 'Buku Cerdas Membaca & Berhitung', category: 'Buku Penunjang', classGrade: 'TK B', price: 30000, stock: 100 },
-  { id: 'bk-3', title: 'LKS Bahasa Indonesia Kelas 1A', category: 'LKS', classGrade: 'Kelas 1A', price: 35000, stock: 100 },
-  { id: 'bk-4', title: 'LKS Matematika Ceria Kelas 1 B', category: 'LKS', classGrade: 'Kelas 1 B', price: 40000, stock: 100 },
-  { id: 'bk-5', title: 'Buku Penunjang IPAS Cerdas Kelas 2A', category: 'Buku Penunjang', classGrade: 'Kelas 2A', price: 65000, stock: 50 },
-  { id: 'bk-6', title: 'LKS Pendidikan Pancasila Kelas 3A', category: 'LKS', classGrade: 'Kelas 3A', price: 38000, stock: 80 },
+  { id: 'bk-1', title: 'LKS Bahasa Indonesia Kelas 1A', type: 'Koperasi', category: 'Buku', classGrade: 'Kelas 1A', price: 35000, stock: 100 },
+  { id: 'bk-2', title: 'Seragam Olahraga Sekolah Lengkap', type: 'Koperasi', category: 'Seragam', classGrade: 'Semua Kelas', price: 120000, stock: 50 },
+  { id: 'bk-3', title: 'Paket Alat Tulis & Buku Tulis (10 Pcs)', type: 'Koperasi', category: 'Alat Tulis', classGrade: 'Semua Kelas', price: 45000, stock: 80 },
+  { id: 'bk-4', title: 'Buku Mewarnai & Mengenal Huruf', type: 'Koperasi', category: 'Buku', classGrade: 'TK A', price: 25000, stock: 60 },
+  { id: 'kg-1', title: 'Outing Class Edukasi Taman Marga Satwa', type: 'Kegiatan', category: 'Outing Class', classGrade: 'Semua Kelas', price: 150000 },
+  { id: 'kg-2', title: 'Outbound Leadership & Character Building', type: 'Kegiatan', category: 'Outbound', classGrade: 'Kelas 5A', price: 200000 },
+  { id: 'kg-3', title: 'Pentas Seni & Gelar Karya P3', type: 'Kegiatan', category: 'Pentas Seni', classGrade: 'Semua Kelas', price: 75000 },
 ];
 
 export const initialBookDistributions: BookDistribution[] = [
-  { id: 'bd-1', bookId: 'bk-3', studentId: 'st-15', received: true, receivedAt: '2026-07-15T10:00:00.000Z' },
-  { id: 'bd-2', bookId: 'bk-4', studentId: 'st-22', received: false },
-  { id: 'bd-3', bookId: 'bk-5', studentId: 'st-29', received: true, receivedAt: '2026-07-16T11:30:00.000Z' },
+  { id: 'bd-1', itemId: 'bk-1', bookId: 'bk-1', studentId: 'st-15', received: true, receivedAt: '2026-07-15T10:00:00.000Z' },
+  { id: 'bd-2', itemId: 'kg-1', bookId: 'kg-1', studentId: 'st-15', received: true, receivedAt: '2026-07-20T09:15:00.000Z' },
 ];
 
 export const initialBookPayments: BookPayment[] = [
   {
     id: 'bp-1',
-    transactionNumber: 'BK/2026/00001',
-    bookId: 'bk-3',
+    transactionNumber: 'KK/2026/00001',
+    itemId: 'bk-1',
+    bookId: 'bk-1',
+    itemTitle: 'LKS Bahasa Indonesia Kelas 1A',
     bookTitle: 'LKS Bahasa Indonesia Kelas 1A',
+    itemType: 'Koperasi',
+    category: 'Buku',
     studentId: 'st-15',
     studentName: 'Ahmad Fauzi',
     studentNis: '2025015',
@@ -117,8 +123,31 @@ export const initialBookPayments: BookPayment[] = [
     amount: 35000,
     paymentMethod: 'Tunai',
     status: 'Disetujui',
-    createdByName: 'Budi Santoso, S.Pd (Bendahara)',
+    createdByName: 'Siti Rahma, S.Pd (Wali Kelas 1A)',
     createdAt: '2026-07-15T10:05:00.000Z',
+    academicYearId: 'ay-2',
+  },
+  {
+    id: 'bp-2',
+    transactionNumber: 'KK/2026/00002',
+    itemId: 'kg-1',
+    bookId: 'kg-1',
+    itemTitle: 'Outing Class Edukasi Taman Marga Satwa',
+    bookTitle: 'Outing Class Edukasi Taman Marga Satwa',
+    itemType: 'Kegiatan',
+    category: 'Outing Class',
+    studentId: 'st-15',
+    studentName: 'Ahmad Fauzi',
+    studentNis: '2025015',
+    classGrade: 'Kelas 1A',
+    amount: 150000,
+    paymentMethod: 'Potong Tabungan',
+    status: 'Menunggu Approval Super Admin',
+    approvedByAdmin: true,
+    approvedByAdminName: 'Siti Rahma, S.Pd (Wali Kelas 1A)',
+    approvedBySuperAdmin: false,
+    createdByName: 'Siti Rahma, S.Pd (Wali Kelas 1A)',
+    createdAt: '2026-07-20T09:15:00.000Z',
     academicYearId: 'ay-2',
   },
 ];

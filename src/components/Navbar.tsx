@@ -60,16 +60,17 @@ export const Navbar: React.FC<NavbarProps> = ({
     Developer: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' },
     'Super Admin': { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-300' },
     Admin: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
+    'Wali Kelas': { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
     Viewer: { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-300' },
   };
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Developer', 'Super Admin', 'Admin'] },
-    { id: 'students', label: 'Siswa', icon: Users, roles: ['Developer', 'Super Admin', 'Admin'] },
-    { id: 'deposit', label: 'Setoran', icon: Banknote, roles: ['Developer', 'Super Admin', 'Admin'] },
-    { id: 'withdrawal', label: 'Penarikan / Approval', icon: ArrowDownCircle, roles: ['Developer', 'Super Admin', 'Admin'], badge: pendingApprovalsCount },
-    { id: 'books', label: 'Buku & Bayar', icon: BookOpen, roles: ['Developer', 'Super Admin', 'Admin'] },
-    { id: 'reports', label: 'Laporan', icon: FileSpreadsheet, roles: ['Developer', 'Super Admin', 'Admin'] },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
+    { id: 'students', label: 'Siswa', icon: Users, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
+    { id: 'deposit', label: 'Setoran', icon: Banknote, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
+    { id: 'withdrawal', label: 'Penarikan / Approval', icon: ArrowDownCircle, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'], badge: pendingApprovalsCount },
+    { id: 'books', label: 'Koperasi & Kegiatan', icon: Layers, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
+    { id: 'reports', label: 'Laporan', icon: FileSpreadsheet, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
     { id: 'audit', label: 'Audit Log', icon: History, roles: ['Developer', 'Super Admin'] },
     { id: 'viewer', label: 'Tabungan Saya', icon: Eye, roles: ['Viewer'] },
   ];
@@ -180,6 +181,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div>
                     <div>Admin (Level 2)</div>
                     <div className="text-[10px] text-slate-400">Bendahara / Operator</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    switchRole('Wali Kelas');
+                    setRoleMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 text-amber-700 font-medium"
+                >
+                  <User className="w-4 h-4" />
+                  <div>
+                    <div>Wali Kelas (Admin Kelas)</div>
+                    <div className="text-[10px] text-slate-400">Persetujuan Tingkat 1 (Per Kelas)</div>
                   </div>
                 </button>
 
