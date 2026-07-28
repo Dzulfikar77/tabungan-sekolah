@@ -1,0 +1,6 @@
+{
+  "name": "Tabungan Digital Sekolah",
+  "description": "Sistem Manajemen Tabungan Siswa, Pembayaran Buku, dan Administrasi Keuangan Sekolah",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
