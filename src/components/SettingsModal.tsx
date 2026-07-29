@@ -211,7 +211,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <p className="text-[11px] text-slate-400 mt-1">Default: Rp 50.000</p>
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">SPP SD (Kelas 1 - 6)</label>
+              <label className="block font-semibold text-slate-700 mb-1">SPP MI (Kelas 1 - 6)</label>
               <input
                 type="number"
                 value={sppSDAmount}

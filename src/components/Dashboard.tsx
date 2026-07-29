@@ -36,6 +36,7 @@ export const Dashboard: React.FC = () => {
     runMonthlyDeduction,
     approveWithdrawal,
     rejectWithdrawal,
+    sppPayments,
   } = useApp();
 
   const [deductionSummary, setDeductionSummary] = useState<MonthlyDeductionSummary | null>(null);
@@ -335,6 +336,112 @@ export const Dashboard: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* SPP Unpaid List */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2">
+          <span className="text-rose-500">●</span>
+          Siswa Belum Bayar SPP
+          <span className="text-[10px] text-slate-400 font-normal ml-auto">
+            Periode: {
+              (() => {
+                const now = new Date();
+                const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                return `${months[now.getMonth()]} ${now.getFullYear()}`;
+              })()
+            }
+          </span>
+        </h3>
+
+        {(() => {
+          const now = new Date();
+          const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+          const currentPeriod = `${months[now.getMonth()]} ${now.getFullYear()}`;
+          const paidStudentIds = new Set(
+            sppPayments.filter((sp) => sp.period === currentPeriod).map((sp) => sp.studentId)
+          );
+          const unpaidStudents = activeStudents.filter((s) => !paidStudentIds.has(s.id));
+
+          const tkStudents = unpaidStudents.filter((s) => s.classGrade === 'TK A' || s.classGrade === 'TK B');
+          const miStudents = unpaidStudents.filter((s) =>
+            ['Kelas 1A','Kelas 1 B','Kelas 2A','Kelas 2B','Kelas 3A','Kelas 3B','Kelas 4A','Kelas 4B','Kelas 5A','Kelas 5B','Kelas 6A','Kelas 6B'].includes(s.classGrade)
+          );
+
+          const groupByClass = (studentsList: typeof activeStudents) => {
+            const groups: Record<string, typeof activeStudents> = {};
+            studentsList.forEach((s) => {
+              if (!groups[s.classGrade]) groups[s.classGrade] = [];
+              groups[s.classGrade].push(s);
+            });
+            return groups;
+          };
+
+          const tkGroups = groupByClass(tkStudents);
+          const miGroups = groupByClass(miStudents);
+
+          if (unpaidStudents.length === 0) {
+            return <div className="text-center py-6 text-xs text-emerald-600 font-semibold bg-emerald-50 rounded-xl">Semua siswa sudah membayar SPP periode ini! </div>;
+          }
+
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* TK Section */}
+              <div>
+                <h4 className="font-bold text-pink-700 text-xs mb-2 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-pink-500 inline-block"></span>
+                  TK ({tkStudents.length} belum bayar)
+                </h4>
+                {Object.keys(tkGroups).length === 0 ? (
+                  <div className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3 text-center">Semua siswa TK sudah lunas</div>
+                ) : (
+                  <div className="space-y-2">
+                    {Object.entries(tkGroups).map(([cls, students]) => (
+                      <div key={cls} className="bg-pink-50 rounded-xl border border-pink-200 p-3">
+                        <div className="text-[11px] font-bold text-pink-800 mb-1.5">Kelas {cls}</div>
+                        <div className="space-y-1">
+                          {students.map((s) => (
+                            <div key={s.id} className="flex justify-between text-xs text-pink-900 bg-white/70 rounded-lg px-2.5 py-1.5">
+                              <span className="font-medium">{s.name}</span>
+                              <span className="text-pink-600">{s.nis}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* MI Section */}
+              <div>
+                <h4 className="font-bold text-blue-700 text-xs mb-2 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                  MI ({miStudents.length} belum bayar)
+                </h4>
+                {Object.keys(miGroups).length === 0 ? (
+                  <div className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3 text-center">Semua siswa MI sudah lunas</div>
+                ) : (
+                  <div className="space-y-2">
+                    {Object.entries(miGroups).map(([cls, students]) => (
+                      <div key={cls} className="bg-blue-50 rounded-xl border border-blue-200 p-3">
+                        <div className="text-[11px] font-bold text-blue-800 mb-1.5">Kelas {cls}</div>
+                        <div className="space-y-1">
+                          {students.map((s) => (
+                            <div key={s.id} className="flex justify-between text-xs text-blue-900 bg-white/70 rounded-lg px-2.5 py-1.5">
+                              <span className="font-medium">{s.name}</span>
+                              <span className="text-blue-600">{s.nis}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Rejection Modal */}

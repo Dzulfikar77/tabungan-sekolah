@@ -49,26 +49,26 @@ export const SppPayment: React.FC = () => {
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
   const [studentSearchTK, setStudentSearchTK] = useState('');
-  const [studentSearchSD, setStudentSearchSD] = useState('');
+  const [studentSearchMI, setStudentSearchSD] = useState('');
 
   const activeStudents = students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
   );
 
   const tkStudents = activeStudents.filter((s) => TK_CLASSES.includes(s.classGrade));
-  const sdStudents = activeStudents.filter((s) => SD_CLASSES.includes(s.classGrade));
+  const miStudents = activeStudents.filter((s) => SD_CLASSES.includes(s.classGrade));
 
   const filteredTK = tkStudents.filter((s) =>
     s.name.toLowerCase().includes(studentSearchTK.toLowerCase()) ||
     s.nis.toLowerCase().includes(studentSearchTK.toLowerCase())
   );
-  const filteredSD = sdStudents.filter((s) =>
-    s.name.toLowerCase().includes(studentSearchSD.toLowerCase()) ||
-    s.nis.toLowerCase().includes(studentSearchSD.toLowerCase())
+  const filteredMI = miStudents.filter((s) =>
+    s.name.toLowerCase().includes(studentSearchMI.toLowerCase()) ||
+    s.nis.toLowerCase().includes(studentSearchMI.toLowerCase())
   );
 
   const sppTKRate = schoolSettings.sppTKAmount || 50000;
-  const sppSDRate = schoolSettings.sppSDAmount || 100000;
+  const sppMIRate = schoolSettings.sppSDAmount || 100000;
 
   const handlePaySpp = (studentId: string) => {
     setPaymentStudentId(studentId);
@@ -90,7 +90,7 @@ export const SppPayment: React.FC = () => {
   };
 
   const student = students.find((s) => s.id === paymentStudentId);
-  const sppAmount = student?.classGrade.startsWith('TK') ? sppTKRate : sppSDRate;
+  const sppAmount = student?.classGrade.startsWith('TK') ? sppTKRate : sppMIRate;
 
   return (
     <div className="space-y-6">
@@ -112,8 +112,8 @@ export const SppPayment: React.FC = () => {
               <div className="font-bold text-pink-800">{formatRupiah(sppTKRate)}</div>
             </div>
             <div className="p-2.5 bg-blue-50 rounded-xl border border-blue-200 text-center">
-              <div className="text-[10px] text-blue-600 font-semibold">Tarif SD</div>
-              <div className="font-bold text-blue-800">{formatRupiah(sppSDRate)}</div>
+              <div className="text-[10px] text-blue-600 font-semibold">Tarif MI</div>
+              <div className="font-bold text-blue-800">{formatRupiah(sppMIRate)}</div>
             </div>
           </div>
         </div>
@@ -220,10 +220,10 @@ export const SppPayment: React.FC = () => {
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-5 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <GraduationCap className="w-5 h-5" />
-              <span className="font-bold text-sm">SD (Kelas 1 - 6)</span>
+              <span className="font-bold text-sm">MI (Kelas 1 - 6)</span>
             </div>
             <span className="text-blue-100 text-xs">
-              {filteredSD.length} siswa • {formatRupiah(sppSDRate)}/bulan
+              {filteredMI.length} siswa • {formatRupiah(sppMIRate)}/bulan
             </span>
           </div>
 
@@ -232,8 +232,8 @@ export const SppPayment: React.FC = () => {
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
-                placeholder="Cari siswa SD..."
-                value={studentSearchSD}
+                placeholder="Cari siswa MI..."
+                value={studentSearchMI}
                 onChange={(e) => setStudentSearchSD(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none"
               />
@@ -241,10 +241,10 @@ export const SppPayment: React.FC = () => {
           </div>
 
           <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-            {filteredSD.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-400">Tidak ada siswa SD</div>
+            {filteredMI.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">Tidak ada siswa MI</div>
             ) : (
-              filteredSD.map((s) => {
+              filteredMI.map((s) => {
                 const paid = sppPayments.some(
                   (sp) => sp.studentId === s.id && sp.period === selectedPeriod
                 );
@@ -259,7 +259,7 @@ export const SppPayment: React.FC = () => {
                         <div className="text-[11px] text-slate-500 mt-0.5">
                           Saldo: <span className="font-semibold text-emerald-600">{formatRupiah(s.balance)}</span>
                           <span className="mx-1">•</span>
-                          SPP: <span className="font-semibold">{formatRupiah(sppSDRate)}</span>
+                          SPP: <span className="font-semibold">{formatRupiah(sppMIRate)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-3">
