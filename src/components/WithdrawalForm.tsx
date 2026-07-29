@@ -175,24 +175,38 @@ export const WithdrawalForm: React.FC = () => {
                 <Filter className="w-3.5 h-3.5 text-rose-600" />
                 1. Pilih Kelas *
               </label>
-              <select
-                value={selectedClass}
-                onChange={(e) => {
-                  setSelectedClass(e.target.value);
-                  setSelectedStudentId('');
-                }}
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-slate-50 cursor-pointer"
-              >
-                <option value="ALL">-- Semua Kelas ({activeStudents.length} Siswa) --</option>
+              <div className="flex flex-wrap gap-1.5 max-h-[200px] overflow-y-auto p-1">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedClass('ALL'); setSelectedStudentId(''); }}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                    selectedClass === 'ALL'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Semua ({activeStudents.length})
+                </button>
                 {ALL_CLASSES.map((cls) => {
                   const count = activeStudents.filter((s) => s.classGrade === cls).length;
                   return (
-                    <option key={cls} value={cls}>
-                      {cls} ({count} Siswa)
-                    </option>
+                    <button
+                      key={cls}
+                      type="button"
+                      onClick={() => { setSelectedClass(cls); setSelectedStudentId(''); }}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                        selectedClass === cls
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : count > 0
+                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                      }`}
+                    >
+                      {cls} ({count})
+                    </button>
                   );
                 })}
-              </select>
+              </div>
             </div>
 
             {/* Step 2: Select Student with Search */}
