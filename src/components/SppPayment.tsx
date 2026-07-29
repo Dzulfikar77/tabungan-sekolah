@@ -48,19 +48,28 @@ export const SppPayment: React.FC = () => {
   });
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
-  const [studentSearchTK, setStudentSearchTK] = useState('');
+  const [studentSearchTKA, setStudentSearchTKA] = useState('');
+  const [studentSearchTKB, setStudentSearchTKB] = useState('');
   const [studentSearchMI, setStudentSearchMI] = useState('');
 
   const activeStudents = filterByAccessLevel(students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
   ), currentUser);
 
-  const tkStudents = activeStudents.filter((s) => TK_CLASSES.includes(s.classGrade));
+  const TK_A_CLASSES: ClassGrade[] = ['TK A'];
+  const TK_B_CLASSES: ClassGrade[] = ['TK B'];
+
+  const tkAStudents = activeStudents.filter((s) => TK_A_CLASSES.includes(s.classGrade));
+  const tkBStudents = activeStudents.filter((s) => TK_B_CLASSES.includes(s.classGrade));
   const miStudents = activeStudents.filter((s) => SD_CLASSES.includes(s.classGrade));
 
-  const filteredTK = tkStudents.filter((s) =>
-    s.name.toLowerCase().includes(studentSearchTK.toLowerCase()) ||
-    s.nis.toLowerCase().includes(studentSearchTK.toLowerCase())
+  const filteredTKA = tkAStudents.filter((s) =>
+    s.name.toLowerCase().includes(studentSearchTKA.toLowerCase()) ||
+    s.nis.toLowerCase().includes(studentSearchTKA.toLowerCase())
+  );
+  const filteredTKB = tkBStudents.filter((s) =>
+    s.name.toLowerCase().includes(studentSearchTKB.toLowerCase()) ||
+    s.nis.toLowerCase().includes(studentSearchTKB.toLowerCase())
   );
   const filteredMI = miStudents.filter((s) =>
     s.name.toLowerCase().includes(studentSearchMI.toLowerCase()) ||
@@ -149,16 +158,16 @@ export const SppPayment: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* TK Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* TK A Section */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-3 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-pink-400 to-pink-500 text-white px-5 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Baby className="w-5 h-5" />
-              <span className="font-bold text-sm">TK (A & B)</span>
+              <span className="font-bold text-sm">TK A</span>
             </div>
             <span className="text-pink-100 text-xs">
-              {filteredTK.length} siswa • {formatRupiah(sppTKRate)}/bulan
+              {filteredTKA.length} siswa • {formatRupiah(sppTKRate)}/bulan
             </span>
           </div>
 
@@ -167,19 +176,88 @@ export const SppPayment: React.FC = () => {
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
-                placeholder="Cari siswa TK..."
-                value={studentSearchTK}
-                onChange={(e) => setStudentSearchTK(e.target.value)}
+                placeholder="Cari TK A..."
+                value={studentSearchTKA}
+                onChange={(e) => setStudentSearchTKA(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none"
               />
             </div>
           </div>
 
           <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-            {filteredTK.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-400">Tidak ada siswa TK</div>
+            {filteredTKA.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">Tidak ada siswa TK A</div>
             ) : (
-              filteredTK.map((s) => {
+              filteredTKA.map((s) => {
+                const paid = sppPayments.some(
+                  (sp) => sp.studentId === s.id && sp.period === selectedPeriod
+                );
+                return (
+                  <div key={s.id} className="p-3.5 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-slate-900 text-sm truncate">{s.name}</div>
+                        <div className="text-[11px] text-slate-400">
+                          {s.nis} • Kelas {s.classGrade}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Saldo: <span className="font-semibold text-emerald-600">{formatRupiah(s.balance)}</span>
+                          <span className="mx-1">•</span>
+                          SPP: <span className="font-semibold">{formatRupiah(sppTKRate)}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
+                        {paid ? (
+                          <span className="px-2.5 py-1.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Lunas
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handlePaySpp(s.id)}
+                            className="px-3 py-1.5 bg-pink-500 hover:bg-pink-600 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer shadow-xs"
+                          >
+                            Bayar SPP
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* TK B Section */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Baby className="w-5 h-5" />
+              <span className="font-bold text-sm">TK B</span>
+            </div>
+            <span className="text-pink-100 text-xs">
+              {filteredTKB.length} siswa • {formatRupiah(sppTKRate)}/bulan
+            </span>
+          </div>
+
+          <div className="p-3 border-b border-slate-100">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                placeholder="Cari TK B..."
+                value={studentSearchTKB}
+                onChange={(e) => setStudentSearchTKB(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
+            {filteredTKB.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">Tidak ada siswa TK B</div>
+            ) : (
+              filteredTKB.map((s) => {
                 const paid = sppPayments.some(
                   (sp) => sp.studentId === s.id && sp.period === selectedPeriod
                 );
