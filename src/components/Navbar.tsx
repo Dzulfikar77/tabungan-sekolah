@@ -67,7 +67,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'reports', label: 'Laporan', icon: FileSpreadsheet, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
     { id: 'audit', label: 'Audit Log', icon: History, roles: ['Developer', 'Super Admin'] },
     { id: 'viewer', label: 'Tabungan Saya', icon: Eye, roles: ['Viewer'] },
-    { id: 'spp', label: 'SPP', icon: GraduationCap, roles: ['Developer', 'Super Admin', 'Admin'] },
   ];
 
   return (
