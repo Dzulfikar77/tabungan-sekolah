@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Student, Book, Transaction, AcademicYear, AuditLogItem, SchoolSettings, User, BookPayment, BookDistribution, ClassGrade } from '../types';
+import { Student, Book, Transaction, AcademicYear, AuditLogItem, SchoolSettings, User, BookPayment, BookDistribution, SppPayment, ClassGrade } from '../types';
 
 export const initialSchoolSettings: SchoolSettings = {
   name: 'SD & TK Nusantara Utama',
@@ -275,3 +275,5 @@ export const initialAuditLogs: AuditLogItem[] = [
     details: 'Mengecek status potongan bulanan otomatis.',
   },
 ];
+
+export const initialSppPayments: SppPayment[] = [];

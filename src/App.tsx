@@ -14,6 +14,7 @@ import { BookManagement } from './components/BookManagement';
 import { Reports } from './components/Reports';
 import { AuditLogView } from './components/AuditLogView';
 import { ViewerPage } from './components/ViewerPage';
+import { SppPayment } from './components/SppPayment';
 import { LoginPage } from './components/LoginPage';
 import { SettingsModal } from './components/SettingsModal';
 
@@ -43,6 +44,7 @@ function MainLayout() {
         {activeTab === 'books' && <BookManagement />}
         {activeTab === 'reports' && <Reports />}
         {activeTab === 'audit' && <AuditLogView />}
+        {activeTab === 'spp' && <SppPayment />}
         {activeTab === 'viewer' && <ViewerPage />}
       </main>
 

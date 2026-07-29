@@ -138,6 +138,22 @@ export interface KoperasiKegiatanPayment {
 }
 export type BookPayment = KoperasiKegiatanPayment;
 
+export interface SppPayment {
+  id: string;
+  transactionNumber: string;
+  studentId: string;
+  studentName: string;
+  studentNis: string;
+  classGrade: ClassGrade;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  status: TransactionStatus;
+  period: string; // e.g. "Juli 2026"
+  createdByName: string;
+  createdAt: string;
+  academicYearId: string;
+}
+
 export interface AcademicYear {
   id: string;
   year: string; // e.g. "2025/2026"
@@ -165,6 +181,8 @@ export interface SchoolSettings {
   monthlyDeductionEnabled: boolean;
   monthlyDeductionAmount: number;
   lastMonthlyDeductionRun?: string;
+  sppTKAmount?: number;
+  sppSDAmount?: number;
 }
 
 export interface MonthlyDeductionSummary {

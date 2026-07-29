@@ -13,6 +13,7 @@ import {
   Book,
   BookDistribution,
   BookPayment,
+  SppPayment,
   AcademicYear,
   AuditLogItem,
   SchoolSettings,
@@ -27,6 +28,7 @@ import {
   initialBookDistributions,
   initialBookPayments,
   initialTransactions,
+  initialSppPayments,
   initialAuditLogs,
 } from '../utils/initialData';
 import { generateTransactionNumber } from '../utils/format';
@@ -75,6 +77,9 @@ interface AppContextType {
 
   auditLogs: AuditLogItem[];
   addAuditLog: (action: string, valueBefore: string, valueAfter: string, details: string) => void;
+
+  sppPayments: SppPayment[];
+  addSppPayment: (studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan', period: string) => { success: boolean; error?: string };
 
   exportBackupData: () => string;
   restoreBackupData: (jsonString: string) => { success: boolean; error?: string };
@@ -132,6 +137,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialAuditLogs;
   });
 
+  const [sppPayments, setSppPayments] = useState<SppPayment[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_spp_payments`);
+    return saved ? JSON.parse(saved) : initialSppPayments;
+  });
+
   // Save state to localStorage
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_school`, JSON.stringify(schoolSettings));
@@ -142,7 +152,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_distributions`, JSON.stringify(bookDistributions));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_book_payments`, JSON.stringify(bookPayments));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit_logs`, JSON.stringify(auditLogs));
-  }, [schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs]);
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_spp_payments`, JSON.stringify(sppPayments));
+  }, [schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments]);
 
   const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0];
 
@@ -1052,6 +1063,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const addSppPayment = (studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan', period: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    const student = students.find((s) => s.id === studentId && !s.isDeleted);
+    if (!student) {
+      return { success: false, error: 'Siswa tidak ditemukan.' };
+    }
+
+    const sppAmount = student.classGrade.startsWith('TK') ? (schoolSettings.sppTKAmount || 50000) : (schoolSettings.sppSDAmount || 100000);
+    const trNum = generateTransactionNumber('BK', currentAcademicYear.year, sppPayments.length);
+
+    if (paymentMethod === 'Potong Tabungan') {
+      if (student.balance < sppAmount) {
+        return { success: false, error: `Saldo tabungan siswa (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi pembayaran SPP (Rp ${sppAmount.toLocaleString('id-ID')}).` };
+      }
+      setStudents((prev) =>
+        prev.map((s) => (s.id === studentId ? { ...s, balance: s.balance - sppAmount } : s))
+      );
+    }
+
+    const newPayment: SppPayment = {
+      id: `spp-${Date.now()}`,
+      transactionNumber: trNum,
+      studentId,
+      studentName: student.name,
+      studentNis: student.nis,
+      classGrade: student.classGrade,
+      amount: sppAmount,
+      paymentMethod,
+      status: 'Disetujui',
+      period,
+      createdByName: currentUser.name,
+      createdAt: new Date().toISOString(),
+      academicYearId: currentAcademicYear.id,
+    };
+
+    setSppPayments((prev) => [newPayment, ...prev]);
+
+    addAuditLog(
+      'Pembayaran SPP',
+      '-',
+      `${student.name}: Rp ${sppAmount.toLocaleString('id-ID')} (${period})`,
+      `Pembayaran SPP ${student.name} (${student.nis}) - ${period} via ${paymentMethod} oleh ${currentUser.name}`
+    );
+
+    return { success: true };
+  };
+
   const exportBackupData = () => {
     const backupObj = {
       version: '1.0',
@@ -1064,6 +1124,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       books,
       bookDistributions,
       bookPayments,
+      sppPayments,
       auditLogs,
     };
     addAuditLog('Backup Database JSON', '-', `Versi 1.0`, `Ekspor cadangan data sistem oleh ${currentUser.name}`);
@@ -1091,6 +1152,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setBooks(data.books || []);
       setBookDistributions(data.bookDistributions || []);
       setBookPayments(data.bookPayments || []);
+      setSppPayments(data.sppPayments || []);
       setAuditLogs(data.auditLogs || []);
 
       addAuditLog(
@@ -1143,6 +1205,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addBookPayment,
         auditLogs,
         addAuditLog,
+        sppPayments,
+        addSppPayment,
         exportBackupData,
         restoreBackupData,
       }}
