@@ -11,6 +11,8 @@ export const initialSchoolSettings: SchoolSettings = {
   phone: '(021) 789-0123',
   monthlyDeductionEnabled: true,
   monthlyDeductionAmount: 2000,
+  sppTKAmount: 50000,
+  sppSDAmount: 0,
   lastMonthlyDeductionRun: '2026-07-01T00:00:00.000Z',
 };
 

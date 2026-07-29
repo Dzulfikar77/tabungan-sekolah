@@ -361,7 +361,12 @@ export const Dashboard: React.FC = () => {
           const paidStudentIds = new Set(
             sppPayments.filter((sp) => sp.period === currentPeriod).map((sp) => sp.studentId)
           );
-          const unpaidStudents = activeStudents.filter((s) => !paidStudentIds.has(s.id));
+          const unpaidStudents = activeStudents.filter((s) => {
+            if (paidStudentIds.has(s.id)) return false;
+            const isMI = ['Kelas 1A','Kelas 1 B','Kelas 2A','Kelas 2B','Kelas 3A','Kelas 3B','Kelas 4A','Kelas 4B','Kelas 5A','Kelas 5B','Kelas 6A','Kelas 6B'].includes(s.classGrade);
+            if (isMI && (!schoolSettings.sppSDAmount || schoolSettings.sppSDAmount === 0)) return false;
+            return true;
+          });
 
           const tkStudents = unpaidStudents.filter((s) => s.classGrade === 'TK A' || s.classGrade === 'TK B');
           const miStudents = unpaidStudents.filter((s) =>

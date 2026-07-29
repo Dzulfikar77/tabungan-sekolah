@@ -49,7 +49,7 @@ export const SppPayment: React.FC = () => {
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
   const [studentSearchTK, setStudentSearchTK] = useState('');
-  const [studentSearchMI, setStudentSearchSD] = useState('');
+  const [studentSearchMI, setStudentSearchMI] = useState('');
 
   const activeStudents = students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
@@ -71,6 +71,10 @@ export const SppPayment: React.FC = () => {
   const sppMIRate = schoolSettings.sppSDAmount || 100000;
 
   const handlePaySpp = (studentId: string) => {
+    const student = students.find((s) => s.id === studentId);
+    if (student && !student.classGrade.startsWith('TK')) {
+      if (!sppMIRate || sppMIRate <= 0) return;
+    }
     setPaymentStudentId(studentId);
     setPaymentError('');
     setPaymentSuccess('');
@@ -223,7 +227,7 @@ export const SppPayment: React.FC = () => {
               <span className="font-bold text-sm">MI (Kelas 1 - 6)</span>
             </div>
             <span className="text-blue-100 text-xs">
-              {filteredMI.length} siswa • {formatRupiah(sppMIRate)}/bulan
+              {filteredMI.length} siswa • {sppMIRate > 0 ? `${formatRupiah(sppMIRate)}/bulan` : 'Gratis'}
             </span>
           </div>
 
@@ -234,7 +238,7 @@ export const SppPayment: React.FC = () => {
                 type="text"
                 placeholder="Cari siswa MI..."
                 value={studentSearchMI}
-                onChange={(e) => setStudentSearchSD(e.target.value)}
+                onChange={(e) => setStudentSearchMI(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none"
               />
             </div>
@@ -259,11 +263,13 @@ export const SppPayment: React.FC = () => {
                         <div className="text-[11px] text-slate-500 mt-0.5">
                           Saldo: <span className="font-semibold text-emerald-600">{formatRupiah(s.balance)}</span>
                           <span className="mx-1">•</span>
-                          SPP: <span className="font-semibold">{formatRupiah(sppMIRate)}</span>
+                          SPP: <span className="font-semibold">{sppMIRate > 0 ? formatRupiah(sppMIRate) : 'Gratis'}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-3">
-                        {paid ? (
+                        {sppMIRate === 0 ? (
+                          <span className="px-2.5 py-1.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-lg">Gratis</span>
+                        ) : paid ? (
                           <span className="px-2.5 py-1.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3" /> Lunas
                           </span>

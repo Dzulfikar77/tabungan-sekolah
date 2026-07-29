@@ -1072,7 +1072,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Siswa tidak ditemukan.' };
     }
 
-    const sppAmount = student.classGrade.startsWith('TK') ? (schoolSettings.sppTKAmount || 50000) : (schoolSettings.sppSDAmount || 100000);
+    const sppAmount = student.classGrade.startsWith('TK') ? (schoolSettings.sppTKAmount || 50000) : (schoolSettings.sppSDAmount || 0);
+    if (sppAmount <= 0) {
+      return { success: false, error: 'SPP untuk siswa ini gratis (Rp 0). Tidak perlu melakukan pembayaran.' };
+    }
     const trNum = generateTransactionNumber('BK', currentAcademicYear.year, sppPayments.length);
 
     if (paymentMethod === 'Potong Tabungan') {

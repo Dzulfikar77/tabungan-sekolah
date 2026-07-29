@@ -38,7 +38,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const [monthlyAmount, setMonthlyAmount] = useState(schoolSettings.monthlyDeductionAmount || 2000);
   const [sppTKAmount, setSppTKAmount] = useState(schoolSettings.sppTKAmount || 50000);
-  const [sppSDAmount, setSppSDAmount] = useState(schoolSettings.sppSDAmount || 100000);
+  const [sppSDAmount, setSppSDAmount] = useState(schoolSettings.sppSDAmount || 0);
 
   const [restoreJson, setRestoreJson] = useState('');
   const [restoreMessage, setRestoreMessage] = useState<{ success?: boolean; msg?: string } | null>(null);
@@ -218,7 +218,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 onChange={(e) => setSppSDAmount(Number(e.target.value))}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
               />
-              <p className="text-[11px] text-slate-400 mt-1">Default: Rp 100.000</p>
+              <p className="text-[11px] text-slate-400 mt-1">0 = Gratis (tidak wajib bayar)</p>
             </div>
           </div>
         </form>

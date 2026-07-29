@@ -60,6 +60,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
     { id: 'students', label: 'Siswa', icon: Users, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
+    { id: 'spp', label: 'SPP', icon: GraduationCap, roles: ['Developer', 'Super Admin', 'Admin'] },
     { id: 'deposit', label: 'Setoran', icon: Banknote, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
     { id: 'withdrawal', label: 'Penarikan / Approval', icon: ArrowDownCircle, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'], badge: pendingApprovalsCount },
     { id: 'books', label: 'Koperasi & Kegiatan', icon: Layers, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
