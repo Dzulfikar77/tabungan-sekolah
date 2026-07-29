@@ -12,7 +12,7 @@ import {
   PaymentMethod,
 } from '../types';
 import { ALL_CLASSES } from '../utils/initialData';
-import { formatRupiah, formatDate } from '../utils/format';
+import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
 import {
   Plus,
   CheckCircle2,
@@ -72,9 +72,9 @@ export const BookManagement: React.FC = () => {
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
 
-  const activeStudents = students.filter(
+  const activeStudents = filterByAccessLevel(students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
-  );
+  ), currentUser);
 
   const filteredStudents = activeStudents.filter((s) => {
     const matchesClass = s.classGrade === selectedStudentClass;

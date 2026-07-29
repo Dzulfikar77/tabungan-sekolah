@@ -3,6 +3,30 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { Student, User, ClassGrade } from '../types';
+
+const TK_CLASSES: ClassGrade[] = ['TK A', 'TK B'];
+const MI_CLASSES: ClassGrade[] = [
+  'Kelas 1A', 'Kelas 1 B', 'Kelas 2A', 'Kelas 2B',
+  'Kelas 3A', 'Kelas 3B', 'Kelas 4A', 'Kelas 4B',
+  'Kelas 5A', 'Kelas 5B', 'Kelas 6A', 'Kelas 6B',
+];
+
+export function isTKClass(classGrade: ClassGrade): boolean {
+  return TK_CLASSES.includes(classGrade);
+}
+
+export function isMIClass(classGrade: ClassGrade): boolean {
+  return MI_CLASSES.includes(classGrade);
+}
+
+export function filterByAccessLevel(students: Student[], user: User | null): Student[] {
+  if (!user || !user.accessLevel) return students;
+  if (user.accessLevel === 'TK') return students.filter((s) => TK_CLASSES.includes(s.classGrade));
+  if (user.accessLevel === 'MI') return students.filter((s) => MI_CLASSES.includes(s.classGrade));
+  return students;
+}
+
 // Format currency to Indonesian Rupiah
 export function formatRupiah(amount: number): string {
   return new Intl.NumberFormat('id-ID', {

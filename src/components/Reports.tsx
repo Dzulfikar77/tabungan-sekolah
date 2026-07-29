@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRupiah, formatDate } from '../utils/format';
+import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
 import { generateReportPDF } from '../utils/pdfGenerator';
 import { exportReportToExcel } from '../utils/excelHandler';
 import { ClassGrade } from '../types';
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export const Reports: React.FC = () => {
-  const { transactions, students, currentAcademicYear, schoolSettings } = useApp();
+  const { transactions, students, currentAcademicYear, schoolSettings, currentUser } = useApp();
 
   const [periodFilter, setPeriodFilter] = useState<'ALL' | 'Harian' | 'Mingguan' | 'Bulanan' | 'Tahunan'>('ALL');
   const [classFilter, setClassFilter] = useState<string>('ALL');
@@ -31,7 +31,7 @@ export const Reports: React.FC = () => {
 
   const classes = ALL_CLASSES;
 
-  const activeStudents = students.filter((s) => !s.isDeleted);
+  const activeStudents = filterByAccessLevel(students.filter((s) => !s.isDeleted), currentUser);
 
   // Filter transactions
   const now = new Date();

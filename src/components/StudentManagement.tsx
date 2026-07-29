@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student, ClassGrade, StudentStatus } from '../types';
-import { formatRupiah, formatDate } from '../utils/format';
+import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
 import { downloadStudentImportTemplate, parseStudentsExcel } from '../utils/excelHandler';
 import {
   UserPlus,
@@ -33,6 +33,7 @@ export const StudentManagement: React.FC = () => {
     importStudentsBulk,
     bulkPromoteStudents,
     currentAcademicYear,
+    currentUser,
   } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,7 +63,7 @@ export const StudentManagement: React.FC = () => {
   const [formError, setFormError] = useState('');
 
   // Filter Active Non-Deleted Students
-  const activeStudents = students.filter(
+  const activeStudents = filterByAccessLevel(students.filter(
     (s) =>
       !s.isDeleted &&
       s.academicYearId === currentAcademicYear.id &&
@@ -70,7 +71,7 @@ export const StudentManagement: React.FC = () => {
       (selectedStatusFilter === 'ALL' || s.status === selectedStatusFilter) &&
       (s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.nis.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  ), currentUser);
 
   const classes = ALL_CLASSES;
 

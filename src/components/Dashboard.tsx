@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRupiah, formatDate } from '../utils/format';
+import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
 import { MonthlyDeductionSummary, ClassGrade } from '../types';
 import { ALL_CLASSES } from '../utils/initialData';
 import {
@@ -45,11 +45,21 @@ export const Dashboard: React.FC = () => {
   const [rejectReason, setRejectReason] = useState('');
 
   // Active students in current academic year
-  const activeStudents = students.filter(
+  const activeStudents = filterByAccessLevel(students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
-  );
+  ), currentUser);
 
   const totalSavings = activeStudents.reduce((sum, s) => sum + s.balance, 0);
+
+  const TK_CLASSES: ClassGrade[] = ['TK A', 'TK B'];
+  const tkSavings = activeStudents
+    .filter((s) => TK_CLASSES.includes(s.classGrade))
+    .reduce((sum, s) => sum + s.balance, 0);
+  const tkCount = activeStudents.filter((s) => TK_CLASSES.includes(s.classGrade)).length;
+  const miSavings = activeStudents
+    .filter((s) => !TK_CLASSES.includes(s.classGrade))
+    .reduce((sum, s) => sum + s.balance, 0);
+  const miCount = activeStudents.filter((s) => !TK_CLASSES.includes(s.classGrade)).length;
 
   // Filter transactions in current academic year
   const yearTransactions = transactions.filter(
@@ -136,6 +146,30 @@ export const Dashboard: React.FC = () => {
             <p className="text-[11px] text-slate-400 mt-1">{activeStudents.length} Siswa Aktif</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            <Wallet className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Total Tabungan TK */}
+        <div className="bg-white p-5 rounded-2xl border border-pink-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-pink-500 mb-1">Tabungan TK</p>
+            <h3 className="text-xl font-extrabold text-pink-900">{formatRupiah(tkSavings)}</h3>
+            <p className="text-[11px] text-pink-400 mt-1">{tkCount} Siswa TK</p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-bold">
+            <Wallet className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Total Tabungan MI */}
+        <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-blue-500 mb-1">Tabungan MI</p>
+            <h3 className="text-xl font-extrabold text-blue-900">{formatRupiah(miSavings)}</h3>
+            <p className="text-[11px] text-blue-400 mt-1">{miCount} Siswa MI</p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
             <Wallet className="w-6 h-6" />
           </div>
         </div>

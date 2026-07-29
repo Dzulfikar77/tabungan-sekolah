@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRupiah, formatNumberInput, parseFormattedNumber, formatDate } from '../utils/format';
+import { formatRupiah, formatNumberInput, parseFormattedNumber, formatDate, filterByAccessLevel } from '../utils/format';
 import { generateTransactionReceiptPDF } from '../utils/pdfGenerator';
 import { ALL_CLASSES } from '../utils/initialData';
 import {
@@ -47,9 +47,9 @@ export const WithdrawalForm: React.FC = () => {
 
   const NOMINAL_PRESETS = [2000, 5000, 10000, 15000, 20000, 25000];
 
-  const activeStudents = students.filter(
+  const activeStudents = filterByAccessLevel(students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
-  );
+  ), currentUser);
 
   const filteredStudents = activeStudents.filter((s) => {
     const matchesClass = selectedClass === 'ALL' || s.classGrade === selectedClass;

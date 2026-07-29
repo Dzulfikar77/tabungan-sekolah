@@ -10,10 +10,11 @@ export interface User {
   username: string;
   name: string;
   role: UserRole;
-  studentId?: string; // If role is Viewer, linked student NIS/ID
-  assignedClass?: ClassGrade; // If role is Wali Kelas
+  studentId?: string;
+  assignedClass?: ClassGrade;
   password?: string;
   demoMode?: boolean;
+  accessLevel?: 'TK' | 'MI';
 }
 
 export type ClassGrade =

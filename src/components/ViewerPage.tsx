@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRupiah, formatDate } from '../utils/format';
+import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
 import { generateStudentCertificatePDF } from '../utils/pdfGenerator';
 import {
   Wallet,
@@ -33,9 +33,9 @@ export const ViewerPage: React.FC = () => {
     currentAcademicYear,
   } = useApp();
 
-  const activeStudents = students.filter(
+  const activeStudents = filterByAccessLevel(students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
-  );
+  ), currentUser);
 
   // Default selected student: if user has studentId, or first student
   const defaultStudentId = currentUser.studentId || (activeStudents[0]?.id ?? '');

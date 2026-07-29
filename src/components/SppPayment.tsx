@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ClassGrade } from '../types';
-import { formatRupiah, formatDate } from '../utils/format';
+import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
 import {
   GraduationCap,
   Banknote,
@@ -51,9 +51,9 @@ export const SppPayment: React.FC = () => {
   const [studentSearchTK, setStudentSearchTK] = useState('');
   const [studentSearchMI, setStudentSearchMI] = useState('');
 
-  const activeStudents = students.filter(
+  const activeStudents = filterByAccessLevel(students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
-  );
+  ), currentUser);
 
   const tkStudents = activeStudents.filter((s) => TK_CLASSES.includes(s.classGrade));
   const miStudents = activeStudents.filter((s) => SD_CLASSES.includes(s.classGrade));
