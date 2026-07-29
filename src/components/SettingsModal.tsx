@@ -36,8 +36,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [phone, setPhone] = useState(schoolSettings.phone);
   const [logoUrl, setLogoUrl] = useState(schoolSettings.logoUrl || '');
 
-  const [monthlyAmount, setMonthlyAmount] = useState(schoolSettings.monthlyDeductionAmount || 1000);
-  const [minBalance, setMinBalance] = useState(schoolSettings.monthlyDeductionMinBalance || 5000);
+  const [monthlyAmount, setMonthlyAmount] = useState(schoolSettings.monthlyDeductionAmount || 2000);
 
   const [restoreJson, setRestoreJson] = useState('');
   const [restoreMessage, setRestoreMessage] = useState<{ success?: boolean; msg?: string } | null>(null);
@@ -52,7 +51,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       phone,
       logoUrl,
       monthlyDeductionAmount: Number(monthlyAmount),
-      monthlyDeductionMinBalance: Number(minBalance),
     });
     onClose();
   };
@@ -172,25 +170,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             Aturan Potongan Bulanan Otomatis
           </h4>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Nominal Potongan (Rp)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Nominal Potongan (Rp) per Bulan</label>
               <input
                 type="number"
                 value={monthlyAmount}
                 onChange={(e) => setMonthlyAmount(Number(e.target.value))}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
               />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Minimal Saldo (Rp)</label>
-              <input
-                type="number"
-                value={minBalance}
-                onChange={(e) => setMinBalance(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
-              />
+              <p className="text-[11px] text-slate-400 mt-1">Default: Rp 2.000. Pemotongan dilakukan setiap tanggal 28. Saldo kurang akan dicatat sebagai tunggakan.</p>
             </div>
           </div>
 

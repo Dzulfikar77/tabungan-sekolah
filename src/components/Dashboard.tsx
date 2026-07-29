@@ -76,7 +76,8 @@ export const Dashboard: React.FC = () => {
   });
 
   const handleRunDeductionNow = () => {
-    if (confirm('Apakah Anda yakin ingin menjalankan Potongan Bulanan Otomatis (Rp 1.000) sekarang untuk semua siswa aktif yang memiliki saldo >= Rp 5.000?')) {
+    const amount = schoolSettings.monthlyDeductionAmount || 2000;
+    if (confirm(`Apakah Anda yakin ingin menjalankan Potongan Bulanan Otomatis (Rp ${amount.toLocaleString('id-ID')}) sekarang untuk semua siswa aktif? Siswa dengan saldo kurang akan dicatat sebagai tunggakan.`)) {
       const summary = runMonthlyDeduction();
       setDeductionSummary(summary);
       setSummaryModalOpen(true);
@@ -288,25 +289,19 @@ export const Dashboard: React.FC = () => {
                     schoolSettings.monthlyDeductionEnabled ? 'text-emerald-700' : 'text-slate-500'
                   }`}
                 >
-                  {schoolSettings.monthlyDeductionEnabled ? 'AKTIF (Setiap Tgl 1)' : 'NON-AKTIF'}
+                  {schoolSettings.monthlyDeductionEnabled ? 'AKTIF (Setiap Tgl 28)' : 'NON-AKTIF'}
                 </span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Nominal Potongan:</span>
                 <span className="font-bold text-slate-800">
-                  {formatRupiah(schoolSettings.monthlyDeductionAmount || 1000)} / siswa
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Minimal Saldo:</span>
-                <span className="font-bold text-slate-800">
-                  {formatRupiah(schoolSettings.monthlyDeductionMinBalance || 5000)}
+                  {formatRupiah(schoolSettings.monthlyDeductionAmount || 2000)} / siswa
                 </span>
               </div>
             </div>
 
             <p className="text-[11px] text-slate-500 leading-relaxed mb-4">
-              <strong>Aturan Eksekusi:</strong> Siswa aktif dengan saldo &ge; Rp 5.000 dipotong Rp 1.000. Siswa dengan saldo &lt; Rp 5.000 dilewati secara otomatis tanpa pemotongan.
+              <strong>Aturan Eksekusi:</strong> Semua siswa aktif dipotong Rp {formatRupiah(schoolSettings.monthlyDeductionAmount || 2000)} setiap tanggal 28. Jika saldo tidak mencukupi, akan tercatat sebagai tunggakan dan dipotong otomatis saat saldo terisi.
             </p>
           </div>
 
@@ -398,32 +393,56 @@ export const Dashboard: React.FC = () => {
               </div>
 
               <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
-                <div className="text-amber-800 font-medium">Siswa Dilewati (&lt; Rp 5.000)</div>
+                <div className="text-amber-800 font-medium">Tunggakan</div>
                 <div className="text-lg font-bold text-amber-900">
-                  {deductionSummary.skippedStudents.length} Siswa
+                  {deductionSummary.pendingDebtStudents?.length || 0} Siswa
                 </div>
-                <div className="text-[11px] text-amber-700 mt-1">Saldo tidak mencukupi</div>
+                <div className="text-[11px] text-amber-700 mt-1">Saldo kurang, masuk tunggakan</div>
               </div>
             </div>
 
-            {deductionSummary.skippedStudents.length > 0 && (
+            {(deductionSummary.pendingDebtStudents?.length > 0 || deductionSummary.skippedStudents.length > 0) && (
               <div>
-                <h4 className="font-bold text-slate-800 text-xs mb-2">Daftar Siswa Dilewati:</h4>
-                <div className="max-h-40 overflow-y-auto space-y-1 text-xs">
-                  {deductionSummary.skippedStudents.map((s) => (
-                    <div
-                      key={s.id}
-                      className="p-2 bg-slate-50 rounded-lg flex justify-between text-slate-600"
-                    >
-                      <span>
-                        {s.name} ({s.nis})
-                      </span>
-                      <span className="font-semibold text-slate-800">
-                        {formatRupiah(s.balance)}
-                      </span>
+                {deductionSummary.pendingDebtStudents?.length > 0 && (
+                  <>
+                    <h4 className="font-bold text-slate-800 text-xs mb-2">Tunggakan yang Tertunda:</h4>
+                    <div className="max-h-40 overflow-y-auto space-y-1 text-xs mb-3">
+                      {deductionSummary.pendingDebtStudents.map((s) => (
+                        <div
+                          key={s.id}
+                          className="p-2 bg-amber-50 rounded-lg flex justify-between text-amber-800"
+                        >
+                          <span>
+                            {s.name} ({s.nis})
+                          </span>
+                          <span className="font-semibold">
+                            Utang: {formatRupiah(s.debt)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
+                {deductionSummary.skippedStudents.length > 0 && (
+                  <>
+                    <h4 className="font-bold text-slate-800 text-xs mb-2">Siswa Dilewati (Saldo 0):</h4>
+                    <div className="max-h-40 overflow-y-auto space-y-1 text-xs">
+                      {deductionSummary.skippedStudents.map((s) => (
+                        <div
+                          key={s.id}
+                          className="p-2 bg-slate-50 rounded-lg flex justify-between text-slate-600"
+                        >
+                          <span>
+                            {s.name} ({s.nis})
+                          </span>
+                          <span className="font-semibold text-slate-800">
+                            {formatRupiah(s.balance)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

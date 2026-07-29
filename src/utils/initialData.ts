@@ -10,8 +10,7 @@ export const initialSchoolSettings: SchoolSettings = {
   address: 'Jl. Pemuda No. 45, Kebayoran Baru, Jakarta Selatan',
   phone: '(021) 789-0123',
   monthlyDeductionEnabled: true,
-  monthlyDeductionAmount: 1000,
-  monthlyDeductionMinBalance: 5000,
+  monthlyDeductionAmount: 2000,
   lastMonthlyDeductionRun: '2026-07-01T00:00:00.000Z',
 };
 

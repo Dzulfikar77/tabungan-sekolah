@@ -44,6 +44,7 @@ export interface Student {
   parentName?: string;
   phone?: string;
   isDeleted?: boolean;
+  pendingDebt?: number; // Akumulasi tunggakan potongan bulanan
   createdAt: string;
 }
 
@@ -163,7 +164,6 @@ export interface SchoolSettings {
   logoUrl?: string;
   monthlyDeductionEnabled: boolean;
   monthlyDeductionAmount: number;
-  monthlyDeductionMinBalance: number;
   lastMonthlyDeductionRun?: string;
 }
 
@@ -173,4 +173,5 @@ export interface MonthlyDeductionSummary {
   totalAmountDeducted: number;
   deductedStudents: { id: string; name: string; nis: string; balanceBefore: number; balanceAfter: number }[];
   skippedStudents: { id: string; name: string; nis: string; balance: number; reason: string }[];
+  pendingDebtStudents: { id: string; name: string; nis: string; debt: number; balance: number }[];
 }

@@ -408,14 +408,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, balance: balanceAfter } : s)));
     setTransactions((prev) => [newTx, ...prev]);
 
+    // Auto-deduct pending debt jika saldo sudah mencukupi
+    const existingDebt = student.pendingDebt || 0;
+    const deductionTransactions: Transaction[] = [];
+    if (existingDebt > 0) {
+      if (balanceAfter >= existingDebt) {
+        // Saldo cukup untuk lunasi tunggakan
+        const finalBalance = balanceAfter - existingDebt;
+        const debtTrNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length + 1);
+        const debtTx: Transaction = {
+          id: `tr-auto-debt-${Date.now()}`,
+          transactionNumber: debtTrNum,
+          studentId,
+          studentName: student.name,
+          studentNis: student.nis,
+          classGrade: student.classGrade,
+          type: 'Potongan Bulanan',
+          amount: existingDebt,
+          status: 'Disetujui',
+          reason: `Pelunasan Otomatis Tunggakan Potongan Bulanan (Rp ${existingDebt.toLocaleString('id-ID')})`,
+          createdById: currentUser.id,
+          createdByName: `${currentUser.name} (Sistem Otomatis)`,
+          createdByRole: currentUser.role,
+          academicYearId: currentAcademicYear.id,
+          createdAt: new Date().toISOString(),
+        };
+        deductionTransactions.push(debtTx);
+        setStudents((prev) =>
+          prev.map((s) => {
+            if (s.id === studentId) {
+              const updated = { ...s, balance: finalBalance };
+              delete updated.pendingDebt;
+              return updated;
+            }
+            return s;
+          })
+        );
+        setTransactions((prev) => [debtTx, ...prev]);
+      } else if (balanceAfter > 0) {
+        // Saldo ada tapi kurang: potong habis, kurangi tunggakan
+        const remainingDebt = existingDebt - balanceAfter;
+        const debtTrNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length + 1);
+        const debtTx: Transaction = {
+          id: `tr-auto-debt-${Date.now()}`,
+          transactionNumber: debtTrNum,
+          studentId,
+          studentName: student.name,
+          studentNis: student.nis,
+          classGrade: student.classGrade,
+          type: 'Potongan Bulanan',
+          amount: balanceAfter,
+          status: 'Disetujui',
+          reason: `Potongan Otomatis Tunggakan Sebagian (Sisa Rp ${remainingDebt.toLocaleString('id-ID')})`,
+          createdById: currentUser.id,
+          createdByName: `${currentUser.name} (Sistem Otomatis)`,
+          createdByRole: currentUser.role,
+          academicYearId: currentAcademicYear.id,
+          createdAt: new Date().toISOString(),
+        };
+        deductionTransactions.push(debtTx);
+        setStudents((prev) =>
+          prev.map((s) => (s.id === studentId ? { ...s, balance: 0, pendingDebt: remainingDebt } : s))
+        );
+        setTransactions((prev) => [debtTx, ...prev]);
+      }
+    }
+
     addAuditLog(
       'Setoran Tabungan',
       `Saldo ${student.name}: Rp ${balanceBefore.toLocaleString('id-ID')}`,
-      `Saldo ${student.name}: Rp ${balanceAfter.toLocaleString('id-ID')}`,
-      `Setoran Rp ${amount.toLocaleString('id-ID')} (${trNum}) oleh ${currentUser.name}`
+      `Saldo ${student.name}: Rp ${balanceAfter.toLocaleString('id-ID')}${existingDebt > 0 ? ' (Ada potongan tunggakan)' : ''}`,
+      `Setoran Rp ${amount.toLocaleString('id-ID')} (${trNum}) oleh ${currentUser.name}${existingDebt > 0 ? `. Tunggakan otomatis dipotong Rp ${(balanceAfter - (students.find(s => s.id === studentId)?.balance || balanceAfter)).toLocaleString('id-ID')}` : ''}`
     );
 
-    return { success: true, transaction: newTx };
+    return { success: true, transaction: newTx, autoDeducted: deductionTransactions.length > 0, deductionTransactions };
   };
 
   const requestWithdrawal = (studentId: string, amount: number, reason: string) => {
@@ -665,26 +731,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const runMonthlyDeduction = (): MonthlyDeductionSummary => {
     if (!currentUser || currentUser.demoMode) {
-      return { runDate: new Date().toISOString(), totalStudentsDeducted: 0, totalAmountDeducted: 0, deductedStudents: [], skippedStudents: [] };
+      return { runDate: new Date().toISOString(), totalStudentsDeducted: 0, totalAmountDeducted: 0, deductedStudents: [], skippedStudents: [], pendingDebtStudents: [] };
     }
     const activeStudents = students.filter(
       (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
     );
 
-    const minBalance = schoolSettings.monthlyDeductionMinBalance || 5000;
-    const amountToDeduct = schoolSettings.monthlyDeductionAmount || 1000;
+    const amountToDeduct = schoolSettings.monthlyDeductionAmount || 2000;
 
     const deductedList: { id: string; name: string; nis: string; balanceBefore: number; balanceAfter: number }[] = [];
     const skippedList: { id: string; name: string; nis: string; balance: number; reason: string }[] = [];
+    const pendingDebtList: { id: string; name: string; nis: string; debt: number; balance: number }[] = [];
 
     const newTransactions: Transaction[] = [];
     const updatedStudentsMap: Record<string, number> = {};
+    const updatedDebtMap: Record<string, number> = {};
 
     activeStudents.forEach((student) => {
-      if (student.balance >= minBalance) {
+      const existingDebt = student.pendingDebt || 0;
+      const totalToDeduct = amountToDeduct + existingDebt;
+
+      if (student.balance >= totalToDeduct) {
         const balBefore = student.balance;
-        const balAfter = balBefore - amountToDeduct;
+        const balAfter = balBefore - totalToDeduct;
         updatedStudentsMap[student.id] = balAfter;
+        updatedDebtMap[student.id] = 0;
 
         deductedList.push({
           id: student.id,
@@ -692,6 +763,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           nis: student.nis,
           balanceBefore: balBefore,
           balanceAfter: balAfter,
+        });
+
+        if (existingDebt > 0) {
+          const trNum1 = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length + newTransactions.length);
+          newTransactions.push({
+            id: `tr-auto-debt-${Date.now()}-${student.id}`,
+            transactionNumber: trNum1,
+            studentId: student.id,
+            studentName: student.name,
+            studentNis: student.nis,
+            classGrade: student.classGrade,
+            type: 'Potongan Bulanan',
+            amount: existingDebt,
+            status: 'Disetujui',
+            reason: `Pelunasan Tunggakan Potongan Bulanan (Akumulasi Rp ${existingDebt.toLocaleString('id-ID')})`,
+            createdById: currentUser.id,
+            createdByName: `${currentUser.name} (Sistem Potongan Bulanan)`,
+            createdByRole: currentUser.role,
+            academicYearId: currentAcademicYear.id,
+            createdAt: new Date().toISOString(),
+          });
+        }
+
+        const trNum2 = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length + newTransactions.length);
+        newTransactions.push({
+          id: `tr-auto-${Date.now()}-${student.id}`,
+          transactionNumber: trNum2,
+          studentId: student.id,
+          studentName: student.name,
+          studentNis: student.nis,
+          classGrade: student.classGrade,
+          type: 'Potongan Bulanan',
+          amount: amountToDeduct,
+          status: 'Disetujui',
+          reason: `Potongan Bulanan Administrasi Periode ${new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })}`,
+          createdById: currentUser.id,
+          createdByName: `${currentUser.name} (Sistem Potongan Bulanan)`,
+          createdByRole: currentUser.role,
+          academicYearId: currentAcademicYear.id,
+          createdAt: new Date().toISOString(),
+        });
+      } else if (student.balance > 0) {
+        const remainingDebt = totalToDeduct - student.balance;
+        updatedStudentsMap[student.id] = 0;
+        updatedDebtMap[student.id] = remainingDebt;
+
+        pendingDebtList.push({
+          id: student.id,
+          name: student.name,
+          nis: student.nis,
+          debt: remainingDebt,
+          balance: 0,
         });
 
         const trNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length + newTransactions.length);
@@ -703,9 +826,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           studentNis: student.nis,
           classGrade: student.classGrade,
           type: 'Potongan Bulanan',
-          amount: amountToDeduct,
+          amount: student.balance,
           status: 'Disetujui',
-          reason: `Potongan Otomatis Bulanan Administrasi (Saldo >= Rp ${minBalance.toLocaleString('id-ID')})`,
+          reason: `Potongan Bulanan Sebagian (Sisa tunggakan Rp ${remainingDebt.toLocaleString('id-ID')})`,
           createdById: currentUser.id,
           createdByName: `${currentUser.name} (Sistem Potongan Bulanan)`,
           createdByRole: currentUser.role,
@@ -713,20 +836,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           createdAt: new Date().toISOString(),
         });
       } else {
+        const newDebt = (existingDebt || 0) + amountToDeduct;
+        updatedDebtMap[student.id] = newDebt;
+        updatedStudentsMap[student.id] = 0;
+
+        pendingDebtList.push({
+          id: student.id,
+          name: student.name,
+          nis: student.nis,
+          debt: newDebt,
+          balance: 0,
+        });
+
         skippedList.push({
           id: student.id,
           name: student.name,
           nis: student.nis,
-          balance: student.balance,
-          reason: `Saldo Rp ${student.balance.toLocaleString('id-ID')} kurang dari batas minimal Rp ${minBalance.toLocaleString('id-ID')}`,
+          balance: 0,
+          reason: `Saldo kosong, tunggakan bertambah Rp ${amountToDeduct.toLocaleString('id-ID')} (Total tunggakan: Rp ${newDebt.toLocaleString('id-ID')})`,
         });
       }
     });
 
-    // Apply balance updates
-    if (deductedList.length > 0) {
+    if (Object.keys(updatedStudentsMap).length > 0 && Object.keys(updatedDebtMap).length > 0) {
       setStudents((prev) =>
-        prev.map((s) => (updatedStudentsMap[s.id] !== undefined ? { ...s, balance: updatedStudentsMap[s.id] } : s))
+        prev.map((s) => {
+          let updated = { ...s };
+          if (updatedStudentsMap[s.id] !== undefined) {
+            updated.balance = updatedStudentsMap[s.id];
+          }
+          if (updatedDebtMap[s.id] !== undefined) {
+            if (updatedDebtMap[s.id] > 0) {
+              updated.pendingDebt = updatedDebtMap[s.id];
+            } else {
+              delete updated.pendingDebt;
+            }
+          }
+          return updated;
+        })
       );
       setTransactions((prev) => [...newTransactions, ...prev]);
     }
@@ -734,9 +881,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const summary: MonthlyDeductionSummary = {
       runDate: new Date().toISOString(),
       totalStudentsDeducted: deductedList.length,
-      totalAmountDeducted: deductedList.length * amountToDeduct,
+      totalAmountDeducted: deductedList.reduce((sum, d) => sum + (d.balanceBefore - d.balanceAfter), 0),
       deductedStudents: deductedList,
       skippedStudents: skippedList,
+      pendingDebtStudents: pendingDebtList,
     };
 
     updateSchoolSettings({ lastMonthlyDeductionRun: new Date().toISOString() });
@@ -744,8 +892,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog(
       'Eksekusi Potongan Bulanan Otomatis',
       '-',
-      `Total Terpotong: ${deductedList.length} siswa (Rp ${(deductedList.length * amountToDeduct).toLocaleString('id-ID')})`,
-      `Potongan bulanan Rp ${amountToDeduct} dijalankan. ${deductedList.length} siswa dipotong, ${skippedList.length} siswa dilewati karena saldo < Rp ${minBalance.toLocaleString('id-ID')}.`
+      `Terpotong: ${deductedList.length} siswa (Rp ${summary.totalAmountDeducted.toLocaleString('id-ID')}), Tunggakan: ${pendingDebtList.length} siswa`,
+      `Potongan bulanan Rp ${amountToDeduct} dijalankan tanggal 28. ${deductedList.length} siswa terpotong, ${pendingDebtList.length} siswa masuk tunggakan.`
     );
 
     return summary;
