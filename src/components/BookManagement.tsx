@@ -281,25 +281,32 @@ export const BookManagement: React.FC = () => {
               </div>
 
               {/* STEP 3: Choose Class & Student */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="space-y-1">
                   <label className="block font-bold text-slate-800 mb-1">
                     3a. Pilih Kelas Siswa *
                   </label>
-                  <select
-                    value={selectedStudentClass}
-                    onChange={(e) => {
-                      setSelectedStudentClass(e.target.value as ClassGrade);
-                      setSelectedStudentId('');
-                    }}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none"
-                  >
-                    {ALL_CLASSES.map((cls) => (
-                      <option key={cls} value={cls}>
-                        Kelas {cls}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex flex-wrap gap-1.5 max-h-[200px] overflow-y-auto p-0.5">
+                    {ALL_CLASSES.map((cls) => {
+                      const count = activeStudents.filter((s) => s.classGrade === cls).length;
+                      return (
+                        <button
+                          key={cls}
+                          type="button"
+                          onClick={() => { setSelectedStudentClass(cls); setSelectedStudentId(''); }}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                            selectedStudentClass === cls
+                              ? 'bg-slate-900 text-white shadow-xs'
+                              : count > 0
+                                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                          }`}
+                        >
+                          {cls} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div>
