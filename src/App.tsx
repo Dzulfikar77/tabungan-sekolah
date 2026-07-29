@@ -14,24 +14,24 @@ import { BookManagement } from './components/BookManagement';
 import { Reports } from './components/Reports';
 import { AuditLogView } from './components/AuditLogView';
 import { ViewerPage } from './components/ViewerPage';
-import { LoginModal } from './components/LoginModal';
+import { LoginPage } from './components/LoginPage';
 import { SettingsModal } from './components/SettingsModal';
 
 function MainLayout() {
-  const { currentUser } = useApp();
-  const [activeTab, setActiveTab] = useState<string>(
-    currentUser.role === 'Viewer' ? 'viewer' : 'dashboard'
-  );
-
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const { currentUser, logout } = useApp();
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  if (!currentUser) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 font-sans flex flex-col antialiased">
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        openLoginModal={() => setIsLoginModalOpen(true)}
+        onLogout={logout}
         openSettingsModal={() => setIsSettingsModalOpen(true)}
       />
 
@@ -51,11 +51,6 @@ function MainLayout() {
           Sistem Aplikasi Tabungan Digital Sekolah • Powered by Google AI Studio
         </div>
       </footer>
-
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-      />
 
       <SettingsModal
         isOpen={isSettingsModalOpen}

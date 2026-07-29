@@ -3,26 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 import {
   Building2,
   Calendar,
-  User,
-  ShieldAlert,
   LogOut,
-  ChevronDown,
   LayoutDashboard,
   Users,
   Banknote,
   ArrowDownCircle,
-  BookOpen,
   FileSpreadsheet,
   History,
   Settings,
   Eye,
-  KeyRound,
   Shield,
   Layers,
 } from 'lucide-react';
@@ -30,27 +25,24 @@ import {
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  openLoginModal: () => void;
+  onLogout: () => void;
   openSettingsModal: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
-  openLoginModal,
+  onLogout,
   openSettingsModal,
 }) => {
   const {
     currentUser,
-    switchRole,
     schoolSettings,
     academicYears,
     currentAcademicYear,
     setCurrentAcademicYearId,
     transactions,
   } = useApp();
-
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
 
   const pendingApprovalsCount = transactions.filter(
     (t) => t.status === 'Menunggu Persetujuan'
@@ -123,96 +115,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             </select>
           </div>
 
-          {/* Quick Demo Role Switcher Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
-                roleColors[currentUser.role].bg
-              } ${roleColors[currentUser.role].text} ${roleColors[currentUser.role].border}`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Role: {currentUser.role}</span>
-              <ChevronDown className="w-3.5 h-3.5 ml-1" />
-            </button>
-
-            {roleMenuOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50 text-xs">
-                <div className="px-3 py-1.5 font-bold text-slate-400 uppercase tracking-wider text-[10px]">
-                  Beralih Role (Demo Quick Switch)
-                </div>
-
-                <button
-                  onClick={() => {
-                    switchRole('Developer');
-                    setRoleMenuOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 text-purple-700 font-medium"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  <div>
-                    <div>Developer (Level 4)</div>
-                    <div className="text-[10px] text-slate-400">Full System & Maintenance</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    switchRole('Super Admin');
-                    setRoleMenuOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 text-emerald-700 font-medium"
-                >
-                  <ShieldAlert className="w-4 h-4" />
-                  <div>
-                    <div>Super Admin (Level 3)</div>
-                    <div className="text-[10px] text-slate-400">Kepala Sekolah & Approver</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    switchRole('Admin');
-                    setRoleMenuOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 text-blue-700 font-medium"
-                >
-                  <User className="w-4 h-4" />
-                  <div>
-                    <div>Admin (Level 2)</div>
-                    <div className="text-[10px] text-slate-400">Bendahara / Operator</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    switchRole('Wali Kelas');
-                    setRoleMenuOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 text-amber-700 font-medium"
-                >
-                  <User className="w-4 h-4" />
-                  <div>
-                    <div>Wali Kelas (Admin Kelas)</div>
-                    <div className="text-[10px] text-slate-400">Persetujuan Tingkat 1 (Per Kelas)</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    switchRole('Viewer');
-                    setRoleMenuOpen(false);
-                    setActiveTab('viewer');
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 font-medium border-t border-slate-100 mt-1 pt-2"
-                >
-                  <Eye className="w-4 h-4" />
-                  <div>
-                    <div>Viewer (Level 1)</div>
-                    <div className="text-[10px] text-slate-400">Orang Tua / Siswa (Read-only)</div>
-                  </div>
-                </button>
-              </div>
+          {/* Role Badge */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${roleColors[currentUser.role].bg} ${roleColors[currentUser.role].text} ${roleColors[currentUser.role].border}`}>
+            <Shield className="w-3.5 h-3.5" />
+            <span>{currentUser.role}</span>
+            {currentUser.demoMode && (
+              <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">DEMO</span>
             )}
           </div>
 
@@ -226,11 +134,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Settings className="w-4 h-4" />
             </button>
             <button
-              onClick={openLoginModal}
-              title="Ganti Akun / Login"
-              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+              onClick={onLogout}
+              title="Keluar"
+              className="flex items-center gap-1.5 px-2.5 py-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors text-xs font-semibold"
             >
               <LogOut className="w-4 h-4" />
+              <span>Keluar</span>
             </button>
           </div>
         </div>

@@ -38,7 +38,8 @@ export const ALL_CLASSES: ClassGrade[] = [
 ];
 
 export const initialUsers: User[] = [
-  { id: 'u-dev', username: 'developer', name: 'Tim Developer (Dev)', role: 'Developer' },
+  { id: 'u-dev', username: 'masdev', name: 'Mas Dev (Developer)', role: 'Developer', password: '@mimu123' },
+  { id: 'u-demo', username: 'demo', name: 'Akun Demo (Read-Only)', role: 'Developer', password: '12345', demoMode: true },
   { id: 'u-super', username: 'kepsek', name: 'Dra. Endang Rahayu (Kepala Sekolah)', role: 'Super Admin' },
   { id: 'u-admin', username: 'bendahara', name: 'Budi Santoso, S.Pd (Bendahara)', role: 'Admin' },
   { id: 'u-wali1', username: 'walikelas1a', name: 'Siti Rahma, S.Pd (Wali Kelas 1A)', role: 'Wali Kelas', assignedClass: 'Kelas 1A' },

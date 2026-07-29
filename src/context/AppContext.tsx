@@ -9,6 +9,7 @@ import {
   UserRole,
   Student,
   Transaction,
+  TransactionStatus,
   Book,
   BookDistribution,
   BookPayment,
@@ -31,8 +32,10 @@ import {
 import { generateTransactionNumber } from '../utils/format';
 
 interface AppContextType {
-  currentUser: User;
-  setCurrentUser: (user: User) => void;
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+  login: (username: string, password: string) => { success: boolean; error?: string };
+  logout: () => void;
   switchRole: (role: UserRole) => void;
 
   schoolSettings: SchoolSettings;
@@ -82,9 +85,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const LOCAL_STORAGE_KEY = 'tabungan_sekolah_v1_data';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User>(() => {
-    return initialUsers.find((u) => u.role === 'Super Admin') || initialUsers[0];
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_school`);
@@ -146,6 +147,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0];
 
   const switchRole = (role: UserRole) => {
+    if (!currentUser) return;
     const found = initialUsers.find((u) => u.role === role);
     if (found) {
       setCurrentUser(found);
@@ -153,7 +155,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const login = (username: string, password: string) => {
+    const user = initialUsers.find(
+      (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
+    );
+    if (user) {
+      setCurrentUser(user);
+      return { success: true };
+    }
+    return { success: false, error: 'Username atau kata sandi salah.' };
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+  };
+
   const addAuditLog = (action: string, valueBefore: string, valueAfter: string, details: string) => {
+    if (!currentUser) return;
     const newLog: AuditLogItem = {
       id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       userId: currentUser.id,
@@ -169,12 +187,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateSchoolSettings = (settings: Partial<SchoolSettings>) => {
+    if (!currentUser || currentUser.demoMode) return;
     const before = JSON.stringify(schoolSettings);
     setSchoolSettings((prev) => ({ ...prev, ...settings }));
     addAuditLog('Update Pengaturan Sekolah', before, JSON.stringify({ ...schoolSettings, ...settings }), 'Mengubah nama, alamat, atau logo sekolah');
   };
 
   const addAcademicYear = (yearStr: string) => {
+    if (!currentUser || currentUser.demoMode) return;
     const newYearId = `ay-${Date.now()}`;
     const updatedYears = academicYears.map((y) => ({ ...y, isCurrent: false }));
     const newYear: AcademicYear = {
@@ -193,6 +213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const bulkPromoteStudents = (fromClass: string, toClass: string) => {
+    if (!currentUser || currentUser.demoMode) return;
     const affected = students.filter((s) => !s.isDeleted && s.classGrade === fromClass);
     setStudents((prev) =>
       prev.map((s) => {
@@ -209,6 +230,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addStudent = (studentData: Omit<Student, 'id' | 'createdAt' | 'balance'> & { initialBalance?: number }) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
     // Validate NIS uniqueness
     const exists = students.find((s) => s.nis === studentData.nis && !s.isDeleted);
     if (exists) {
@@ -254,6 +278,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStudent = (id: string, data: Partial<Student>) => {
+    if (!currentUser || currentUser.demoMode) return;
     const student = students.find((s) => s.id === id);
     if (!student) return;
 
@@ -262,6 +287,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const softDeleteStudent = (id: string) => {
+    if (!currentUser || currentUser.demoMode) return;
     const student = students.find((s) => s.id === id);
     if (!student) return;
 
@@ -270,6 +296,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const importStudentsBulk = (newStudentsList: Partial<Student>[]) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { addedCount: 0, errors: ['Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.'] };
+    }
     let addedCount = 0;
     const errors: string[] = [];
     const addedArray: Student[] = [];
@@ -339,6 +368,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addDeposit = (studentId: string, amount: number, reason: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
     const student = students.find((s) => s.id === studentId && !s.isDeleted);
     if (!student) {
       return { success: false, error: 'Siswa tidak ditemukan.' };
@@ -387,6 +419,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const requestWithdrawal = (studentId: string, amount: number, reason: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
     const student = students.find((s) => s.id === studentId && !s.isDeleted);
     if (!student) {
       return { success: false, error: 'Siswa tidak ditemukan.' };
@@ -462,6 +497,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveWithdrawal = (transactionId: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
     const tx = transactions.find((t) => t.id === transactionId);
     if (!tx) {
       return { success: false, error: 'Transaksi tidak ditemukan.' };
@@ -578,6 +616,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const rejectWithdrawal = (transactionId: string, rejectionReason?: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
     if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer' && currentUser.role !== 'Admin' && currentUser.role !== 'Wali Kelas') {
       return { success: false, error: 'Anda tidak memiliki hak untuk menolak pengajuan.' };
     }
@@ -623,6 +664,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const runMonthlyDeduction = (): MonthlyDeductionSummary => {
+    if (!currentUser || currentUser.demoMode) {
+      return { runDate: new Date().toISOString(), totalStudentsDeducted: 0, totalAmountDeducted: 0, deductedStudents: [], skippedStudents: [] };
+    }
     const activeStudents = students.filter(
       (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
     );
@@ -708,6 +752,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBook = (bookData: Omit<Book, 'id'>) => {
+    if (!currentUser || currentUser.demoMode) return;
     const newBook: Book = {
       ...bookData,
       id: `bk-${Date.now()}`,
@@ -717,17 +762,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateBook = (id: string, bookData: Partial<Book>) => {
+    if (!currentUser || currentUser.demoMode) return;
     setBooks((prev) => prev.map((b) => (b.id === id ? { ...b, ...bookData } : b)));
     addAuditLog('Edit Data Buku', '-', JSON.stringify(bookData), `Mengubah informasi data buku ID ${id}`);
   };
 
   const deleteBook = (id: string) => {
+    if (!currentUser || currentUser.demoMode) return;
     const book = books.find((b) => b.id === id);
     setBooks((prev) => prev.filter((b) => b.id !== id));
     addAuditLog('Hapus Buku', `Buku: ${book?.title}`, '-', `Menghapus buku ${book?.title} dari sistem`);
   };
 
   const toggleBookDistribution = (bookId: string, studentId: string) => {
+    if (!currentUser || currentUser.demoMode) return;
     const existing = bookDistributions.find((bd) => bd.bookId === bookId && bd.studentId === studentId);
     if (existing) {
       setBookDistributions((prev) =>
@@ -736,6 +784,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       const newBd: BookDistribution = {
         id: `bd-${Date.now()}`,
+        itemId: bookId,
         bookId,
         studentId,
         received: true,
@@ -746,6 +795,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBookPayment = (bookId: string, studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan') => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
     const item = books.find((b) => b.id === bookId);
     const student = students.find((s) => s.id === studentId && !s.isDeleted);
 
@@ -753,7 +805,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Data item (Koperasi/Kegiatan) atau siswa tidak ditemukan.' };
     }
 
-    const trNum = generateTransactionNumber('KK', currentAcademicYear.year, bookPayments.length);
+    const trNum = generateTransactionNumber('BK', currentAcademicYear.year, bookPayments.length);
 
     if (paymentMethod === 'Tunai') {
       const newPayment: BookPayment = {
@@ -871,6 +923,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const restoreBackupData = (jsonString: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
     if (currentUser.role !== 'Developer') {
       return { success: false, error: 'Fitur restore database hanya dapat diakses oleh role Developer.' };
     }
@@ -908,6 +963,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         currentUser,
         setCurrentUser,
+        login,
+        logout,
         switchRole,
         schoolSettings,
         updateSchoolSettings,

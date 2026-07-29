@@ -12,6 +12,8 @@ export interface User {
   role: UserRole;
   studentId?: string; // If role is Viewer, linked student NIS/ID
   assignedClass?: ClassGrade; // If role is Wali Kelas
+  password?: string;
+  demoMode?: boolean;
 }
 
 export type ClassGrade =
