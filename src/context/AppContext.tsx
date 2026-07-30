@@ -32,6 +32,8 @@ import {
   initialAuditLogs,
 } from '../utils/initialData';
 import { generateTransactionNumber } from '../utils/format';
+import { supabase } from '../lib/supabase';
+import { fetchAll, insertRow, updateRow, deleteRow } from '../lib/db';
 
 interface AppContextType {
   currentUser: User | null;
@@ -155,6 +157,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_spp_payments`, JSON.stringify(sppPayments));
   }, [schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments]);
 
+  const [dbLoaded, setDbLoaded] = useState(false);
+  useEffect(() => {
+    const fetchFromSupabase = async () => {
+      const [dbStudents, dbTransactions, dbBooks, dbDistributions, dbBookPayments, dbSppPayments, dbAcademicYears, dbAuditLogs] = await Promise.all([
+        fetchAll<Student>('students'),
+        fetchAll<Transaction>('transactions'),
+        fetchAll<Book>('books'),
+        fetchAll<BookDistribution>('book_distributions'),
+        fetchAll<BookPayment>('book_payments'),
+        fetchAll<SppPayment>('spp_payments'),
+        fetchAll<AcademicYear>('academic_years'),
+        fetchAll<AuditLogItem>('audit_logs'),
+      ]);
+      if (dbStudents.length > 0) setStudents(dbStudents);
+      if (dbTransactions.length > 0) setTransactions(dbTransactions);
+      if (dbBooks.length > 0) setBooks(dbBooks);
+      if (dbDistributions.length > 0) setBookDistributions(dbDistributions);
+      if (dbBookPayments.length > 0) setBookPayments(dbBookPayments);
+      if (dbSppPayments.length > 0) setSppPayments(dbSppPayments);
+      if (dbAcademicYears.length > 0) setAcademicYears(dbAcademicYears);
+      if (dbAuditLogs.length > 0) setAuditLogs(dbAuditLogs);
+      setDbLoaded(true);
+    };
+    fetchFromSupabase();
+  }, []);
+
   const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0];
 
   const switchRole = (role: UserRole) => {
@@ -166,12 +194,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const login = (username: string, password: string) => {
+  const login = async (username: string, password: string) => {
     const user = initialUsers.find(
       (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
     );
     if (user) {
       setCurrentUser(user);
+      return { success: true };
+    }
+    // Try Supabase users table as fallback
+    const { data: dbUsers } = await supabase.from('users').select('*').eq('username', username.trim().toLowerCase()).eq('password', password).limit(1);
+    if (dbUsers && dbUsers.length > 0) {
+      setCurrentUser(dbUsers[0] as unknown as User);
       return { success: true };
     }
     return { success: false, error: 'Username atau kata sandi salah.' };
@@ -195,12 +229,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details,
     };
     setAuditLogs((prev) => [newLog, ...prev]);
+    insertRow('audit_logs', newLog);
   };
 
   const updateSchoolSettings = (settings: Partial<SchoolSettings>) => {
     if (!currentUser || currentUser.demoMode) return;
     const before = JSON.stringify(schoolSettings);
     setSchoolSettings((prev) => ({ ...prev, ...settings }));
+    updateRow('school_settings', 'singleton', settings);
     addAuditLog('Update Pengaturan Sekolah', before, JSON.stringify({ ...schoolSettings, ...settings }), 'Mengubah nama, alamat, atau logo sekolah');
   };
 
@@ -216,6 +252,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setAcademicYears([...updatedYears, newYear]);
     setCurrentAcademicYearIdState(newYearId);
+    insertRow('academic_years', newYear);
     addAuditLog('Tambah Tahun Ajaran', `Aktif: ${currentAcademicYear.year}`, `Aktif: ${yearStr}`, `Membuka tahun ajaran baru ${yearStr} dan mengarsip data sebelumnya.`);
   };
 
@@ -260,6 +297,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setStudents((prev) => [newStudent, ...prev]);
+    insertRow('students', newStudent);
 
     // If initial balance > 0, auto-generate initial setoran
     if (initialBal > 0) {
@@ -282,6 +320,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createdAt: new Date().toISOString(),
       };
       setTransactions((prev) => [initialTx, ...prev]);
+      insertRow('transactions', initialTx);
     }
 
     addAuditLog('Tambah Siswa Baru', '-', `Siswa: ${newStudent.name} (NIS: ${newStudent.nis})`, `Menambahkan siswa baru kelas ${newStudent.classGrade} dengan saldo awal Rp ${initialBal}`);
@@ -294,6 +333,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!student) return;
 
     setStudents((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)));
+    updateRow('students', id, data);
     addAuditLog('Edit Data Siswa', JSON.stringify(student), JSON.stringify({ ...student, ...data }), `Mengubah data siswa ${student.name} (NIS: ${student.nis})`);
   };
 
@@ -303,6 +343,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!student) return;
 
     setStudents((prev) => prev.map((s) => (s.id === id ? { ...s, isDeleted: true } : s)));
+    updateRow('students', id, { isDeleted: true });
     addAuditLog('Hapus Siswa (Soft Delete)', `Status: ${student.status}`, 'Status: Soft Deleted', `Menghapus siswa ${student.name} (NIS: ${student.nis}). Data histori tetap aman.`);
   };
 
@@ -369,8 +410,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (addedArray.length > 0) {
       setStudents((prev) => [...addedArray, ...prev]);
+      Promise.all(addedArray.map((s) => insertRow('students', s)));
       if (addedTransactions.length > 0) {
         setTransactions((prev) => [...addedTransactions, ...prev]);
+        Promise.all(addedTransactions.map((t) => insertRow('transactions', t)));
       }
       addAuditLog('Import Massal Siswa Excel', '-', `Total diimport: ${addedCount}`, `Berhasil mengimport ${addedCount} data siswa dari Excel.`);
     }
@@ -418,6 +461,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Realtime update balance
     setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, balance: balanceAfter } : s)));
     setTransactions((prev) => [newTx, ...prev]);
+    insertRow('transactions', newTx);
+    updateRow('students', studentId, { balance: balanceAfter });
 
     // Auto-deduct pending debt jika saldo sudah mencukupi
     const existingDebt = student.pendingDebt || 0;
@@ -456,6 +501,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           })
         );
         setTransactions((prev) => [debtTx, ...prev]);
+        insertRow('transactions', debtTx);
+        updateRow('students', studentId, { balance: finalBalance, pendingDebt: 0 });
       } else if (balanceAfter > 0) {
         // Saldo ada tapi kurang: potong habis, kurangi tunggakan
         const remainingDebt = existingDebt - balanceAfter;
@@ -482,6 +529,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           prev.map((s) => (s.id === studentId ? { ...s, balance: 0, pendingDebt: remainingDebt } : s))
         );
         setTransactions((prev) => [debtTx, ...prev]);
+        insertRow('transactions', debtTx);
+        updateRow('students', studentId, { balance: 0, pendingDebt: remainingDebt });
       }
     }
 
@@ -559,9 +608,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (initialStatus === 'Disetujui') {
       const balanceAfter = student.balance - amount;
       setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: balanceAfter } : s)));
+      updateRow('students', student.id, { balance: balanceAfter });
     }
 
     setTransactions((prev) => [newTx, ...prev]);
+    insertRow('transactions', newTx);
 
     addAuditLog(
       'Pengajuan Penarikan',
@@ -622,6 +673,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         )
       );
 
+      updateRow('transactions', transactionId, { status: 'Menunggu Approval Super Admin', approvedByAdmin: true, approvedByAdminName: currentUser.name });
+
       addAuditLog(
         'Approval Penarikan (Admin / Wali Kelas)',
         'Status: Menunggu Approval Admin',
@@ -646,6 +699,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Deduct balance & finalize approval
       setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: balanceAfter } : s)));
+      updateRow('students', student.id, { balance: balanceAfter });
       setTransactions((prev) =>
         prev.map((t) =>
           t.id === transactionId
@@ -663,6 +717,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : t
         )
       );
+      updateRow('transactions', transactionId, {
+        status: 'Disetujui',
+        approvedByAdmin: true,
+        approvedBySuperAdmin: true,
+        approvedBySuperAdminName: currentUser.name,
+        approvedById: currentUser.id,
+        approvedByName: currentUser.name,
+        approvedByRole: currentUser.role,
+      });
 
       setBookPayments((prev) =>
         prev.map((bp) =>
@@ -719,6 +782,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : t
       )
     );
+    updateRow('transactions', transactionId, { status: 'Ditolak', rejectionReason: rejectionReason || 'Ditolak' });
 
     setBookPayments((prev) =>
       prev.map((bp) =>
@@ -886,7 +950,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return updated;
         })
       );
+      Object.entries(updatedStudentsMap).forEach(([sid, bal]) => {
+        updateRow('students', sid, { balance: bal, pendingDebt: updatedDebtMap[sid] || 0 });
+      });
       setTransactions((prev) => [...newTransactions, ...prev]);
+      Promise.all(newTransactions.map((t) => insertRow('transactions', t)));
     }
 
     const summary: MonthlyDeductionSummary = {
@@ -917,12 +985,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `bk-${Date.now()}`,
     };
     setBooks((prev) => [...prev, newBook]);
+    insertRow('books', newBook);
     addAuditLog('Tambah Data Buku', '-', `Buku: ${newBook.title}`, `Menambahkan buku baru ${newBook.title} kelas ${newBook.classGrade} harga Rp ${newBook.price}`);
   };
 
   const updateBook = (id: string, bookData: Partial<Book>) => {
     if (!currentUser || currentUser.demoMode) return;
     setBooks((prev) => prev.map((b) => (b.id === id ? { ...b, ...bookData } : b)));
+    updateRow('books', id, bookData);
     addAuditLog('Edit Data Buku', '-', JSON.stringify(bookData), `Mengubah informasi data buku ID ${id}`);
   };
 
@@ -930,6 +1000,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser || currentUser.demoMode) return;
     const book = books.find((b) => b.id === id);
     setBooks((prev) => prev.filter((b) => b.id !== id));
+    deleteRow('books', id);
     addAuditLog('Hapus Buku', `Buku: ${book?.title}`, '-', `Menghapus buku ${book?.title} dari sistem`);
   };
 
@@ -937,9 +1008,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser || currentUser.demoMode) return;
     const existing = bookDistributions.find((bd) => bd.bookId === bookId && bd.studentId === studentId);
     if (existing) {
+      const updated = { ...existing, received: !existing.received, receivedAt: !existing.received ? new Date().toISOString() : undefined };
       setBookDistributions((prev) =>
-        prev.map((bd) => (bd.id === existing.id ? { ...bd, received: !bd.received, receivedAt: !bd.received ? new Date().toISOString() : undefined } : bd))
+        prev.map((bd) => (bd.id === existing.id ? updated : bd))
       );
+      updateRow('book_distributions', existing.id, { received: updated.received, receivedAt: updated.receivedAt });
     } else {
       const newBd: BookDistribution = {
         id: `bd-${Date.now()}`,
@@ -950,6 +1023,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         receivedAt: new Date().toISOString(),
       };
       setBookDistributions((prev) => [...prev, newBd]);
+      insertRow('book_distributions', newBd);
     }
   };
 
@@ -989,6 +1063,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
 
       setBookPayments((prev) => [newPayment, ...prev]);
+      insertRow('book_payments', newPayment);
 
       // Automatically mark distribution as received
       toggleBookDistribution(item.id, studentId);
@@ -1051,6 +1126,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
 
       setBookPayments((prev) => [newPayment, ...prev]);
+      insertRow('book_payments', newPayment);
 
       addAuditLog(
         `Pengajuan Pembayaran ${item.type} Potong Tabungan`,
@@ -1085,6 +1161,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setStudents((prev) =>
         prev.map((s) => (s.id === studentId ? { ...s, balance: s.balance - sppAmount } : s))
       );
+      updateRow('students', studentId, { balance: student.balance - sppAmount });
     }
 
     const newPayment: SppPayment = {
@@ -1104,6 +1181,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setSppPayments((prev) => [newPayment, ...prev]);
+    insertRow('spp_payments', newPayment);
 
     addAuditLog(
       'Pembayaran SPP',
@@ -1157,6 +1235,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setBookPayments(data.bookPayments || []);
       setSppPayments(data.sppPayments || []);
       setAuditLogs(data.auditLogs || []);
+
+      Promise.all([
+        updateRow('school_settings', 'singleton', data.schoolSettings),
+        ...(data.academicYears || []).map((y: any) => insertRow('academic_years', y)),
+        ...(data.students || []).map((s: any) => insertRow('students', s)),
+        ...(data.transactions || []).map((t: any) => insertRow('transactions', t)),
+        ...(data.books || []).map((b: any) => insertRow('books', b)),
+        ...(data.bookDistributions || []).map((bd: any) => insertRow('book_distributions', bd)),
+        ...(data.bookPayments || []).map((bp: any) => insertRow('book_payments', bp)),
+        ...(data.sppPayments || []).map((sp: any) => insertRow('spp_payments', sp)),
+        ...(data.auditLogs || []).map((al: any) => insertRow('audit_logs', al)),
+      ]);
 
       addAuditLog(
         'Restore Database JSON',
