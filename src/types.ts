@@ -46,6 +46,8 @@ export interface Student {
   phone?: string;
   isDeleted?: boolean;
   pendingDebt?: number; // Akumulasi tunggakan potongan bulanan
+  viewerPassword?: string; // Password untuk login viewer portal
+  viewerUsername?: string; // Username untuk login viewer portal (NIS tanpa spasi)
   createdAt: string;
 }
 

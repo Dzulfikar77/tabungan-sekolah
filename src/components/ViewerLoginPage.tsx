@@ -5,14 +5,14 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Building2, User, Lock, LogIn, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { ShieldCheck, User, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
 
-interface LoginPageProps {
-  onViewerLogin?: () => void;
+interface ViewerLoginPageProps {
+  onBackToAdmin: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onViewerLogin }) => {
-  const { login, schoolSettings } = useApp();
+export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin }) => {
+  const { students, setCurrentUser, schoolSettings } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,10 +21,35 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onViewerLogin }) => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const result = login(username, password);
-    if (!result.success) {
-      setError(result.error || 'Login gagal.');
+
+    const trimmedUsername = username.trim().toLowerCase();
+    const student = students.find(
+      (s) =>
+        !s.isDeleted &&
+        s.status === 'Aktif' &&
+        s.viewerPassword &&
+        s.viewerUsername &&
+        s.viewerUsername.toLowerCase() === trimmedUsername
+    );
+
+    if (!student) {
+      setError('Username tidak ditemukan atau belum memiliki akses viewer.');
+      return;
     }
+
+    if (student.viewerPassword !== password) {
+      setError('Password salah. Silakan coba lagi.');
+      return;
+    }
+
+    setCurrentUser({
+      id: `viewer-${student.id}`,
+      username: `viewer-${student.id}`,
+      name: `${student.name} (Orang Tua)`,
+      role: 'Viewer',
+      studentId: student.id,
+      password,
+    });
   };
 
   return (
@@ -33,10 +58,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onViewerLogin }) => {
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-900 to-emerald-900 text-white p-8 text-center">
           <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4">
-            <Building2 className="w-8 h-8" />
+            <ShieldCheck className="w-8 h-8" />
           </div>
-          <h1 className="text-xl font-bold mb-1">Tabungan Digital Sekolah</h1>
+          <h1 className="text-xl font-bold mb-1">Portal Orang Tua & Siswa</h1>
           <p className="text-sm text-slate-400">{schoolSettings.name}</p>
+          <p className="text-xs text-slate-500 mt-2">Lihat saldo tabungan, riwayat transaksi, dan status pembayaran</p>
         </div>
 
         {/* Form */}
@@ -58,7 +84,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onViewerLogin }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Kata Sandi</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -93,24 +119,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onViewerLogin }) => {
             </button>
           </form>
 
-          {onViewerLogin && (
-            <div className="relative flex items-center justify-center">
-              <div className="border-t border-slate-200 w-full"></div>
-              <span className="bg-white px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider absolute">
-                Atau
-              </span>
-            </div>
-          )}
-
-          {onViewerLogin && (
+          <div className="text-center">
             <button
-              onClick={onViewerLogin}
-              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+              onClick={onBackToAdmin}
+              className="text-xs text-slate-500 hover:text-slate-700 cursor-pointer underline"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Login sebagai Orang Tua / Siswa
+              Kembali ke Login Admin
             </button>
-          )}
+          </div>
         </div>
       </div>
     </div>

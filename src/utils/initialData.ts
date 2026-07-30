@@ -47,7 +47,7 @@ export const initialUsers: User[] = [
   { id: 'u-admin', username: 'bendahara', name: 'Budi Santoso, S.Pd (Bendahara)', role: 'Admin' },
   { id: 'u-wali1', username: 'walikelas1a', name: 'Siti Rahma, S.Pd (Wali Kelas 1A)', role: 'Wali Kelas', assignedClass: 'Kelas 1A' },
   { id: 'u-wali2', username: 'walikelas2a', name: 'Hendra Kusuma, S.Pd (Wali Kelas 2A)', role: 'Wali Kelas', assignedClass: 'Kelas 2A' },
-  { id: 'u-viewer', username: 'orangtua', name: 'Orang Tua / Siswa (Ahmad Fauzi)', role: 'Viewer', studentId: 'st-15' },
+  { id: 'u-viewer', username: 'orangtua', name: 'Orang Tua / Siswa (Ahmad Fauzi)', role: 'Viewer', studentId: 'st-7' },
 ];
 
 const sampleStudentNames = [
@@ -90,6 +90,8 @@ export const initialStudents: Student[] = ALL_CLASSES.flatMap((classGrade, class
       balance: bal,
       parentName: pName,
       phone: `0812${String(1000000 + idNum * 12345).slice(0, 8)}`,
+      viewerPassword: idNum === 7 ? 'ahmad123' : undefined,
+      viewerUsername: idNum === 7 ? 'ahmadfauzi' : undefined,
       createdAt: '2025-07-10T09:00:00.000Z',
     };
   });
@@ -106,25 +108,25 @@ export const initialBooks: Book[] = [
 ];
 
 export const initialBookDistributions: BookDistribution[] = [
-  { id: 'bd-1', itemId: 'bk-1', bookId: 'bk-1', studentId: 'st-15', received: true, receivedAt: '2026-07-15T10:00:00.000Z' },
-  { id: 'bd-2', itemId: 'kg-1', bookId: 'kg-1', studentId: 'st-15', received: true, receivedAt: '2026-07-20T09:15:00.000Z' },
+  { id: 'bd-1', itemId: 'bk-4', bookId: 'bk-4', studentId: 'st-7', received: true, receivedAt: '2026-07-15T10:00:00.000Z' },
+  { id: 'bd-2', itemId: 'kg-1', bookId: 'kg-1', studentId: 'st-7', received: true, receivedAt: '2026-07-20T09:15:00.000Z' },
 ];
 
 export const initialBookPayments: BookPayment[] = [
   {
     id: 'bp-1',
     transactionNumber: 'KK/2026/00001',
-    itemId: 'bk-1',
-    bookId: 'bk-1',
-    itemTitle: 'LKS Bahasa Indonesia Kelas 1A',
-    bookTitle: 'LKS Bahasa Indonesia Kelas 1A',
+    itemId: 'bk-4',
+    bookId: 'bk-4',
+    itemTitle: 'Buku Mewarnai & Mengenal Huruf',
+    bookTitle: 'Buku Mewarnai & Mengenal Huruf',
     itemType: 'Koperasi',
     category: 'Buku',
-    studentId: 'st-15',
+    studentId: 'st-7',
     studentName: 'Ahmad Fauzi',
-    studentNis: '2025015',
-    classGrade: 'Kelas 1A',
-    amount: 35000,
+    studentNis: '2025007',
+    classGrade: 'TK A',
+    amount: 25000,
     paymentMethod: 'Tunai',
     status: 'Disetujui',
     createdByName: 'Siti Rahma, S.Pd (Wali Kelas 1A)',
@@ -140,10 +142,10 @@ export const initialBookPayments: BookPayment[] = [
     bookTitle: 'Outing Class Edukasi Taman Marga Satwa',
     itemType: 'Kegiatan',
     category: 'Outing Class',
-    studentId: 'st-15',
+    studentId: 'st-7',
     studentName: 'Ahmad Fauzi',
-    studentNis: '2025015',
-    classGrade: 'Kelas 1A',
+    studentNis: '2025007',
+    classGrade: 'TK A',
     amount: 150000,
     paymentMethod: 'Potong Tabungan',
     status: 'Menunggu Approval Super Admin',
@@ -160,10 +162,10 @@ export const initialTransactions: Transaction[] = [
   {
     id: 'tr-1',
     transactionNumber: 'ST/2026/00001',
-    studentId: 'st-15',
+    studentId: 'st-7',
     studentName: 'Ahmad Fauzi',
-    studentNis: '2025015',
-    classGrade: 'Kelas 1A',
+    studentNis: '2025007',
+    classGrade: 'TK A',
     type: 'Setoran',
     amount: 100000,
     status: 'Disetujui',
@@ -177,10 +179,10 @@ export const initialTransactions: Transaction[] = [
   {
     id: 'tr-2',
     transactionNumber: 'ST/2026/00002',
-    studentId: 'st-15',
+    studentId: 'st-7',
     studentName: 'Ahmad Fauzi',
-    studentNis: '2025015',
-    classGrade: 'Kelas 1A',
+    studentNis: '2025007',
+    classGrade: 'TK A',
     type: 'Setoran',
     amount: 86000,
     status: 'Disetujui',
@@ -228,10 +230,10 @@ export const initialTransactions: Transaction[] = [
   {
     id: 'tr-5',
     transactionNumber: 'ST/2026/00005',
-    studentId: 'st-15',
+    studentId: 'st-7',
     studentName: 'Ahmad Fauzi',
-    studentNis: '2025015',
-    classGrade: 'Kelas 1A',
+    studentNis: '2025007',
+    classGrade: 'TK A',
     type: 'Potongan Bulanan',
     amount: 1000,
     status: 'Disetujui',
@@ -280,4 +282,35 @@ export const initialAuditLogs: AuditLogItem[] = [
   },
 ];
 
-export const initialSppPayments: SppPayment[] = [];
+export const initialSppPayments: SppPayment[] = [
+  {
+    id: 'spp-1',
+    transactionNumber: 'SPP/2026/00001',
+    studentId: 'st-7',
+    studentName: 'Ahmad Fauzi',
+    studentNis: '2025007',
+    classGrade: 'TK A',
+    amount: 50000,
+    paymentMethod: 'Tunai',
+    status: 'Disetujui',
+    period: 'Juli 2026',
+    createdByName: 'Budi Santoso, S.Pd',
+    createdAt: '2026-07-10T10:00:00.000Z',
+    academicYearId: 'ay-2',
+  },
+  {
+    id: 'spp-2',
+    transactionNumber: 'SPP/2026/00002',
+    studentId: 'st-7',
+    studentName: 'Ahmad Fauzi',
+    studentNis: '2025007',
+    classGrade: 'TK A',
+    amount: 50000,
+    paymentMethod: 'Potong Tabungan',
+    status: 'Disetujui',
+    period: 'Agustus 2026',
+    createdByName: 'Budi Santoso, S.Pd',
+    createdAt: '2026-07-15T10:00:00.000Z',
+    academicYearId: 'ay-2',
+  },
+];
