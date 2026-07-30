@@ -14,7 +14,11 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 function toDbRow(obj: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {};
   for (const [key, value] of Object.entries(obj)) {
-    const snakeKey = key.replace(/[A-Z]/g, (l) => `_${l.toLowerCase()}`);
+    // Handle consecutive uppercase: sppSDAmount -> spp_sd_amount (not spp_s_d_amount)
+    const snakeKey = key
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .toLowerCase();
     result[snakeKey] = value;
   }
   return result;
