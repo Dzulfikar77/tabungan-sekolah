@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { initialUsers } from '../utils/initialData';
 import { ShieldCheck, User, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
 
 interface ViewerLoginPageProps {
@@ -12,7 +13,7 @@ interface ViewerLoginPageProps {
 }
 
 export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin }) => {
-  const { students, setCurrentUser, schoolSettings } = useApp();
+  const { setCurrentUser, schoolSettings } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,33 +24,19 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
     setError('');
 
     const trimmedUsername = username.trim().toLowerCase();
-    const student = students.find(
-      (s) =>
-        !s.isDeleted &&
-        s.status === 'Aktif' &&
-        s.viewerPassword &&
-        s.viewerUsername &&
-        s.viewerUsername.toLowerCase() === trimmedUsername
+    const user = initialUsers.find(
+      (u) =>
+        u.role === 'Viewer' &&
+        u.username.toLowerCase() === trimmedUsername &&
+        u.password === password
     );
 
-    if (!student) {
-      setError('Username tidak ditemukan atau belum memiliki akses viewer.');
+    if (!user) {
+      setError('Username atau password salah.');
       return;
     }
 
-    if (student.viewerPassword !== password) {
-      setError('Password salah. Silakan coba lagi.');
-      return;
-    }
-
-    setCurrentUser({
-      id: `viewer-${student.id}`,
-      username: `viewer-${student.id}`,
-      name: `${student.name} (Orang Tua)`,
-      role: 'Viewer',
-      studentId: student.id,
-      password,
-    });
+    setCurrentUser(user);
   };
 
   return (

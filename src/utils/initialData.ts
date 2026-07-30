@@ -47,7 +47,7 @@ export const initialUsers: User[] = [
   { id: 'u-admin', username: 'bendahara', name: 'Budi Santoso, S.Pd (Bendahara)', role: 'Admin' },
   { id: 'u-wali1', username: 'walikelas1a', name: 'Siti Rahma, S.Pd (Wali Kelas 1A)', role: 'Wali Kelas', assignedClass: 'Kelas 1A' },
   { id: 'u-wali2', username: 'walikelas2a', name: 'Hendra Kusuma, S.Pd (Wali Kelas 2A)', role: 'Wali Kelas', assignedClass: 'Kelas 2A' },
-  { id: 'u-viewer', username: 'orangtua', name: 'Orang Tua / Siswa (Ahmad Fauzi)', role: 'Viewer', studentId: 'st-7' },
+  { id: 'u-viewer', username: 'ortu1', name: 'Orang Tua / Siswa (Ahmad Fauzi)', role: 'Viewer', studentId: 'st-7', password: 'ortu2345' },
 ];
 
 const sampleStudentNames = [
