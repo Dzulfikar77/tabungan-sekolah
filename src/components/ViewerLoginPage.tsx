@@ -44,8 +44,12 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-900 to-emerald-900 text-white p-8 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4">
-            <ShieldCheck className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-4 overflow-hidden">
+            {schoolSettings.logoUrl ? (
+              <img src={schoolSettings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <ShieldCheck className="w-8 h-8 text-emerald-400" />
+            )}
           </div>
           <h1 className="text-xl font-bold mb-1">Portal Orang Tua & Siswa</h1>
           <p className="text-sm text-slate-400">{schoolSettings.name}</p>
