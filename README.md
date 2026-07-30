@@ -1,6 +1,7 @@
-# Tabungan Digital Sekolah
+# Sistem Informasi Sekolah
 
-Sistem manajemen tabungan siswa, pembayaran SPP, koperasi sekolah, dan administrasi keuangan untuk TK/MI.
+Sistem manajemen tabungan siswa, pembayaran SPP, koperasi sekolah, administrasi keuangan, dan portal orang tua untuk TK/MI.
+Database cloud via Supabase.
 
 ## Fitur Utama
 
@@ -14,6 +15,7 @@ Sistem manajemen tabungan siswa, pembayaran SPP, koperasi sekolah, dan administr
 - **Audit Log** — Jejak aktivitas lengkap untuk setiap perubahan data
 - **Potongan Bulanan Otomatis** — Potong saldo siswa setiap tanggal 28, akumulasi tunggakan
 - **Backup & Restore** — Backup database JSON, restore khusus Developer
+- **Portal Orang Tua** — Login khusus orang tua, lihat saldo, riwayat transaksi, SPP, tunggakan, cetak bukti PDF
 
 ## Role & Akses
 
@@ -23,24 +25,36 @@ Sistem manajemen tabungan siswa, pembayaran SPP, koperasi sekolah, dan administr
 | Super Admin | Full akses, approval final penarikan |
 | Admin | Kelola siswa, setoran, penarikan, laporan |
 | Wali Kelas | Approval tier 1 per kelas |
-| Viewer | Read-only, lihat data siswa sendiri |
+| Viewer (Orang Tua) | Read-only, lihat data anak sendiri |
 
-### Akun Demo
+## Akun Demo
 
-| Username | Password | Akses |
-|----------|----------|-------|
+### Admin
+| Username | Password | Role |
+|----------|----------|------|
 | `masdev` | `@mimu123` | Developer (full access) |
 | `demo` | `12345` | Demo all access (read-only) |
 | `demo-tk` | `demotk123` | Demo TK only (read-only) |
 | `demo-mi` | `demomi123` | Demo MI only (read-only) |
 | `kepsek` | — | Super Admin |
 | `bendahara` | — | Admin |
+| `walikelas1a` | — | Wali Kelas 1A |
+| `walikelas2a` | — | Wali Kelas 2A |
+
+### Viewer (Portal Orang Tua)
+Login lewat tombol "Login sebagai Orang Tua / Siswa" di halaman login.
+
+| Username | Password | Untuk |
+|----------|----------|-------|
+| `ortu1` | `ortu2345` | Orang Tua Ahmad Fauzi (TK A) |
 
 ## Tech Stack
 
 - **Framework:** React 19 + TypeScript
 - **Build Tool:** Vite 6
 - **Styling:** Tailwind CSS 4
+- **Database:** Supabase (PostgreSQL) + localStorage fallback
+- **Auth:** Custom auth (username + password via users table)
 - **AI Integration:** Google Gemini AI (`@google/genai`)
 - **PDF Export:** jsPDF + jspdf-autotable
 - **Excel Export:** xlsx (SheetJS)
@@ -57,7 +71,8 @@ npm install
 
 # Copy env
 cp .env.example .env
-# Isi GEMINI_API_KEY jika perlu (opsional)
+# Isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY
+# GEMINI_API_KEY opsional
 
 # Development server
 npm run dev
@@ -73,36 +88,80 @@ npm run preview
 npm run lint
 ```
 
+### Setup Supabase
+
+1. Buat project di [supabase.com](https://supabase.com)
+2. Copy `.env.example` ke `.env` dan isi credentials
+3. Jalankan `supabase/migrations/001_initial_schema.sql` di SQL Editor
+4. Jalankan `supabase/migrations/002_rls_policies.sql` di SQL Editor
+5. Seed data: `npx tsx scripts/seed.ts`
+6. Siap digunakan
+
 ## Struktur Proyek
 
 ```
 src/
 ├── components/
-│   ├── AuditLogView.tsx      # Log audit
-│   ├── BookManagement.tsx    # Koperasi & kegiatan
-│   ├── Dashboard.tsx         # Dashboard utama + status SPP
-│   ├── DepositForm.tsx       # Setoran tabungan
-│   ├── LoginModal.tsx        # Login lama (tidak dipakai)
-│   ├── LoginPage.tsx         # Halaman login utama
-│   ├── Navbar.tsx            # Navigasi + role badge
-│   ├── Reports.tsx           # Laporan PDF/Excel
-│   ├── SettingsModal.tsx     # Pengaturan sekolah & SPP
-│   ├── SppPayment.tsx        # Pembayaran SPP
-│   ├── StudentManagement.tsx # Manajemen siswa
-│   ├── ViewerPage.tsx        # Viewer (read-only)
-│   └── WithdrawalForm.tsx    # Penarikan + approval
+│   ├── AuditLogView.tsx       # Log audit
+│   ├── BookManagement.tsx     # Koperasi & kegiatan
+│   ├── Dashboard.tsx          # Dashboard utama + status SPP
+│   ├── DepositForm.tsx        # Setoran tabungan
+│   ├── LoginModal.tsx         # Login lama (tidak dipakai)
+│   ├── LoginPage.tsx          # Halaman login admin
+│   ├── Navbar.tsx             # Navigasi + role badge
+│   ├── Reports.tsx            # Laporan PDF/Excel
+│   ├── SettingsModal.tsx      # Pengaturan sekolah & SPP
+│   ├── SppPayment.tsx         # Pembayaran SPP
+│   ├── StudentManagement.tsx  # Manajemen siswa
+│   ├── ViewerLoginPage.tsx    # Login portal orang tua
+│   ├── ViewerPage.tsx         # Dashboard portal orang tua
+│   └── WithdrawalForm.tsx     # Penarikan + approval
 ├── context/
-│   └── AppContext.tsx        # State management global
+│   └── AppContext.tsx         # State management + Supabase sync
+├── lib/
+│   ├── supabase.ts            # Supabase client
+│   └── db.ts                  # DB helpers (camelCase ↔ snake_case)
 ├── utils/
-│   ├── format.ts             # Format rupiah, tanggal, filter akses
-│   ├── initialData.ts        # Data awal & demo
-│   └── pdfGenerator.ts       # Generator PDF laporan
-├── types.ts                  # Definisi tipe data
-├── App.tsx                   # Root komponen + routing
-└── main.tsx                  # Entry point
+│   ├── format.ts              # Format rupiah, tanggal, filter akses
+│   ├── initialData.ts         # Data awal & demo
+│   └── pdfGenerator.ts        # Generator PDF laporan
+├── types.ts                   # Definisi tipe data
+├── App.tsx                    # Root komponen + routing
+└── main.tsx                   # Entry point
+supabase/
+└── migrations/
+    ├── 001_initial_schema.sql # 10 tabel + index + FK
+    └── 002_rls_policies.sql   # RLS policies (development)
+scripts/
+├── seed.ts                    # Seed data ke Supabase
+└── one-click-setup.ts         # Setup otomatis (butuh service_role key)
 ```
 
+## Arsitektur Data
+
+```
+localStorage ← inisialisasi awal (fallback offline)
+     ↓
+Supabase  → fetch on mount → override state (sync from cloud)
+     ↓
+Mutation  → update state + localStorage + sync ke Supabase (fire-and-forget)
+```
+
+- App tetap berfungsi penuh tanpa Supabase (localStorage mode)
+- Semua perubahan otomatis sync ke Supabase di background
+- Data dari Supabase akan override localStorage saat fetch on mount
+- Cocok untuk penggunaan offline/koneksi tidak stabil
+
 ## Fitur Detail
+
+### Portal Orang Tua
+- Login via tombol "Login sebagai Orang Tua / Siswa" di halaman utama
+- Username + password (dikelola admin)
+- Lihat **saldo tabungan**, **riwayat transaksi**, **status penyerahan buku**
+- Lihat **riwayat SPP** dan **tunggakan SPP** (untuk TK)
+- **Tunggakan potongan bulanan** ditampilkan dengan nominal
+- **Ubah password** sendiri
+- **Cetak bukti tabungan** (PDF)
 
 ### Pembayaran SPP
 - Pemisahan jenjang **TK** (TK A, TK B) dan **MI** (Kelas 1-6) dengan tarif berbeda
