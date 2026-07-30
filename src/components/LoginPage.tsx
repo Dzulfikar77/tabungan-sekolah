@@ -39,7 +39,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onViewerLogin }) => {
               <Building2 className="w-8 h-8 text-emerald-400" />
             )}
           </div>
-          <h1 className="text-xl font-bold mb-1">Tabungan Digital Sekolah</h1>
+          <h1 className="text-xl font-bold mb-1">Sistem Informasi Sekolah</h1>
           <p className="text-sm text-slate-400">{schoolSettings.name}</p>
         </div>
 

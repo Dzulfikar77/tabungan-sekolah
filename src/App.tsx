@@ -41,7 +41,7 @@ function MainLayout() {
         </main>
         <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
           <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
-            Sistem Aplikasi Tabungan Digital Sekolah • Portal Orang Tua
+            Sistem Informasi Sekolah • Portal Orang Tua
           </div>
         </footer>
       </div>
@@ -71,7 +71,7 @@ function MainLayout() {
 
       <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
-          Sistem Aplikasi Tabungan Digital Sekolah • Powered by Google AI Studio
+          Sistem Informasi Sekolah • Powered by Google AI Studio
         </div>
       </footer>
 
