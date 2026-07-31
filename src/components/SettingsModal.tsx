@@ -198,66 +198,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           </div>
 
+          {/* Manajemen Tahun Ajaran */}
           <hr className="border-slate-100 my-4" />
-
-          {/* Aturan Potongan Bulanan */}
-          <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400">
-            Aturan Potongan Bulanan Otomatis
-          </h4>
-
-          <div className="grid grid-cols-1 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Nominal Potongan (Rp) per Bulan</label>
-              <input
-                type="number"
-                value={monthlyAmount}
-                onChange={(e) => setMonthlyAmount(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
-              />
-              <p className="text-[11px] text-slate-400 mt-1">Default: Rp 2.000. Pemotongan dilakukan setiap tanggal 28. Saldo kurang akan dicatat sebagai tunggakan.</p>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-xs"
-          >
-            Simpan Pengaturan
-          </button>
-
-          {/* SPP Settings */}
-          <hr className="border-slate-100 my-4" />
-          <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400">
-            Tarif SPP (Pembayaran Sekolah)
-          </h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">SPP TK (A & B)</label>
-              <input
-                type="number"
-                value={sppTKAmount}
-                onChange={(e) => setSppTKAmount(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
-              />
-              <p className="text-[11px] text-slate-400 mt-1">Default: Rp 50.000</p>
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">SPP MI (Kelas 1 - 6)</label>
-              <input
-                type="number"
-                value={sppSDAmount}
-                onChange={(e) => setSppSDAmount(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
-              />
-              <p className="text-[11px] text-slate-400 mt-1">0 = Gratis (tidak wajib bayar)</p>
-            </div>
-          </div>
-        </form>
-
-        <hr className="border-slate-100 my-4" />
-
-        {/* Manajemen Tahun Ajaran */}
-        <div className="space-y-3 text-xs">
           <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400 flex items-center gap-1.5">
             <Calendar className="w-4 h-4 text-emerald-600" /> Manajemen Tahun Ajaran
           </h4>
@@ -315,7 +257,62 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           <p className="text-[11px] text-slate-400 leading-relaxed">
             Tahun ajaran aktif dipakai otomatis di seluruh section (Dashboard, SPP, Setoran, Penarikan, Koperasi, Laporan). Data tahun sebelumnya tetap tersimpan dan aman.
           </p>
-        </div>
+
+          <hr className="border-slate-100 my-4" />
+
+          {/* Aturan Potongan Bulanan */}
+          <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400">
+            Aturan Potongan Bulanan Otomatis
+          </h4>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Nominal Potongan (Rp) per Bulan</label>
+              <input
+                type="number"
+                value={monthlyAmount}
+                onChange={(e) => setMonthlyAmount(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Default: Rp 2.000. Pemotongan dilakukan setiap tanggal 28. Saldo kurang akan dicatat sebagai tunggakan.</p>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-xs"
+          >
+            Simpan Pengaturan
+          </button>
+
+          {/* SPP Settings */}
+          <hr className="border-slate-100 my-4" />
+          <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400">
+            Tarif SPP (Pembayaran Sekolah)
+          </h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">SPP TK (A & B)</label>
+              <input
+                type="number"
+                value={sppTKAmount}
+                onChange={(e) => setSppTKAmount(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Default: Rp 50.000</p>
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">SPP MI (Kelas 1 - 6)</label>
+              <input
+                type="number"
+                value={sppSDAmount}
+                onChange={(e) => setSppSDAmount(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">0 = Gratis (tidak wajib bayar)</p>
+            </div>
+          </div>
+        </form>
 
         <hr className="border-slate-100" />
 
