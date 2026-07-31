@@ -13,6 +13,10 @@ function getCityFromAddress(address: string): string {
   return parts.length > 1 ? parts[parts.length - 1] : address.trim();
 }
 
+function cleanDisplayName(name: string): string {
+  return name.replace(/\s*\([^)]*\)\s*$/g, '').trim();
+}
+
 // Helper to draw clean school header on PDF
 function drawHeader(doc: jsPDF, school: SchoolSettings, title: string) {
   if (school.logoUrl) {
@@ -146,7 +150,7 @@ export function generateTransactionReceiptPDF(transaction: Transaction, school: 
     ['Nominal', `: ${formatRupiah(transaction.amount)}`],
     ['Status Transaksi', `: ${transaction.status}`],
     ['Keterangan', `: ${transaction.reason}`],
-    ['Petugas Input', `: ${transaction.createdByName} (${transaction.createdByRole})`],
+    ['Petugas Input', `: ${cleanDisplayName(transaction.createdByName)}`],
     ['Tanggal & Waktu', `: ${formatDate(transaction.createdAt)}`],
   ];
 
@@ -168,7 +172,7 @@ export function generateTransactionReceiptPDF(transaction: Transaction, school: 
   doc.setFontSize(9);
   doc.text(`${getCityFromAddress(school.address)}, ${todayStr}`, 140, finalY + 10);
   doc.text('Petugas Keuangan,', 140, finalY + 16);
-  doc.text(`( ${transaction.createdByName} )`, 140, finalY + 32);
+  doc.text(`( ${cleanDisplayName(transaction.createdByName)} )`, 140, finalY + 32);
 
   doc.save(`Kuitansi_${transaction.transactionNumber.replace(/\//g, '-')}.pdf`);
 }
