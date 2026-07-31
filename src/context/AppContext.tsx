@@ -269,11 +269,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAcademicYears([...updatedYears, newYear]);
     setCurrentAcademicYearIdState(newYearId);
     insertRow('academic_years', newYear);
+    academicYears.forEach((y) => {
+      if (y.isCurrent) updateRow('academic_years', y.id, { isCurrent: false });
+    });
     addAuditLog('Tambah Tahun Ajaran', `Aktif: ${currentAcademicYear.year}`, `Aktif: ${yearStr}`, `Membuka tahun ajaran baru ${yearStr} dan mengarsip data sebelumnya.`);
   };
 
   const setCurrentAcademicYearId = (id: string) => {
+    if (!currentUser || currentUser.demoMode) return;
+    const target = academicYears.find((y) => y.id === id);
+    if (!target || target.isCurrent) return;
+    setAcademicYears((prev) => prev.map((y) => ({ ...y, isCurrent: y.id === id })));
     setCurrentAcademicYearIdState(id);
+    academicYears.forEach((y) => {
+      if (y.isCurrent || y.id === id) updateRow('academic_years', y.id, { isCurrent: y.id === id });
+    });
+    addAuditLog('Ganti Tahun Ajaran Aktif', `Aktif: ${currentAcademicYear.year}`, `Aktif: ${target.year}`, `Mengubah tahun ajaran aktif menjadi ${target.year}`);
   };
 
   const bulkPromoteStudents = (fromClass: string, toClass: string) => {

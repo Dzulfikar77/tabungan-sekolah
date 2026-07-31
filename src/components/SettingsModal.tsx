@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Database,
+  Calendar,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -29,6 +30,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     exportBackupData,
     restoreBackupData,
     currentUser,
+    academicYears,
+    addAcademicYear,
+    setCurrentAcademicYearId,
   } = useApp();
 
   const [name, setName] = useState(schoolSettings.name);
@@ -42,6 +46,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const [restoreJson, setRestoreJson] = useState('');
   const [restoreMessage, setRestoreMessage] = useState<{ success?: boolean; msg?: string } | null>(null);
+
+  const [newYear, setNewYear] = useState('');
+  const [yearMsg, setYearMsg] = useState<{ success?: boolean; msg?: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -90,6 +97,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     } else {
       setRestoreMessage({ success: false, msg: res.error || 'Gagal memulihkan database.' });
     }
+  };
+
+  const handleAddYear = () => {
+    if (currentUser.demoMode) {
+      setYearMsg({ success: false, msg: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' });
+      return;
+    }
+    const trimmed = newYear.trim();
+    if (!/^\d{4}\/\d{4}$/.test(trimmed)) {
+      setYearMsg({ success: false, msg: 'Format tahun ajaran salah. Contoh: 2026/2027' });
+      return;
+    }
+    const [start, end] = trimmed.split('/').map(Number);
+    if (end !== start + 1) {
+      setYearMsg({ success: false, msg: 'Tahun kedua harus satu tahun setelah tahun pertama. Contoh: 2026/2027' });
+      return;
+    }
+    if (academicYears.some((y) => y.year === trimmed)) {
+      setYearMsg({ success: false, msg: `Tahun ajaran ${trimmed} sudah ada.` });
+      return;
+    }
+    addAcademicYear(trimmed);
+    setNewYear('');
+    setYearMsg({ success: true, msg: `Tahun ajaran ${trimmed} dibuat dan langsung diaktifkan.` });
   };
 
   return (
@@ -222,6 +253,69 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           </div>
         </form>
+
+        <hr className="border-slate-100 my-4" />
+
+        {/* Manajemen Tahun Ajaran */}
+        <div className="space-y-3 text-xs">
+          <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400 flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-emerald-600" /> Manajemen Tahun Ajaran
+          </h4>
+
+          <div className="space-y-2">
+            {academicYears.map((ay) => (
+              <div key={ay.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-800">{ay.year}</span>
+                  {ay.isCurrent && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">AKTIF</span>
+                  )}
+                </div>
+                {!ay.isCurrent && (
+                  <button
+                    onClick={() => {
+                      if (currentUser.demoMode) {
+                        setYearMsg({ success: false, msg: 'Mode Demo: tidak dapat mengubah tahun ajaran.' });
+                        return;
+                      }
+                      setCurrentAcademicYearId(ay.id);
+                      setYearMsg({ success: true, msg: `Tahun ajaran ${ay.year} aktif sekarang.` });
+                    }}
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-[11px] cursor-pointer"
+                  >
+                    Aktifkan
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newYear}
+              onChange={(e) => setNewYear(e.target.value)}
+              placeholder="Contoh: 2026/2027"
+              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
+            />
+            <button
+              onClick={handleAddYear}
+              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg cursor-pointer shrink-0"
+            >
+              Tambah & Aktifkan
+            </button>
+          </div>
+
+          {yearMsg && (
+            <div className={`p-2 rounded-lg text-xs font-semibold ${yearMsg.success ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+              {yearMsg.msg}
+            </div>
+          )}
+
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Tahun ajaran aktif dipakai otomatis di seluruh section (Dashboard, SPP, Setoran, Penarikan, Koperasi, Laporan). Data tahun sebelumnya tetap tersimpan dan aman.
+          </p>
+        </div>
 
         <hr className="border-slate-100" />
 
