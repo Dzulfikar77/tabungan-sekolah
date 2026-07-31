@@ -23,7 +23,7 @@ function MainLayout() {
   const { currentUser, logout } = useApp();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [viewerLoginMode, setViewerLoginMode] = useState(false);
+  const [viewerLoginMode, setViewerLoginMode] = useState(true);
 
   if (!currentUser) {
     if (viewerLoginMode) {
