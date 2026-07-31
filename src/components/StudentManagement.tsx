@@ -50,13 +50,13 @@ export const StudentManagement: React.FC = () => {
   const [importResult, setImportResult] = useState<{ addedCount: number; errors: string[] } | null>(null);
 
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
-  const [fromClass, setFromClass] = useState<ClassGrade>('1');
-  const [toClass, setToClass] = useState<string>('2');
+  const [fromClass, setFromClass] = useState<ClassGrade>(ALL_CLASSES[0]);
+  const [toClass, setToClass] = useState<string>(ALL_CLASSES[0]);
 
   // Form State for Add
   const [nis, setNis] = useState('');
   const [name, setName] = useState('');
-  const [classGrade, setClassGrade] = useState<ClassGrade>('1');
+  const [classGrade, setClassGrade] = useState<ClassGrade>(ALL_CLASSES[0]);
   const [parentName, setParentName] = useState('');
   const [phone, setPhone] = useState('');
   const [initialBalance, setInitialBalance] = useState<number>(0);
@@ -164,7 +164,7 @@ export const StudentManagement: React.FC = () => {
   const resetForm = () => {
     setNis('');
     setName('');
-    setClassGrade('1');
+    setClassGrade(ALL_CLASSES[0]);
     setParentName('');
     setPhone('');
     setInitialBalance(0);
@@ -575,7 +575,8 @@ export const StudentManagement: React.FC = () => {
                 <div>
                   <div className="font-bold text-blue-900">Unduh Format Template Excel</div>
                   <div className="text-[11px] text-blue-700">
-                    Gunakan template standar agar data NIS dan Nama terbaca akurat.
+                    Isi kolom Kelas dengan nilai tepat: TK A, TK B, Kelas 1A, Kelas 1 B, ..., Kelas 6B.
+                    Lihat sheet "Daftar Kelas Valid" di dalam template.
                   </div>
                 </div>
                 <button
