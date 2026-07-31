@@ -21,8 +21,6 @@ import {
   Printer,
   History,
   Filter,
-  X,
-  Lock,
   AlertTriangle,
   Wallet,
   Trash2,
@@ -52,10 +50,10 @@ export const WithdrawalForm: React.FC = () => {
   const [rejectingTxId, setRejectingTxId] = useState<string | null>(null);
   const [rejectReasonText, setRejectReasonText] = useState('');
 
-  const [isCloseSavingsOpen, setIsCloseSavingsOpen] = useState(false);
+  const [withdrawalMode, setWithdrawalMode] = useState<'reguler' | 'tutup'>('reguler');
   const [closeSavingsIds, setCloseSavingsIds] = useState<Set<string>>(new Set());
   const [closeSavingsReason, setCloseSavingsReason] = useState('Lulus / Pindah Sekolah');
-  const [closeSavingsResult, setCloseSavingsResult] = useState<{ closedCount: number; totalWithdrawn: number; errors: string[] } | null>(null);
+  const [closeSavingsResult, setCloseSavingsResult] = useState<{ pendingCount: number; closedCount: number; totalWithdrawn: number; errors: string[] } | null>(null);
 
   const GRADUATING_CLASSES: ClassGrade[] = ['TK B', 'Kelas 6A', 'Kelas 6B'];
 
@@ -140,7 +138,7 @@ export const WithdrawalForm: React.FC = () => {
     }
   };
 
-  const openCloseSavingsModal = () => {
+  const switchToCloseTab = () => {
     const defaultIds = new Set<string>();
     activeStudents.forEach((s) => {
       if (GRADUATING_CLASSES.includes(s.classGrade)) {
@@ -150,7 +148,7 @@ export const WithdrawalForm: React.FC = () => {
     setCloseSavingsIds(defaultIds);
     setCloseSavingsReason('Lulus / Pindah Sekolah');
     setCloseSavingsResult(null);
-    setIsCloseSavingsOpen(true);
+    setWithdrawalMode('tutup');
   };
 
   const toggleCloseSavingsId = (id: string) => {
@@ -176,20 +174,20 @@ export const WithdrawalForm: React.FC = () => {
     });
   };
 
-  const handleConfirmCloseSavings = () => {
+  const handleSubmitCloseSavings = () => {
     if (closeSavingsIds.size === 0) return;
     const totalBalance = closeSavingsSelectedStudents.reduce((sum, s) => sum + s.balance, 0);
     if (!confirm(
       `Konfirmasi Tutup Tabungan:\n\n` +
       `Jumlah siswa: ${closeSavingsIds.size}\n` +
       `Total saldo ditarik: ${formatRupiah(totalBalance)}\n\n` +
-      `Saldo akan ditarik seluruhnya dan data siswa dihapus permanen dari database.\n` +
+      `Saldo ditarik seluruhnya dan data siswa dihapus permanen dari database setelah disetujui.\n` +
       `Tindakan ini TIDAK DAPAT DIBATALKAN.\n\n` +
       `Lanjutkan?`
     )) return;
 
     const res = closeStudentSavings(Array.from(closeSavingsIds), closeSavingsReason);
-    setCloseSavingsResult({ closedCount: res.closedCount, totalWithdrawn: res.totalWithdrawn, errors: res.errors });
+    setCloseSavingsResult({ pendingCount: res.pendingCount, closedCount: res.closedCount, totalWithdrawn: res.totalWithdrawn, errors: res.errors });
     if (res.success) {
       setCloseSavingsIds(new Set());
     }
@@ -223,27 +221,38 @@ export const WithdrawalForm: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Lock className="w-4 h-4 text-rose-600" />
-            Tutup Tabungan Siswa
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Tarik seluruh saldo &amp; hapus data siswa dari database. Default: TK B, Kelas 6A, Kelas 6B (lulus).
-          </p>
+      <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            onClick={() => setWithdrawalMode('reguler')}
+            className={`px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+              withdrawalMode === 'reguler'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <ArrowDownCircle className="w-4 h-4" />
+            Model 1: Penarikan Reguler
+          </button>
+          <button
+            onClick={switchToCloseTab}
+            className={`px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+              withdrawalMode === 'tutup'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Wallet className="w-4 h-4" />
+            Model 2: Tutup Tabungan
+          </button>
         </div>
-        <button
-          onClick={openCloseSavingsModal}
-          className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-xs shrink-0"
-        >
-          <Wallet className="w-4 h-4" />
-          Tutup Tabungan Massal
-        </button>
+        <p className="text-[10px] text-slate-400 text-center mt-2 px-2">
+          Model 1: penarikan biasa (bayar buku/kegiatan/SPP) — data siswa tetap. Model 2: tutup tabungan (lulus/pindah sekolah) — saldo ditarik penuh &amp; data siswa dihapus setelah disetujui.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form Pengajuan Penarikan */}
+        {withdrawalMode === 'reguler' ? (
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
@@ -451,6 +460,140 @@ export const WithdrawalForm: React.FC = () => {
             </button>
           </form>
         </div>
+        ) : (
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+              <Wallet className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                Form Tutup Tabungan Siswa
+              </h2>
+              <p className="text-xs text-slate-500">
+                Untuk lulus / pindah sekolah — saldo ditarik penuh &amp; data siswa dihapus setelah disetujui
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-[11px] leading-relaxed flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>
+              <strong>Perhatian:</strong> Pengajuan masuk ke antrean approval. Setelah <strong>disetujui Kepala Sekolah</strong>,
+              saldo ditarik <strong>seluruhnya</strong> (menjadi Rp 0) dan data siswa beserta riwayat distribusi/pembayaran
+              dihapus <strong>permanen</strong> dari database — tidak dapat dibatalkan.
+            </span>
+          </div>
+
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900">
+            <strong>Kriteria:</strong> TK B &amp; Kelas 6A/6B adalah grade akhir tiap jenjang (kriteria lulus) — sudah
+            terpilih default. Kelas di bawahnya dapat dipilih jika siswa <strong>pindah sekolah</strong>.
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <label className="block font-semibold text-slate-700 mb-1 text-xs">Alasan Tutup Tabungan *</label>
+              <input
+                type="text"
+                required
+                value={closeSavingsReason}
+                onChange={(e) => setCloseSavingsReason(e.target.value)}
+                placeholder="Contoh: Lulus / Pindah Sekolah / Orang tua menarik saldo"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+            <div className="shrink-0 self-end pb-0.5 text-right">
+              <div className="text-[10px] text-slate-500 font-semibold">Total Saldo Ditarik</div>
+              <div className="text-lg font-extrabold text-rose-700">{formatRupiah(closeSavingsTotalBalance)}</div>
+            </div>
+          </div>
+
+          {closeSavingsResult && (
+            <div className="p-3 rounded-xl border text-xs space-y-1 bg-emerald-50 border-emerald-200">
+              <div className="font-bold text-emerald-700">
+                {closeSavingsResult.pendingCount > 0
+                  ? `${closeSavingsResult.pendingCount} pengajuan tutup tabungan dikirim — menunggu persetujuan Kepala Sekolah.`
+                  : `${closeSavingsResult.closedCount} tabungan langsung ditutup — total ${formatRupiah(closeSavingsResult.totalWithdrawn)} ditarik, data siswa dihapus.`}
+              </div>
+              {closeSavingsResult.errors.length > 0 && (
+                <div className="mt-1 text-rose-600 space-y-0.5">
+                  {closeSavingsResult.errors.map((err, i) => (
+                    <div key={i}>• {err}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="max-h-80 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
+            {activeStudents.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-xs">Tidak ada siswa aktif.</div>
+            ) : (
+              ALL_CLASSES.map((cls) => {
+                const classStudents = activeStudents.filter((s) => s.classGrade === cls);
+                if (classStudents.length === 0) return null;
+                const selectedCount = classStudents.filter((s) => closeSavingsIds.has(s.id)).length;
+                const allSelected = selectedCount === classStudents.length;
+                const isGraduating = GRADUATING_CLASSES.includes(cls);
+
+                return (
+                  <div key={cls}>
+                    <div className="flex items-center justify-between px-3 py-2 bg-slate-50 sticky top-0">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={() => toggleClassInCloseSavings(cls)}
+                          className="w-3.5 h-3.5 accent-rose-600"
+                        />
+                        <span className="font-bold text-slate-800 text-xs">
+                          {cls} ({selectedCount}/{classStudents.length})
+                        </span>
+                        {isGraduating && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                            Grade Akhir
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                    {classStudents.map((s) => (
+                      <label
+                        key={s.id}
+                        className="flex items-center justify-between gap-2 px-4 py-2 hover:bg-slate-50 cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={closeSavingsIds.has(s.id)}
+                            onChange={() => toggleCloseSavingsId(s.id)}
+                            className="w-3.5 h-3.5 accent-rose-600 shrink-0"
+                          />
+                          <span className="min-w-0">
+                            <span className="font-semibold text-slate-900 text-xs block truncate">{s.name}</span>
+                            <span className="text-[10px] text-slate-400 block">{s.nis}</span>
+                          </span>
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-700 shrink-0">
+                          {formatRupiah(s.balance)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <button
+            onClick={handleSubmitCloseSavings}
+            disabled={closeSavingsIds.size === 0}
+            className="w-full py-3 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            Ajukan Tutup Tabungan ({closeSavingsIds.size} Siswa)
+          </button>
+        </div>
+        )}
 
         {/* Approval Queue Status Box */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between">
@@ -483,6 +626,11 @@ export const WithdrawalForm: React.FC = () => {
                         <div className="text-[11px] text-slate-500">
                           {tx.studentNis} ({tx.classGrade})
                         </div>
+                        {tx.closesAccount && (
+                          <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-800">
+                            Tutup Tabungan
+                          </span>
+                        )}
                       </div>
                       <div className="text-right">
                         <div className="font-extrabold text-rose-600">{formatRupiah(tx.amount)}</div>
@@ -634,146 +782,6 @@ export const WithdrawalForm: React.FC = () => {
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg cursor-pointer"
               >
                 Konfirmasi Penolakan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tutup Tabungan Modal */}
-      {isCloseSavingsOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full border border-slate-100 shadow-xl space-y-4 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-rose-600" />
-                <h3 className="font-bold text-slate-900 text-base">Tutup Tabungan Siswa</h3>
-              </div>
-              <button onClick={() => setIsCloseSavingsOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-[11px] leading-relaxed flex items-start gap-2 shrink-0">
-              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <span>
-                <strong>Perhatian:</strong> Saldo siswa akan ditarik <strong>seluruhnya</strong> dan data siswa beserta
-                riwayat distribusi/pembayaran dihapus <strong>permanen</strong> dari database. Tindakan ini
-                <strong> tidak dapat dibatalkan</strong>.
-              </span>
-            </div>
-
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900 shrink-0">
-              <strong>Kriteria:</strong> TK B &amp; Kelas 6A/6B adalah grade akhir tiap jenjang (kriteria lulus) — sudah
-              terpilih default. Kelas di bawahnya dapat dipilih jika siswa <strong>pindah sekolah</strong>.
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-              <div className="flex-1">
-                <label className="block font-semibold text-slate-700 mb-1 text-xs">Alasan Tutup Tabungan *</label>
-                <input
-                  type="text"
-                  required
-                  value={closeSavingsReason}
-                  onChange={(e) => setCloseSavingsReason(e.target.value)}
-                  placeholder="Contoh: Lulus / Pindah Sekolah / Orang tua menarik saldo"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
-                />
-              </div>
-              <div className="shrink-0 self-end pb-0.5 text-right">
-                <div className="text-[10px] text-slate-500 font-semibold">Total Saldo Ditarik</div>
-                <div className="text-lg font-extrabold text-rose-700">{formatRupiah(closeSavingsTotalBalance)}</div>
-              </div>
-            </div>
-
-            {closeSavingsResult && (
-              <div className="p-3 rounded-xl border text-xs space-y-1 bg-emerald-50 border-emerald-200 shrink-0">
-                <div className="font-bold text-emerald-700">
-                  Berhasil menutup tabungan {closeSavingsResult.closedCount} siswa — total {formatRupiah(closeSavingsResult.totalWithdrawn)} ditarik.
-                </div>
-                {closeSavingsResult.errors.length > 0 && (
-                  <div className="mt-1 text-rose-600 space-y-0.5">
-                    {closeSavingsResult.errors.map((err, i) => (
-                      <div key={i}>• {err}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
-              {activeStudents.length === 0 ? (
-                <div className="p-6 text-center text-slate-400 text-xs">Tidak ada siswa aktif.</div>
-              ) : (
-                ALL_CLASSES.map((cls) => {
-                  const classStudents = activeStudents.filter((s) => s.classGrade === cls);
-                  if (classStudents.length === 0) return null;
-                  const selectedCount = classStudents.filter((s) => closeSavingsIds.has(s.id)).length;
-                  const allSelected = selectedCount === classStudents.length;
-                  const isGraduating = GRADUATING_CLASSES.includes(cls);
-
-                  return (
-                    <div key={cls}>
-                      <div className="flex items-center justify-between px-3 py-2 bg-slate-50 sticky top-0">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={allSelected}
-                            onChange={() => toggleClassInCloseSavings(cls)}
-                            className="w-3.5 h-3.5 accent-rose-600"
-                          />
-                          <span className="font-bold text-slate-800 text-xs">
-                            {cls} ({selectedCount}/{classStudents.length})
-                          </span>
-                          {isGraduating && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
-                              Grade Akhir
-                            </span>
-                          )}
-                        </label>
-                      </div>
-                      {classStudents.map((s) => (
-                        <label
-                          key={s.id}
-                          className="flex items-center justify-between gap-2 px-4 py-2 hover:bg-slate-50 cursor-pointer"
-                        >
-                          <span className="flex items-center gap-2 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={closeSavingsIds.has(s.id)}
-                              onChange={() => toggleCloseSavingsId(s.id)}
-                              className="w-3.5 h-3.5 accent-rose-600 shrink-0"
-                            />
-                            <span className="min-w-0">
-                              <span className="font-semibold text-slate-900 text-xs block truncate">{s.name}</span>
-                              <span className="text-[10px] text-slate-400 block">{s.nis}</span>
-                            </span>
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-700 shrink-0">
-                            {formatRupiah(s.balance)}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="pt-2 flex justify-end gap-2 shrink-0 border-t border-slate-100">
-              <button
-                onClick={() => setIsCloseSavingsOpen(false)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg cursor-pointer"
-              >
-                Tutup
-              </button>
-              <button
-                onClick={handleConfirmCloseSavings}
-                disabled={closeSavingsIds.size === 0}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white text-xs font-semibold rounded-lg cursor-pointer flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Tutup Tabungan ({closeSavingsIds.size} Siswa)
               </button>
             </div>
           </div>

@@ -83,6 +83,7 @@ export interface Transaction {
   rejectionReason?: string;
   academicYearId: string;
   createdAt: string; // ISO String
+  closesAccount?: boolean; // Tutup tabungan (lulus/pindah): saldo 0 + data siswa dihapus saat disetujui
 }
 
 export type KoperasiKegiatanType = 'Koperasi' | 'Kegiatan';
