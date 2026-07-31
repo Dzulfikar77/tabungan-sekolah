@@ -45,4 +45,9 @@ async function deleteRow(table: string, id: string): Promise<void> {
   if (error) console.error(`Error deleting from ${table}:`, error);
 }
 
-export { toDbRow, fromDbRow, fetchAll, insertRow, updateRow, deleteRow };
+async function upsertRow(table: string, row: Record<string, any>): Promise<void> {
+  const { error } = await supabase.from(table).upsert(toDbRow(row), { onConflict: 'id' });
+  if (error) console.error(`Error upserting into ${table}:`, error);
+}
+
+export { toDbRow, fromDbRow, fetchAll, insertRow, updateRow, deleteRow, upsertRow };

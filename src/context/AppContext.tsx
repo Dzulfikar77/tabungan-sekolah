@@ -33,7 +33,7 @@ import {
 } from '../utils/initialData';
 import { generateTransactionNumber } from '../utils/format';
 import { supabase } from '../lib/supabase';
-import { fetchAll, insertRow, updateRow, deleteRow } from '../lib/db';
+import { fetchAll, insertRow, updateRow, deleteRow, upsertRow } from '../lib/db';
 
 interface AppContextType {
   currentUser: User | null;
@@ -90,6 +90,11 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'tabungan_sekolah_v1_data';
+
+function mergeById<T extends { id: string }>(db: T[], local: T[]): T[] {
+  const dbIds = new Set(db.map((x) => x.id));
+  return [...db, ...local.filter((x) => !dbIds.has(x.id))];
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -170,14 +175,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchAll<AcademicYear>('academic_years'),
         fetchAll<AuditLogItem>('audit_logs'),
       ]);
-      if (dbStudents.length > 0) setStudents(dbStudents);
-      if (dbTransactions.length > 0) setTransactions(dbTransactions);
-      if (dbBooks.length > 0) setBooks(dbBooks);
-      if (dbDistributions.length > 0) setBookDistributions(dbDistributions);
-      if (dbBookPayments.length > 0) setBookPayments(dbBookPayments);
-      if (dbSppPayments.length > 0) setSppPayments(dbSppPayments);
-      if (dbAcademicYears.length > 0) setAcademicYears(dbAcademicYears);
-      if (dbAuditLogs.length > 0) setAuditLogs(dbAuditLogs);
+      if (dbStudents.length > 0) setStudents((prev) => mergeById(dbStudents, prev));
+      if (dbTransactions.length > 0) setTransactions((prev) => mergeById(dbTransactions, prev));
+      if (dbBooks.length > 0) setBooks((prev) => mergeById(dbBooks, prev));
+      if (dbDistributions.length > 0) setBookDistributions((prev) => mergeById(dbDistributions, prev));
+      if (dbBookPayments.length > 0) setBookPayments((prev) => mergeById(dbBookPayments, prev));
+      if (dbSppPayments.length > 0) setSppPayments((prev) => mergeById(dbSppPayments, prev));
+      if (dbAcademicYears.length > 0) setAcademicYears((prev) => mergeById(dbAcademicYears, prev));
+      if (dbAuditLogs.length > 0) setAuditLogs((prev) => mergeById(dbAuditLogs, prev));
       setDbLoaded(true);
     };
     fetchFromSupabase();
@@ -274,6 +279,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return s;
       })
     );
+    affected.forEach((s) => {
+      updateRow('students', s.id, toClass === 'Lulus' ? { status: 'Lulus' } : { classGrade: toClass });
+    });
     addAuditLog('Pindah Kelas Massal', `Kelas asal: ${fromClass}`, `Kelas tujuan: ${toClass}`, `Memindahkan ${affected.length} siswa dari kelas ${fromClass} ke ${toClass}`);
   };
 
@@ -288,9 +296,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const newId = `st-${Date.now()}`;
-    const initialBal = studentData.initialBalance || 0;
+    const { initialBalance, ...studentFields } = studentData;
+    const initialBal = initialBalance || 0;
     const newStudent: Student = {
-      ...studentData,
+      ...studentFields,
       id: newId,
       balance: initialBal,
       createdAt: new Date().toISOString(),
@@ -562,7 +571,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    const trNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length);
+    const trNum = generateTransactionNumber('PT', currentAcademicYear.year, transactions.length);
 
     let initialStatus: TransactionStatus = 'Menunggu Approval Admin';
     let isAdminApproved = false;
@@ -672,6 +681,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : bp
         )
       );
+      const tier1Bp = bookPayments.find((bp) => bp.savingsTransactionId === transactionId);
+      if (tier1Bp) {
+        updateRow('book_payments', tier1Bp.id, { status: 'Menunggu Approval Super Admin', approvedByAdmin: true, approvedByAdminName: currentUser.name });
+      }
 
       updateRow('transactions', transactionId, { status: 'Menunggu Approval Super Admin', approvedByAdmin: true, approvedByAdminName: currentUser.name });
 
@@ -741,6 +754,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : bp
         )
       );
+      const tier2Bp = bookPayments.find((bp) => bp.savingsTransactionId === transactionId);
+      if (tier2Bp) {
+        updateRow('book_payments', tier2Bp.id, {
+          status: 'Disetujui',
+          approvedByAdmin: true,
+          approvedBySuperAdmin: true,
+          approvedBySuperAdminName: currentUser.name,
+        });
+      }
 
       addAuditLog(
         'Approval Penarikan Final (Super Admin)',
@@ -789,6 +811,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         bp.savingsTransactionId === transactionId ? { ...bp, status: 'Ditolak', rejectionReason } : bp
       )
     );
+    const rejectBp = bookPayments.find((bp) => bp.savingsTransactionId === transactionId);
+    if (rejectBp) {
+      updateRow('book_payments', rejectBp.id, { status: 'Ditolak', rejectionReason: rejectionReason || 'Ditolak' });
+    }
 
     addAuditLog(
       'Approval Penarikan Ditolak',
@@ -1158,6 +1184,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (student.balance < sppAmount) {
         return { success: false, error: `Saldo tabungan siswa (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi pembayaran SPP (Rp ${sppAmount.toLocaleString('id-ID')}).` };
       }
+      const txNum = generateTransactionNumber('PT', currentAcademicYear.year, transactions.length);
+      const newTx: Transaction = {
+        id: `tr-${Date.now()}`,
+        transactionNumber: txNum,
+        studentId,
+        studentName: student.name,
+        studentNis: student.nis,
+        classGrade: student.classGrade,
+        type: 'Penarikan',
+        amount: sppAmount,
+        status: 'Disetujui',
+        reason: `Pembayaran SPP ${period} via Potong Tabungan`,
+        createdById: currentUser.id,
+        createdByName: currentUser.name,
+        createdByRole: currentUser.role,
+        academicYearId: currentAcademicYear.id,
+        createdAt: new Date().toISOString(),
+      };
+      setTransactions((prev) => [newTx, ...prev]);
+      insertRow('transactions', newTx);
       setStudents((prev) =>
         prev.map((s) => (s.id === studentId ? { ...s, balance: s.balance - sppAmount } : s))
       );
@@ -1237,15 +1283,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAuditLogs(data.auditLogs || []);
 
       Promise.all([
-        updateRow('school_settings', 'singleton', data.schoolSettings),
-        ...(data.academicYears || []).map((y: any) => insertRow('academic_years', y)),
-        ...(data.students || []).map((s: any) => insertRow('students', s)),
-        ...(data.transactions || []).map((t: any) => insertRow('transactions', t)),
-        ...(data.books || []).map((b: any) => insertRow('books', b)),
-        ...(data.bookDistributions || []).map((bd: any) => insertRow('book_distributions', bd)),
-        ...(data.bookPayments || []).map((bp: any) => insertRow('book_payments', bp)),
-        ...(data.sppPayments || []).map((sp: any) => insertRow('spp_payments', sp)),
-        ...(data.auditLogs || []).map((al: any) => insertRow('audit_logs', al)),
+        upsertRow('school_settings', data.schoolSettings),
+        ...(data.academicYears || []).map((y: any) => upsertRow('academic_years', y)),
+        ...(data.students || []).map((s: any) => upsertRow('students', s)),
+        ...(data.transactions || []).map((t: any) => upsertRow('transactions', t)),
+        ...(data.books || []).map((b: any) => upsertRow('books', b)),
+        ...(data.bookDistributions || []).map((bd: any) => upsertRow('book_distributions', bd)),
+        ...(data.bookPayments || []).map((bp: any) => upsertRow('book_payments', bp)),
+        ...(data.sppPayments || []).map((sp: any) => upsertRow('spp_payments', sp)),
+        ...(data.auditLogs || []).map((al: any) => upsertRow('audit_logs', al)),
       ]);
 
       addAuditLog(

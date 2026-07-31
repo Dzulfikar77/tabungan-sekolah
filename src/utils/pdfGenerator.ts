@@ -8,8 +8,23 @@ import autoTable from 'jspdf-autotable';
 import { Student, Transaction, SchoolSettings, BookPayment } from '../types';
 import { formatRupiah, formatDate } from './format';
 
+function getCityFromAddress(address: string): string {
+  const parts = address.split(',').map((s) => s.trim()).filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1] : address.trim();
+}
+
 // Helper to draw clean school header on PDF
 function drawHeader(doc: jsPDF, school: SchoolSettings, title: string) {
+  if (school.logoUrl) {
+    const fmt = school.logoUrl.startsWith('data:image/png') ? 'PNG'
+      : school.logoUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+    try {
+      doc.addImage(school.logoUrl, fmt, 14, 7, 20, 20);
+    } catch {
+      // logo gagal, abaikan
+    }
+  }
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(30, 41, 59); // Slate-800
@@ -151,7 +166,7 @@ export function generateTransactionReceiptPDF(transaction: Transaction, school: 
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(`Jakarta, ${todayStr}`, 140, finalY + 10);
+  doc.text(`${getCityFromAddress(school.address)}, ${todayStr}`, 140, finalY + 10);
   doc.text('Petugas Keuangan,', 140, finalY + 16);
   doc.text(`( ${transaction.createdByName} )`, 140, finalY + 32);
 
