@@ -196,28 +196,35 @@ export const DepositForm: React.FC = () => {
                 />
               </div>
 
-              <select
-                size={4}
-                value={selectedStudentId}
-                onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl p-1 focus:outline-none cursor-pointer text-xs"
-              >
+              <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
                 {filteredStudents.length === 0 ? (
-                  <option disabled className="p-2 text-slate-400">
+                  <div className="p-3 text-slate-400 text-center">
                     Tidak ada siswa ditemukan dalam kelas / kata kunci ini
-                  </option>
+                  </div>
                 ) : (
                   filteredStudents.map((s) => (
-                    <option
+                    <button
                       key={s.id}
-                      value={s.id}
-                      className="p-2 hover:bg-emerald-50 rounded-lg text-slate-800 font-medium"
+                      type="button"
+                      onClick={() => setSelectedStudentId(s.id)}
+                      className={`w-full text-left px-3 py-2.5 cursor-pointer transition-colors flex items-center justify-between gap-2 ${
+                        selectedStudentId === s.id
+                          ? 'bg-emerald-50 border-l-4 border-emerald-500'
+                          : 'hover:bg-slate-50'
+                      }`}
                     >
-                      {s.name} ({s.nis}) — {s.classGrade} | Saldo: {formatRupiah(s.balance)}
-                    </option>
+                      <span className="min-w-0">
+                        <span className="font-semibold text-slate-900">{s.name}</span>
+                        <span className="text-slate-400 text-[11px]"> ({s.nis}) — {s.classGrade}</span>
+                      </span>
+                      <span className="text-[11px] text-emerald-700 font-semibold shrink-0">
+                        {formatRupiah(s.balance)}
+                      </span>
+                    </button>
                   ))
                 )}
-              </select>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">Klik nama siswa di daftar untuk memilih.</p>
             </div>
 
             {/* Selected Student Card */}
