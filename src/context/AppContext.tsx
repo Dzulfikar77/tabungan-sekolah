@@ -33,7 +33,7 @@ import {
 } from '../utils/initialData';
 import { generateTransactionNumber } from '../utils/format';
 import { supabase } from '../lib/supabase';
-import { fetchAll, insertRow, updateRow, deleteRow, upsertRow } from '../lib/db';
+import { fetchAll, insertRow, updateRow, deleteRow, upsertRow, onSyncError, SyncError } from '../lib/db';
 
 interface AppContextType {
   currentUser: User | null;
@@ -85,6 +85,9 @@ interface AppContextType {
 
   exportBackupData: () => string;
   restoreBackupData: (jsonString: string) => { success: boolean; error?: string };
+
+  syncErrors: SyncError[];
+  clearSyncErrors: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -187,6 +190,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     fetchFromSupabase();
   }, []);
+
+  const [syncErrors, setSyncErrors] = useState<SyncError[]>([]);
+  useEffect(() => {
+    return onSyncError((err) => {
+      setSyncErrors((prev) => [err, ...prev].slice(0, 5));
+    });
+  }, []);
+  const clearSyncErrors = () => setSyncErrors([]);
 
   const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0];
 
@@ -1348,8 +1359,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addSppPayment,
         exportBackupData,
         restoreBackupData,
+        syncErrors,
+        clearSyncErrors,
       }}
     >
+      {syncErrors.length > 0 && (
+        <div className="bg-rose-600 text-white px-4 py-2.5 text-xs font-medium shadow-lg relative z-50">
+          <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
+            <span className="leading-snug">
+              Peringatan: Gagal menyimpan data ke cloud ({syncErrors[0].table} — {syncErrors[0].message.slice(0, 150)}). Data hanya tersimpan sementara di perangkat Anda. Periksa koneksi internet; jika masalah berlanjut, hubungi segera developer.
+              {syncErrors.length > 1 && ` (+${syncErrors.length - 1} operasi gagal lainnya)`}
+            </span>
+            <button onClick={clearSyncErrors} className="shrink-0 bg-white/20 hover:bg-white/30 rounded px-2 py-1 cursor-pointer">
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
       {children}
     </AppContext.Provider>
   );
