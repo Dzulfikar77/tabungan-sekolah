@@ -5,7 +5,6 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { initialUsers } from '../utils/initialData';
 import { ShieldCheck, User, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
 
 interface ViewerLoginPageProps {
@@ -13,7 +12,7 @@ interface ViewerLoginPageProps {
 }
 
 export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin }) => {
-  const { setCurrentUser, schoolSettings } = useApp();
+  const { setCurrentUser, schoolSettings, users } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,7 +23,7 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
     setError('');
 
     const trimmedUsername = username.trim().toLowerCase();
-    const user = initialUsers.find(
+    const user = users.find(
       (u) =>
         u.role === 'Viewer' &&
         u.username.toLowerCase() === trimmedUsername &&

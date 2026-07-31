@@ -32,7 +32,6 @@ import {
   initialAuditLogs,
 } from '../utils/initialData';
 import { generateTransactionNumber } from '../utils/format';
-import { supabase } from '../lib/supabase';
 import { fetchAll, insertRow, updateRow, deleteRow, upsertRow, onSyncError, SyncError } from '../lib/db';
 
 interface AppContextType {
@@ -88,6 +87,12 @@ interface AppContextType {
 
   syncErrors: SyncError[];
   clearSyncErrors: () => void;
+
+  users: User[];
+  addUser: (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => { success: boolean; error?: string };
+  updateUserRole: (id: string, role: UserRole) => void;
+  changeUserPassword: (id: string, newPassword: string) => void;
+  deleteUser: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -147,6 +152,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialAuditLogs;
   });
 
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
+    return saved ? JSON.parse(saved) : initialUsers;
+  });
+
   const [sppPayments, setSppPayments] = useState<SppPayment[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_spp_payments`);
     return saved ? JSON.parse(saved) : initialSppPayments;
@@ -163,12 +173,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_book_payments`, JSON.stringify(bookPayments));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit_logs`, JSON.stringify(auditLogs));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_spp_payments`, JSON.stringify(sppPayments));
-  }, [schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments]);
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
+  }, [schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments, users]);
 
   const [dbLoaded, setDbLoaded] = useState(false);
   useEffect(() => {
     const fetchFromSupabase = async () => {
-      const [dbStudents, dbTransactions, dbBooks, dbDistributions, dbBookPayments, dbSppPayments, dbAcademicYears, dbAuditLogs] = await Promise.all([
+      const [dbStudents, dbTransactions, dbBooks, dbDistributions, dbBookPayments, dbSppPayments, dbAcademicYears, dbAuditLogs, dbUsers] = await Promise.all([
         fetchAll<Student>('students'),
         fetchAll<Transaction>('transactions'),
         fetchAll<Book>('books'),
@@ -177,6 +188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchAll<SppPayment>('spp_payments'),
         fetchAll<AcademicYear>('academic_years'),
         fetchAll<AuditLogItem>('audit_logs'),
+        fetchAll<User>('users'),
       ]);
       if (dbStudents.length > 0) setStudents((prev) => mergeById(dbStudents, prev));
       if (dbTransactions.length > 0) setTransactions((prev) => mergeById(dbTransactions, prev));
@@ -186,6 +198,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (dbSppPayments.length > 0) setSppPayments((prev) => mergeById(dbSppPayments, prev));
       if (dbAcademicYears.length > 0) setAcademicYears((prev) => mergeById(dbAcademicYears, prev));
       if (dbAuditLogs.length > 0) setAuditLogs((prev) => mergeById(dbAuditLogs, prev));
+      if (dbUsers.length > 0) setUsers((prev) => mergeById(dbUsers, prev));
       setDbLoaded(true);
     };
     fetchFromSupabase();
@@ -211,17 +224,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const login = async (username: string, password: string) => {
-    const user = initialUsers.find(
+    const user = users.find(
       (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
     );
     if (user) {
       setCurrentUser(user);
-      return { success: true };
-    }
-    // Try Supabase users table as fallback
-    const { data: dbUsers } = await supabase.from('users').select('*').eq('username', username.trim().toLowerCase()).eq('password', password).limit(1);
-    if (dbUsers && dbUsers.length > 0) {
-      setCurrentUser(dbUsers[0] as unknown as User);
       return { success: true };
     }
     return { success: false, error: 'Username atau kata sandi salah.' };
@@ -229,6 +236,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setCurrentUser(null);
+  };
+
+  const addUser = (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => {
+    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') {
+      return { success: false, error: 'Hanya Developer yang dapat menambah user.' };
+    }
+    if (users.some((u) => u.username.toLowerCase() === data.username.trim().toLowerCase())) {
+      return { success: false, error: `Username "${data.username}" sudah dipakai.` };
+    }
+    const newUser: User = {
+      id: `u-${Date.now()}`,
+      username: data.username.trim(),
+      name: data.name.trim(),
+      role: data.role,
+      password: data.password,
+      accessLevel: data.accessLevel,
+    };
+    setUsers((prev) => [...prev, newUser]);
+    insertRow('users', newUser);
+    addAuditLog('Tambah User', '-', `User: ${newUser.username} (${newUser.role})`, `Menambahkan user baru ${newUser.name} dengan role ${newUser.role}`);
+    return { success: true };
+  };
+
+  const updateUserRole = (id: string, role: UserRole) => {
+    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
+    const target = users.find((u) => u.id === id);
+    if (!target || target.role === role) return;
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
+    updateRow('users', id, { role });
+    addAuditLog('Ubah Role User', `User: ${target.username} (${target.role})`, `User: ${target.username} (${role})`, `Mengubah role user ${target.name} menjadi ${role}`);
+  };
+
+  const changeUserPassword = (id: string, newPassword: string) => {
+    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
+    const target = users.find((u) => u.id === id);
+    if (!target) return;
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, password: newPassword } : u)));
+    updateRow('users', id, { password: newPassword });
+    addAuditLog('Ganti Password User', `User: ${target.username}`, `User: ${target.username}`, `Password user ${target.name} diubah oleh Developer.`);
+  };
+
+  const deleteUser = (id: string) => {
+    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
+    if (id === currentUser.id) return;
+    const target = users.find((u) => u.id === id);
+    if (!target) return;
+    const developerCount = users.filter((u) => u.role === 'Developer' && !u.demoMode).length;
+    if (target.role === 'Developer' && !target.demoMode && developerCount <= 1) {
+      addAuditLog('Hapus User Ditolak', `User: ${target.username}`, '-', `Percobaan menghapus Developer terakhir ditolak.`);
+      return;
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+    deleteRow('users', id);
+    addAuditLog('Hapus User', `User: ${target.username} (${target.role})`, '-', `Menghapus user ${target.name} (${target.username}) dari sistem.`);
   };
 
   const addAuditLog = (action: string, valueBefore: string, valueAfter: string, details: string) => {
@@ -1372,6 +1433,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         restoreBackupData,
         syncErrors,
         clearSyncErrors,
+        users,
+        addUser,
+        updateUserRole,
+        changeUserPassword,
+        deleteUser,
       }}
     >
       {syncErrors.length > 0 && (

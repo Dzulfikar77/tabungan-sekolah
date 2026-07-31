@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { UserRole } from '../types';
 import {
   Building2,
   Image as ImageIcon,
@@ -33,6 +34,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     academicYears,
     addAcademicYear,
     setCurrentAcademicYearId,
+    users,
+    addUser,
+    updateUserRole,
+    changeUserPassword,
+    deleteUser,
   } = useApp();
 
   const [name, setName] = useState(schoolSettings.name);
@@ -49,6 +55,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const [newYear, setNewYear] = useState('');
   const [yearMsg, setYearMsg] = useState<{ success?: boolean; msg?: string } | null>(null);
+
+  const [newUsername, setNewUsername] = useState('');
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserRole, setNewUserRole] = useState<string>('Admin');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [userMsg, setUserMsg] = useState<{ success?: boolean; msg?: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -121,6 +133,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     addAcademicYear(trimmed);
     setNewYear('');
     setYearMsg({ success: true, msg: `Tahun ajaran ${trimmed} dibuat dan langsung diaktifkan.` });
+  };
+
+  const handleAddUser = () => {
+    if (!newUsername.trim() || !newUserName.trim() || !newUserPassword.trim()) {
+      setUserMsg({ success: false, msg: 'Username, nama, dan password wajib diisi.' });
+      return;
+    }
+    const res = addUser({
+      username: newUsername.trim(),
+      name: newUserName.trim(),
+      role: newUserRole as UserRole,
+      password: newUserPassword,
+    });
+    if (res.success) {
+      setUserMsg({ success: true, msg: `User ${newUsername.trim()} (${newUserRole}) berhasil ditambahkan.` });
+      setNewUsername('');
+      setNewUserName('');
+      setNewUserRole('Admin');
+      setNewUserPassword('');
+    } else {
+      setUserMsg({ success: false, msg: res.error || 'Gagal menambah user.' });
+    }
+  };
+
+  const handleChangePassword = (id: string, name: string) => {
+    const newPw = prompt(`Masukkan password baru untuk ${name}:`);
+    if (newPw === null) return;
+    if (!newPw.trim()) {
+      setUserMsg({ success: false, msg: 'Password tidak boleh kosong.' });
+      return;
+    }
+    changeUserPassword(id, newPw.trim());
+    setUserMsg({ success: true, msg: `Password ${name} berhasil diganti.` });
+  };
+
+  const handleDeleteUser = (id: string, name: string, username: string) => {
+    if (!confirm(`Hapus user "${name}" (${username})? Tindakan ini tidak dapat dibatalkan.`)) return;
+    deleteUser(id);
+    setUserMsg({ success: true, msg: `User ${name} dihapus.` });
   };
 
   return (
@@ -198,65 +249,67 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           </div>
 
-          {/* Manajemen Tahun Ajaran */}
-          <hr className="border-slate-100 my-4" />
-          <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400 flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-emerald-600" /> Manajemen Tahun Ajaran
-          </h4>
+          {/* Manajemen Tahun Ajaran — khusus Developer */}
+          {currentUser.role === 'Developer' && (
+            <>
+              <hr className="border-slate-100 my-4" />
+              <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-emerald-600" /> Manajemen Tahun Ajaran (Developer)
+              </h4>
 
-          <div className="space-y-2">
-            {academicYears.map((ay) => (
-              <div key={ay.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-800">{ay.year}</span>
-                  {ay.isCurrent && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">AKTIF</span>
-                  )}
-                </div>
-                {!ay.isCurrent && (
-                  <button
-                    onClick={() => {
-                      if (currentUser.demoMode) {
-                        setYearMsg({ success: false, msg: 'Mode Demo: tidak dapat mengubah tahun ajaran.' });
-                        return;
-                      }
-                      setCurrentAcademicYearId(ay.id);
-                      setYearMsg({ success: true, msg: `Tahun ajaran ${ay.year} aktif sekarang.` });
-                    }}
-                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-[11px] cursor-pointer"
-                  >
-                    Aktifkan
-                  </button>
-                )}
+              <div className="space-y-2">
+                {academicYears.map((ay) => (
+                  <div key={ay.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-800">{ay.year}</span>
+                      {ay.isCurrent && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">AKTIF</span>
+                      )}
+                    </div>
+                    {!ay.isCurrent && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentAcademicYearId(ay.id);
+                          setYearMsg({ success: true, msg: `Tahun ajaran ${ay.year} aktif sekarang.` });
+                        }}
+                        className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-[11px] cursor-pointer"
+                      >
+                        Aktifkan
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newYear}
-              onChange={(e) => setNewYear(e.target.value)}
-              placeholder="Contoh: 2026/2027"
-              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
-            />
-            <button
-              onClick={handleAddYear}
-              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg cursor-pointer shrink-0"
-            >
-              Tambah & Aktifkan
-            </button>
-          </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newYear}
+                  onChange={(e) => setNewYear(e.target.value)}
+                  placeholder="Contoh: 2026/2027"
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddYear}
+                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg cursor-pointer shrink-0"
+                >
+                  Tambah & Aktifkan
+                </button>
+              </div>
 
-          {yearMsg && (
-            <div className={`p-2 rounded-lg text-xs font-semibold ${yearMsg.success ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-              {yearMsg.msg}
-            </div>
+              {yearMsg && (
+                <div className={`p-2 rounded-lg text-xs font-semibold ${yearMsg.success ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                  {yearMsg.msg}
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Tahun ajaran aktif dipakai otomatis di seluruh section (Dashboard, SPP, Setoran, Penarikan, Koperasi, Laporan). Data tahun sebelumnya tetap tersimpan dan aman.
+              </p>
+            </>
           )}
-
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            Tahun ajaran aktif dipakai otomatis di seluruh section (Dashboard, SPP, Setoran, Penarikan, Koperasi, Laporan). Data tahun sebelumnya tetap tersimpan dan aman.
-          </p>
 
           <hr className="border-slate-100 my-4" />
 
@@ -313,6 +366,111 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           </div>
         </form>
+
+        {/* Manajemen User — khusus Developer */}
+        {currentUser.role === 'Developer' && (
+          <div className="space-y-3 text-xs">
+            <hr className="border-slate-100 my-4" />
+            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400 flex items-center gap-1.5">
+              <KeyRound className="w-4 h-4 text-purple-600" /> Manajemen User (Developer)
+            </h4>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {users.map((u) => (
+                <div key={u.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-800 truncate">
+                        {u.name}
+                        {u.demoMode && <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">DEMO</span>}
+                        {u.id === currentUser.id && <span className="ml-1.5 text-[10px] text-slate-400 font-normal">(Anda)</span>}
+                      </div>
+                      <div className="text-[10px] text-slate-400">@{u.username}</div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700 shrink-0">{u.role}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <select
+                      value={u.role}
+                      disabled={u.demoMode || u.id === currentUser.id}
+                      onChange={(e) => updateUserRole(u.id, e.target.value as UserRole)}
+                      className="px-2 py-1 border border-slate-200 rounded-lg text-[11px] font-semibold bg-white focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Viewer'] as UserRole[]).map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleChangePassword(u.id, u.name)}
+                      disabled={u.demoMode}
+                      className="px-2 py-1 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-lg font-semibold text-[11px] cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      Ganti Password
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(u.id, u.name, u.username)}
+                      disabled={u.demoMode || u.id === currentUser.id}
+                      className="px-2 py-1 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white rounded-lg font-semibold text-[11px] cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 space-y-2">
+              <div className="font-bold text-purple-900 text-[11px]">Tambah User Baru</div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="Username"
+                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
+                />
+                <input
+                  type="text"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  placeholder="Nama Lengkap"
+                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
+                />
+                <select
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value)}
+                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                >
+                  {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Viewer'] as UserRole[]).map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  placeholder="Password"
+                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleAddUser}
+                className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg cursor-pointer"
+              >
+                Tambah User
+              </button>
+            </div>
+
+            {userMsg && (
+              <div className={`p-2 rounded-lg text-xs font-semibold ${userMsg.success ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                {userMsg.msg}
+              </div>
+            )}
+          </div>
+        )}
 
         <hr className="border-slate-100" />
 
