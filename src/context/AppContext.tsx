@@ -32,7 +32,7 @@ import {
   initialAuditLogs,
 } from '../utils/initialData';
 import { generateTransactionNumber } from '../utils/format';
-import { fetchAll, insertRow, updateRow, deleteRow, upsertRow, onSyncError, SyncError } from '../lib/db';
+import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError } from '../lib/db';
 
 interface AppContextType {
   currentUser: User | null;
@@ -61,6 +61,7 @@ interface AppContextType {
   requestWithdrawal: (studentId: string, amount: number, reason: string) => { success: boolean; transaction?: Transaction; error?: string };
   approveWithdrawal: (transactionId: string) => { success: boolean; error?: string };
   rejectWithdrawal: (transactionId: string, rejectionReason?: string) => { success: boolean; error?: string };
+  closeStudentSavings: (studentIds: string[], reason: string) => { success: boolean; closedCount: number; totalWithdrawn: number; errors: string[] };
 
   toggleMonthlyDeduction: (enabled: boolean) => void;
   runMonthlyDeduction: () => MonthlyDeductionSummary;
@@ -909,6 +910,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
+  const closeStudentSavings = (studentIds: string[], reason: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, closedCount: 0, totalWithdrawn: 0, errors: ['Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.'] };
+    }
+    if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer' && currentUser.role !== 'Admin') {
+      return { success: false, closedCount: 0, totalWithdrawn: 0, errors: ['Hanya Admin, Super Admin, atau Developer yang dapat menutup tabungan.'] };
+    }
+
+    const errors: string[] = [];
+    let closedCount = 0;
+    let totalWithdrawn = 0;
+    const newTransactions: Transaction[] = [];
+
+    studentIds.forEach((sid) => {
+      const student = students.find((s) => s.id === sid && !s.isDeleted);
+      if (!student) {
+        errors.push(`Siswa dengan ID ${sid} tidak ditemukan.`);
+        return;
+      }
+
+      if (student.balance > 0) {
+        const trNum = generateTransactionNumber('PT', currentAcademicYear.year, transactions.length + newTransactions.length);
+        const newTx: Transaction = {
+          id: `tr-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          transactionNumber: trNum,
+          studentId: student.id,
+          studentName: student.name,
+          studentNis: student.nis,
+          classGrade: student.classGrade,
+          type: 'Penarikan',
+          amount: student.balance,
+          status: 'Disetujui',
+          reason: `Tutup Tabungan — ${reason}`,
+          approvedByAdmin: true,
+          approvedByAdminName: currentUser.name,
+          approvedBySuperAdmin: currentUser.role === 'Super Admin' || currentUser.role === 'Developer',
+          approvedBySuperAdminName: currentUser.role === 'Super Admin' || currentUser.role === 'Developer' ? currentUser.name : undefined,
+          createdById: currentUser.id,
+          createdByName: currentUser.name,
+          createdByRole: currentUser.role,
+          academicYearId: currentAcademicYear.id,
+          createdAt: new Date().toISOString(),
+        };
+        newTransactions.push(newTx);
+        totalWithdrawn += student.balance;
+      }
+
+      closedCount++;
+    });
+
+    if (newTransactions.length > 0) {
+      setTransactions((prev) => [...newTransactions, ...prev]);
+      newTransactions.forEach((tx) => insertRow('transactions', tx));
+    }
+
+    const closedIds = new Set(studentIds);
+    setStudents((prev) => prev.filter((s) => !closedIds.has(s.id)));
+    setBookDistributions((prev) => prev.filter((d) => !closedIds.has(d.studentId)));
+    setBookPayments((prev) => prev.filter((p) => !closedIds.has(p.studentId)));
+    setSppPayments((prev) => prev.filter((p) => !closedIds.has(p.studentId)));
+
+    studentIds.forEach((sid) => {
+      deleteRow('students', sid);
+      deleteRowsBy('book_distributions', 'student_id', sid);
+      deleteRowsBy('book_payments', 'student_id', sid);
+      deleteRowsBy('spp_payments', 'student_id', sid);
+    });
+
+    addAuditLog(
+      'Tutup Tabungan Massal',
+      `${closedCount} siswa`,
+      `Saldo ditarik: Rp ${totalWithdrawn.toLocaleString('id-ID')}`,
+      `Menutup tabungan ${closedCount} siswa. Total ditarik: Rp ${totalWithdrawn.toLocaleString('id-ID')}. Alasan: ${reason}. Data siswa dihapus permanen.${errors.length > 0 ? ` Error: ${errors.join('; ')}` : ''}`
+    );
+
+    return { success: true, closedCount, totalWithdrawn, errors };
+  };
+
   const toggleMonthlyDeduction = (enabled: boolean) => {
     updateSchoolSettings({ monthlyDeductionEnabled: enabled });
   };
@@ -1415,6 +1494,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requestWithdrawal,
         approveWithdrawal,
         rejectWithdrawal,
+        closeStudentSavings,
         toggleMonthlyDeduction,
         runMonthlyDeduction,
         books,
