@@ -42,10 +42,7 @@ export const SppPayment: React.FC = () => {
 
   const [paymentStudentId, setPaymentStudentId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Tunai' | 'Potong Tabungan'>('Tunai');
-  const [selectedPeriod, setSelectedPeriod] = useState(() => {
-    const now = new Date();
-    return `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
-  });
+  const currentPeriod = `${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`;
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
   const [studentSearchTKA, setStudentSearchTKA] = useState('');
@@ -93,11 +90,11 @@ export const SppPayment: React.FC = () => {
     e.preventDefault();
     if (!paymentStudentId) return;
 
-    const res = addSppPayment(paymentStudentId, paymentMethod, selectedPeriod);
+    const res = addSppPayment(paymentStudentId, paymentMethod, currentPeriod);
     if (!res.success) {
       setPaymentError(res.error || 'Gagal memproses pembayaran SPP.');
     } else {
-      setPaymentSuccess(`Pembayaran SPP ${selectedPeriod} berhasil dicatat!`);
+      setPaymentSuccess(`Pembayaran SPP ${currentPeriod} berhasil dicatat!`);
       setPaymentStudentId('');
     }
   };
@@ -135,23 +132,13 @@ export const SppPayment: React.FC = () => {
       {/* Period Select & Stats */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs">
-          <span className="font-semibold text-slate-600">Periode:</span>
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
-          >
-            {Array.from({ length: 12 }, (_, i) => {
-              const d = new Date();
-              d.setMonth(d.getMonth() - i);
-              const val = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-              return (
-                <option key={val} value={val}>
-                  {val}
-                </option>
-              );
-            })}
-          </select>
+          <span className="font-semibold text-slate-600">Periode (bulan berjalan):</span>
+          <span className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold">
+            {currentPeriod}
+          </span>
+          <span className="text-[10px] text-slate-400" title="Periode otomatis mengikuti tanggal hari ini, tidak dapat diubah manual.">
+            otomatis
+          </span>
         </div>
         <div className="text-xs text-slate-500">
           Total SPP dibayarkan: <span className="font-bold text-emerald-700">{sppPayments.length} transaksi</span>
@@ -190,7 +177,7 @@ export const SppPayment: React.FC = () => {
             ) : (
               filteredTKA.map((s) => {
                 const paid = sppPayments.some(
-                  (sp) => sp.studentId === s.id && sp.period === selectedPeriod
+                  (sp) => sp.studentId === s.id && sp.period === currentPeriod
                 );
                 return (
                   <div key={s.id} className="p-3.5 hover:bg-slate-50 transition-colors">
@@ -259,7 +246,7 @@ export const SppPayment: React.FC = () => {
             ) : (
               filteredTKB.map((s) => {
                 const paid = sppPayments.some(
-                  (sp) => sp.studentId === s.id && sp.period === selectedPeriod
+                  (sp) => sp.studentId === s.id && sp.period === currentPeriod
                 );
                 return (
                   <div key={s.id} className="p-3.5 hover:bg-slate-50 transition-colors">
@@ -328,7 +315,7 @@ export const SppPayment: React.FC = () => {
             ) : (
               filteredMI.map((s) => {
                 const paid = sppPayments.some(
-                  (sp) => sp.studentId === s.id && sp.period === selectedPeriod
+                  (sp) => sp.studentId === s.id && sp.period === currentPeriod
                 );
                 return (
                   <div key={s.id} className="p-3.5 hover:bg-slate-50 transition-colors">
@@ -395,7 +382,7 @@ export const SppPayment: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Periode:</span>
-                  <span className="font-semibold">{selectedPeriod}</span>
+                  <span className="font-semibold">{currentPeriod}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Jumlah SPP:</span>

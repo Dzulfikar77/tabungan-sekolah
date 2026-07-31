@@ -69,11 +69,17 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
 
   const tunggakanBooks = studentBookPayments.filter((bp) => bp.status !== 'Disetujui');
 
-  const allMonths = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const now = new Date();
+  const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const startYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  const allMonths: string[] = [];
+  for (let m = 6; m < 12; m++) allMonths.push(`${monthNames[m]} ${startYear}`);
+  for (let m = 0; m < 6; m++) allMonths.push(`${monthNames[m]} ${startYear + 1}`);
+  const currentIdx = now.getMonth() >= 6 ? now.getMonth() - 6 : now.getMonth() + 6;
   const paidPeriods = studentSppPayments
     .filter((sp) => sp.status === 'Disetujui')
     .map((sp) => sp.period);
-  const tunggakanSpp = allMonths.filter((m) => !paidPeriods.includes(`${m} 2026`));
+  const tunggakanSpp = allMonths.filter((m, idx) => idx <= currentIdx && !paidPeriods.includes(m));
 
   const handleLogout = () => {
     onLogout();

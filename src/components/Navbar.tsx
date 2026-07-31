@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 import {
@@ -39,15 +39,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   const {
     currentUser,
     schoolSettings,
-    academicYears,
     currentAcademicYear,
-    setCurrentAcademicYearId,
     transactions,
   } = useApp();
 
   const pendingApprovalsCount = transactions.filter(
     (t) => t.status === 'Menunggu Persetujuan'
   ).length;
+
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const roleColors: Record<UserRole, { bg: string; text: string; border: string }> = {
     Developer: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' },
@@ -98,23 +102,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right Section: Academic Year & Role Switcher */}
+        {/* Right Section: Live Clock & Academic Year */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Academic Year Selector */}
+          {/* Live Clock */}
+          <div className="flex flex-col items-end gap-0.5 text-xs">
+            <span className="font-bold text-slate-800 tabular-nums">
+              {now.toLocaleTimeString('id-ID')}
+            </span>
+            <span className="text-slate-500">
+              {now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+          </div>
+
+          {/* Academic Year (auto: follows current year) */}
           <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
             <Calendar className="w-4 h-4 text-emerald-600" />
             <span className="font-medium text-slate-600">Tahun Ajaran:</span>
-            <select
-              value={currentAcademicYear.id}
-              onChange={(e) => setCurrentAcademicYearId(e.target.value)}
-              className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer"
-            >
-              {academicYears.map((ay) => (
-                <option key={ay.id} value={ay.id}>
-                  {ay.year} {ay.isCurrent ? '(Aktif)' : ''}
-                </option>
-              ))}
-            </select>
+            <span className="font-semibold text-slate-800">{currentAcademicYear.year}</span>
           </div>
 
           {/* Role Badge */}

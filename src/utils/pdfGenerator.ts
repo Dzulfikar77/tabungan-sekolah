@@ -33,7 +33,7 @@ function drawHeader(doc: jsPDF, school: SchoolSettings, title: string) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139); // Slate-500
-  doc.text(`${school.address} | Telp: ${school.phone}`, 105, 21, { align: 'center' });
+  doc.text(`${getCityFromAddress(school.address)} | Telp: ${school.phone}`, 105, 21, { align: 'center' });
 
   doc.setDrawColor(203, 213, 225); // Slate-300
   doc.setLineWidth(0.8);
