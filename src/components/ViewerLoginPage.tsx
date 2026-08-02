@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { resolveViewerLogin } from '../utils/viewerCredentials';
 import { ShieldCheck, User, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
 
 interface ViewerLoginPageProps {
@@ -12,7 +13,7 @@ interface ViewerLoginPageProps {
 }
 
 export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin }) => {
-  const { setCurrentUser, schoolSettings, users } = useApp();
+  const { setCurrentUser, schoolSettings, users, students } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,20 +23,12 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
     e.preventDefault();
     setError('');
 
-    const trimmedUsername = username.trim().toLowerCase();
-    const user = users.find(
-      (u) =>
-        u.role === 'Viewer' &&
-        u.username.toLowerCase() === trimmedUsername &&
-        u.password === password
-    );
-
-    if (!user) {
-      setError('Username atau password salah.');
+    const result = resolveViewerLogin(users, students, username, password);
+    if ('user' in result) {
+      setCurrentUser(result.user);
       return;
     }
-
-    setCurrentUser(user);
+    setError(result.error);
   };
 
   return (

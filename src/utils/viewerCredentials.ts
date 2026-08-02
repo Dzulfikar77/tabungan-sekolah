@@ -12,13 +12,15 @@
  *          seq > 999 tumbuh jadi 4 digit, tetap unik (padStart minimum 3).
  */
 
-import type { AcademicYear, User } from '../types';
+import type { AcademicYear, Student, User } from '../types';
 
 /**
- * Normalisasi nama -> username dasar. Lowercase + hapus spasi.
+ * Normalisasi nama: lowercase + buang SEMUA non-alphanumeric.
+ * "Aura Kasih" -> "aurakasih" | "A'isyah" -> "aisyah" | "Aura  Kasih-2" -> "aurakasih2"
+ * Satu sumber kebenaran: dipakai generate username DAN login viewer.
  */
-function normalizeBaseName(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, '');
+export function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 /**
@@ -30,7 +32,7 @@ export function generateViewerUsername(
   studentName: string,
   existingUsernames: string[]
 ): string {
-  const base = normalizeBaseName(studentName);
+  const base = normalizeName(studentName);
   const taken = new Set(existingUsernames.map((u) => u.toLowerCase()));
   if (!taken.has(base.toLowerCase())) return base;
   let suffix = 2;
@@ -77,6 +79,57 @@ export function generateViewerPassword(
   }
   const nextSeq = maxSeq + 1;
   return `${prefix}${String(nextSeq).padStart(3, '0')}`;
+}
+
+export type ViewerLoginResult =
+  | { user: User }
+  | { error: string };
+
+/**
+ * Resolve login viewer. Dua sumber kandidat:
+ * (a) exact match username -> slip lama berisi suffix (-2/-3) tetap jalan;
+ * (b) normalize(nama siswa live) -> ikut rename, nama polos cukup.
+ * Password unik per siswa (tahun+seq) -> disambiguasi otomatis ke anak yang benar.
+ */
+export function resolveViewerLogin(
+  users: User[],
+  students: Student[],
+  usernameInput: string,
+  password: string
+): ViewerLoginResult {
+  const rawInput = usernameInput.trim();
+  const normalizedInput = normalizeName(rawInput);
+  if (!normalizedInput || !password) {
+    return { error: 'Username atau password salah.' };
+  }
+
+  const exactMatch = users.filter(
+    (u) => u.role === 'Viewer' && u.username === rawInput.toLowerCase()
+  );
+
+  const matchedStudentIds = new Set(
+    students.filter((s) => !s.isDeleted && normalizeName(s.name) === normalizedInput).map((s) => s.id)
+  );
+  const nameMatch = users.filter(
+    (u) => u.role === 'Viewer' && u.studentId && matchedStudentIds.has(u.studentId)
+  );
+
+  const candidates = exactMatch.concat(nameMatch).filter(
+    (u, i, arr) => arr.findIndex((x) => x.id === u.id) === i
+  );
+
+  if (candidates.length === 0) {
+    return { error: 'Username atau password salah.' };
+  }
+
+  const hits = candidates.filter((u) => u.password === password);
+  if (hits.length === 1) {
+    return { user: hits[0] };
+  }
+  if (hits.length > 1) {
+    return { error: 'Data tidak unik. Hubungi pihak sekolah.' };
+  }
+  return { error: 'Username atau password salah.' };
 }
 
 // ponytail: no persisted counter — seq derived from existing scheme passwords.
