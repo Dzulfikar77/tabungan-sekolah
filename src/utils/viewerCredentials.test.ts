@@ -7,7 +7,7 @@
  * Exit 0 = semua lulus, 1 = ada gagal.
  */
 
-import { generateViewerUsername, generateViewerPassword, normalizeName, resolveViewerLogin } from './viewerCredentials';
+import { generateViewerUsername, generateViewerPassword, normalizeName, resolveViewerLogin, searchViewerSuggestions } from './viewerCredentials';
 import type { AcademicYear, Student, User } from '../types';
 
 let failed = 0;
@@ -96,6 +96,39 @@ assert(userId(login('Orang Tak Ada', '20252026001')) === 'ERR:Username atau pass
 const renamed = auras.map((s) => (s.id === 'st-a2' ? { ...s, name: 'Aura Kasih Putri' } : s));
 const renamedLogin = resolveViewerLogin(auraUsers, renamed, 'Aura Kasih Putri', '20252026002');
 assert('user' in renamedLogin && renamedLogin.user.id === 'u-a2', 'rename siswa -> nama baru tetap ketemu');
+
+console.log('searchViewerSuggestions:');
+const suggestStudents: Student[] = [
+  ...auras,
+  mkStudent('st-p1', 'Aura Putri', 'Kelas 1A'),
+  mkStudent('st-an', 'Anak Aura', 'Kelas 2B'),
+  mkStudent('st-si', 'Siti Aura', 'Kelas 6A'),
+  mkStudent('st-dead', 'Aura Kasih', 'Kelas 6B'),
+];
+const suggestUsers: User[] = [
+  ...auraUsers,
+  mkViewer('u-p1', 'auraputri', 'st-p1', '20252026010'),
+  mkViewer('u-an', 'anakaura', 'st-an', '20252026011'),
+  mkViewer('u-si', 'sitaura', 'st-si', '20252026012'),
+];
+const alive = suggestStudents.filter((s) => s.id !== 'st-dead');
+const sAll = searchViewerSuggestions(suggestUsers, alive, 'aura', 20).map((s) => s.name);
+assert(sAll.length === 7, `'aura' -> 7 hasil (dapat ${sAll.length})`);
+assert(sAll[0].startsWith('Aura Kasih'), `prefix match dulu (${sAll.join(', ')})`);
+assert(sAll.includes('Aura Putri') && sAll.includes('Anak Aura') && sAll.includes('Siti Aura'), 'semua nama mengandung aura muncul');
+assert(searchViewerSuggestions(suggestUsers, alive, 'aurap', 20).every((s) => s.name === 'Aura Putri'), "'aurap' -> hanya Aura Putri");
+assert(searchViewerSuggestions(suggestUsers, alive, 'aurapu', 20).every((s) => s.name === 'Aura Putri'), "'aurapu' -> hanya Aura Putri");
+assert(searchViewerSuggestions(suggestUsers, alive, 'AURA KASIH', 20).length === 4, "'AURA KASIH' -> 4 Aura Kasih (case/spasi diabaikan)");
+assert(searchViewerSuggestions(suggestUsers, alive, 'a', 20).length === 0, 'min 2 huruf -> kosong');
+assert(searchViewerSuggestions(suggestUsers, alive, 'aura', 3).length === 3, 'cap limit 3');
+assert(searchViewerSuggestions(suggestUsers, suggestStudents, 'aura', 20).every((s) => s.name !== 'Aura Kasih' || s.studentId !== 'st-dead'), 'siswa terhapus tidak muncul');
+assert(searchViewerSuggestions(suggestUsers.slice(0, 4), alive, 'aura', 20).every((s) => s.studentId !== 'st-p1'), 'siswa tanpa viewer user tidak muncul');
+
+const renamedSug = alive.map((s) => (s.id === 'st-p1' ? { ...s, name: 'Aura Putri Maharani' } : s));
+assert(
+  searchViewerSuggestions(suggestUsers, renamedSug, 'auraputrimaharani', 20).some((s) => s.studentId === 'st-p1'),
+  'saran ikut rename siswa (nama live)'
+);
 
 if (failed > 0) {
   console.error(`\n${failed} assertion(s) FAILED`);

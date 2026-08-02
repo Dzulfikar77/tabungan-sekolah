@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { normalizeName } from '../utils/viewerCredentials';
 import { formatRupiah, formatDate } from '../utils/format';
 import { generateStudentCertificatePDF } from '../utils/pdfGenerator';
 import {
@@ -42,6 +43,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
   } = useApp();
 
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showIdentityConfirm, setShowIdentityConfirm] = useState(true);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -59,6 +61,10 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
       </div>
     );
   }
+
+  const nameHasDuplicate = students.some(
+    (s) => !s.isDeleted && s.id !== student.id && normalizeName(s.name) === normalizeName(student.name)
+  );
 
   const studentTransactions = transactions.filter((t) => t.studentId === student.id);
   const studentBookPayments = bookPayments.filter((bp) => bp.studentId === student.id);
@@ -150,6 +156,35 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
           </button>
         </div>
       </div>
+
+      {/* Ambiguous Name Confirmation */}
+      {showIdentityConfirm && nameHasDuplicate && (
+        <div className="bg-amber-50 rounded-2xl border border-amber-300 p-5 shadow-xs space-y-3">
+          <h3 className="font-bold text-amber-900 text-sm flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            Pastikan ini anak Anda
+          </h3>
+          <p className="text-xs text-amber-800 leading-relaxed">
+            Terdapat siswa lain dengan nama yang sama. Anak Anda:{' '}
+            <strong>{student.name}</strong> — Kelas {student.classGrade} (NIS: {student.nis}) ·
+            Orang Tua: {student.parentName || '-'}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowIdentityConfirm(false)}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+            >
+              Ini anak saya
+            </button>
+            <button
+              onClick={onLogout}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+            >
+              Bukan anak saya
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Change Password Form */}
       {showChangePassword && (

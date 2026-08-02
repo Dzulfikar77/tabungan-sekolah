@@ -12,7 +12,7 @@
  *          seq > 999 tumbuh jadi 4 digit, tetap unik (padStart minimum 3).
  */
 
-import type { AcademicYear, Student, User } from '../types';
+import type { AcademicYear, ClassGrade, Student, User } from '../types';
 
 /**
  * Normalisasi nama: lowercase + buang SEMUA non-alphanumeric.
@@ -84,6 +84,63 @@ export function generateViewerPassword(
 export type ViewerLoginResult =
   | { user: User }
   | { error: string };
+
+export interface ViewerSuggestion {
+  studentId: string;
+  name: string;
+  classGrade: ClassGrade;
+  parentName?: string;
+  nis: string;
+  username: string;
+}
+
+/**
+ * Pencarian saran nama viewer (autocomplete login).
+ * Substring filter bertahap pada normalize(nama siswa) ATAU normalize(username):
+ * ketik "aura" lalu "p" -> query "aurap" -> hanya nama mengandung "aurap".
+ * Urut: nama yang DIAWALI query dulu, sisanya abjad. Batas limit.
+ * Min 2 karakter; siswa terhapus / tanpa user viewer dilewati.
+ */
+export function searchViewerSuggestions(
+  users: User[],
+  students: Student[],
+  query: string,
+  limit = 8
+): ViewerSuggestion[] {
+  const q = normalizeName(query);
+  if (q.length < 2) return [];
+
+  const userByStudentId = new Map(
+    users.filter((u) => u.role === 'Viewer' && u.studentId).map((u) => [u.studentId, u])
+  );
+
+  const results: ViewerSuggestion[] = [];
+  for (const s of students) {
+    if (s.isDeleted) continue;
+    const user = userByStudentId.get(s.id);
+    if (!user) continue;
+    const nameNorm = normalizeName(s.name);
+    const userNorm = normalizeName(user.username || '');
+    if (!nameNorm.includes(q) && !userNorm.includes(q)) continue;
+    results.push({
+      studentId: s.id,
+      name: s.name,
+      classGrade: s.classGrade,
+      parentName: s.parentName,
+      nis: s.nis,
+      username: user.username,
+    });
+  }
+
+  results.sort((a, b) => {
+    const aPrefix = normalizeName(a.name).startsWith(q) ? 0 : 1;
+    const bPrefix = normalizeName(b.name).startsWith(q) ? 0 : 1;
+    if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+    return a.name.localeCompare(b.name);
+  });
+
+  return results.slice(0, limit);
+}
 
 /**
  * Resolve login viewer. Dua sumber kandidat:
