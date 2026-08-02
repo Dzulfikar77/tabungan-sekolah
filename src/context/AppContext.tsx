@@ -32,6 +32,7 @@ import {
   initialAuditLogs,
 } from '../utils/initialData';
 import { generateTransactionNumber } from '../utils/format';
+import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
 import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError } from '../lib/db';
 
 interface AppContextType {
@@ -93,6 +94,8 @@ interface AppContextType {
   addUser: (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => { success: boolean; error?: string };
   updateUserRole: (id: string, role: UserRole) => void;
   changeUserPassword: (id: string, newPassword: string) => void;
+  changeViewerPassword: (newPassword: string) => { success: boolean; error?: string };
+  backfillViewerCredentials: () => { created: number; errors: string[] };
   deleteUser: (id: string) => void;
 }
 
@@ -293,6 +296,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog('Hapus User', `User: ${target.username} (${target.role})`, '-', `Menghapus user ${target.name} (${target.username}) dari sistem.`);
   };
 
+  const findLinkedViewerUser = (studentId: string): User | undefined =>
+    users.find((u) => u.role === 'Viewer' && u.studentId === studentId);
+
+  const deleteLinkedViewerUser = (studentId: string, reason: string) => {
+    const linked = findLinkedViewerUser(studentId);
+    if (!linked) return;
+    setUsers((prev) => prev.filter((u) => u.id !== linked.id));
+    deleteRow('users', linked.id);
+    addAuditLog('Hapus User Viewer', `User: ${linked.username}`, '-', `User viewer ${linked.username} dihapus (${reason}).`);
+  };
+
+  const changeViewerPassword = (newPassword: string) => {
+    if (!currentUser || currentUser.role !== 'Viewer') {
+      return { success: false, error: 'Hanya Viewer yang dapat mengubah password sendiri.' };
+    }
+    if (newPassword.length < 4) {
+      return { success: false, error: 'Password baru minimal 4 karakter.' };
+    }
+    setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? { ...u, password: newPassword } : u)));
+    updateRow('users', currentUser.id, { password: newPassword });
+    addAuditLog('Ubah Password Viewer', currentUser.username, currentUser.username, `Viewer ${currentUser.name} mengubah password sendiri.`);
+    return { success: true };
+  };
+
+  const backfillViewerCredentials = () => {
+    if (!currentUser || currentUser.demoMode) {
+      return { created: 0, errors: ['Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.'] };
+    }
+    if (currentUser.role !== 'Developer' && currentUser.role !== 'Super Admin' && currentUser.role !== 'Admin') {
+      return { created: 0, errors: ['Anda tidak memiliki hak untuk melakukan backfill.'] };
+    }
+    const usedUsernames: string[] = users.map((u) => u.username);
+    const usedPasswords: string[] = users.filter((u) => u.role === 'Viewer').map((u) => u.password || '');
+    const createdUsers: User[] = [];
+
+    students.forEach((s) => {
+      if (s.isDeleted || s.status !== 'Aktif') return;
+      if (findLinkedViewerUser(s.id)) return;
+      const ay = academicYears.find((y) => y.id === s.academicYearId) || currentAcademicYear;
+      const username = generateViewerUsername(s.name, usedUsernames);
+      const password = generateViewerPassword(ay, usedPasswords);
+      usedUsernames.push(username);
+      usedPasswords.push(password);
+      createdUsers.push({
+        id: `u-bf-${Date.now()}-${createdUsers.length}`,
+        username,
+        name: s.name,
+        role: 'Viewer',
+        studentId: s.id,
+        password,
+      });
+    });
+
+    if (createdUsers.length > 0) {
+      setUsers((prev) => [...createdUsers, ...prev]);
+      Promise.all(createdUsers.map((u) => insertRow('users', u)));
+      addAuditLog('Backfill Kredensial Viewer', '-', `User Viewer dibuat: ${createdUsers.length}`, `Membuat ${createdUsers.length} User Viewer untuk siswa eksisting.`);
+    }
+    return { created: createdUsers.length, errors: [] };
+  };
+
   const addAuditLog = (action: string, valueBefore: string, valueAfter: string, details: string) => {
     if (!currentUser) return;
     const newLog: AuditLogItem = {
@@ -365,6 +429,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     affected.forEach((s) => {
       updateRow('students', s.id, toClass === 'Lulus' ? { status: 'Lulus' } : { classGrade: toClass });
+      if (toClass === 'Lulus') deleteLinkedViewerUser(s.id, 'naik ke Lulus');
     });
     addAuditLog('Pindah Kelas Massal', `Kelas asal: ${fromClass}`, `Kelas tujuan: ${toClass}`, `Memindahkan ${affected.length} siswa dari kelas ${fromClass} ke ${toClass}`);
   };
@@ -391,6 +456,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setStudents((prev) => [newStudent, ...prev]);
     insertRow('students', newStudent);
+
+    // Auto-create viewer user (username = nama, password = tahun ajaran + seq)
+    const ay = academicYears.find((y) => y.id === newStudent.academicYearId) || currentAcademicYear;
+    const viewerUser: User = {
+      id: `u-${Date.now()}`,
+      username: generateViewerUsername(newStudent.name, users.map((u) => u.username)),
+      name: newStudent.name,
+      role: 'Viewer',
+      studentId: newStudent.id,
+      password: generateViewerPassword(ay, users.filter((u) => u.role === 'Viewer').map((u) => u.password || '')),
+    };
+    setUsers((prev) => [viewerUser, ...prev]);
+    insertRow('users', viewerUser);
 
     // If initial balance > 0, auto-generate initial setoran
     if (initialBal > 0) {
@@ -437,6 +515,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setStudents((prev) => prev.map((s) => (s.id === id ? { ...s, isDeleted: true } : s)));
     updateRow('students', id, { isDeleted: true });
+    deleteLinkedViewerUser(id, 'soft delete siswa');
     addAuditLog('Hapus Siswa (Soft Delete)', `Status: ${student.status}`, 'Status: Soft Deleted', `Menghapus siswa ${student.name} (NIS: ${student.nis}). Data histori tetap aman.`);
   };
 
@@ -447,6 +526,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let addedCount = 0;
     const errors: string[] = [];
     const addedArray: Student[] = [];
+    const addedUsers: User[] = [];
     const addedTransactions: Transaction[] = [];
 
     newStudentsList.forEach((st, idx) => {
@@ -479,6 +559,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addedArray.push(newStudent);
       addedCount++;
 
+      // Auto-create viewer user (username = nama, password = tahun ajaran + seq)
+      const ay = academicYears.find((y) => y.id === (st.academicYearId || currentAcademicYear.id)) || currentAcademicYear;
+      const batchUsernames = addedUsers.map((u) => u.username);
+      const batchPws = addedUsers.map((u) => u.password || '');
+      const allUsernames = users.map((u) => u.username).concat(batchUsernames);
+      const allPws = users.filter((u) => u.role === 'Viewer').map((u) => u.password || '').concat(batchPws);
+      const viewerUser: User = {
+        id: `u-imp-${Date.now()}-${idx}`,
+        username: generateViewerUsername(newStudent.name, allUsernames),
+        name: newStudent.name,
+        role: 'Viewer',
+        studentId: newStudent.id,
+        password: generateViewerPassword(ay, allPws),
+      };
+      addedUsers.push(viewerUser);
+
       if (initBal > 0) {
         const trNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length + addedTransactions.length);
         addedTransactions.push({
@@ -504,6 +600,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (addedArray.length > 0) {
       setStudents((prev) => [...addedArray, ...prev]);
       Promise.all(addedArray.map((s) => insertRow('students', s)));
+      if (addedUsers.length > 0) {
+        setUsers((prev) => [...addedUsers, ...prev]);
+        Promise.all(addedUsers.map((u) => insertRow('users', u)));
+      }
       if (addedTransactions.length > 0) {
         setTransactions((prev) => [...addedTransactions, ...prev]);
         Promise.all(addedTransactions.map((t) => insertRow('transactions', t)));
@@ -954,6 +1054,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const executeCloseAccount = (student: Student) => {
     const finalAmount = student.balance;
+    deleteLinkedViewerUser(student.id, 'tutup tabungan');
     setStudents((prev) => prev.filter((s) => s.id !== student.id));
     setBookDistributions((prev) => prev.filter((d) => d.studentId !== student.id));
     setBookPayments((prev) => prev.filter((p) => p.studentId !== student.id));
@@ -1603,6 +1704,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addUser,
         updateUserRole,
         changeUserPassword,
+        changeViewerPassword,
+        backfillViewerCredentials,
         deleteUser,
       }}
     >

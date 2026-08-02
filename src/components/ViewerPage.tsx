@@ -38,7 +38,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
     schoolSettings,
     currentUser,
     currentAcademicYear,
-    updateStudent,
+    changeViewerPassword,
   } = useApp();
 
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -89,7 +89,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
     setPwError('');
     setPwSuccess('');
 
-    if (student.viewerPassword !== oldPassword) {
+    if (currentUser.password !== oldPassword) {
       setPwError('Password lama salah.');
       return;
     }
@@ -102,7 +102,11 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
       return;
     }
 
-    updateStudent(student.id, { viewerPassword: newPassword });
+    const res = changeViewerPassword(newPassword);
+    if (!res.success) {
+      setPwError(res.error || 'Gagal mengubah password.');
+      return;
+    }
     setPwSuccess('Password berhasil diubah!');
     setOldPassword('');
     setNewPassword('');

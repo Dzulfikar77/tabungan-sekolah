@@ -20,6 +20,7 @@ import {
   X,
   AlertCircle,
   CheckCircle,
+  KeyRound,
 } from 'lucide-react';
 
 import { ALL_CLASSES } from '../utils/initialData';
@@ -34,6 +35,7 @@ export const StudentManagement: React.FC = () => {
     bulkPromoteStudents,
     currentAcademicYear,
     currentUser,
+    backfillViewerCredentials,
   } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,6 +50,9 @@ export const StudentManagement: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<{ addedCount: number; errors: string[] } | null>(null);
+
+  const [isBackfillModalOpen, setIsBackfillModalOpen] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<{ created: number; errors: string[] } | null>(null);
 
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
   const [fromClass, setFromClass] = useState<ClassGrade>(ALL_CLASSES[0]);
@@ -161,6 +166,10 @@ export const StudentManagement: React.FC = () => {
     }
   };
 
+  const handleProcessBackfill = () => {
+    setBackfillResult(backfillViewerCredentials());
+  };
+
   const resetForm = () => {
     setNis('');
     setName('');
@@ -207,6 +216,19 @@ export const StudentManagement: React.FC = () => {
             <Upload className="w-4 h-4" />
             Import Excel
           </button>
+
+          {currentUser && (currentUser.role === 'Developer' || currentUser.role === 'Super Admin' || currentUser.role === 'Admin') && (
+            <button
+              onClick={() => {
+                setBackfillResult(null);
+                setIsBackfillModalOpen(true);
+              }}
+              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+            >
+              <KeyRound className="w-4 h-4" />
+              Backfill Kredensial
+            </button>
+          )}
 
           <button
             onClick={() => setIsPromoteModalOpen(true)}
@@ -627,6 +649,62 @@ export const StudentManagement: React.FC = () => {
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-semibold rounded-lg cursor-pointer shadow-xs"
                 >
                   Proses Import File
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Backfill Viewer Credentials Modal */}
+      {isBackfillModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full border border-slate-100 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base">Backfill Kredensial Viewer</h3>
+              <button
+                onClick={() => setIsBackfillModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <p className="text-slate-600 leading-relaxed">
+                Membuat <strong>User Viewer</strong> (portal orang tua & siswa) untuk seluruh siswa aktif yang
+                belum punya akses. Username diambil dari nama siswa (tanpa spasi), password mengikuti
+                tahun ajaran masing-masing siswa + nomor urut 3 digit (contoh <code>20252026001</code>).
+                Siswa yang sudah punya User Viewer tidak akan diubah.
+              </p>
+
+              {backfillResult && (
+                <div className="p-3 rounded-xl border text-xs bg-slate-50 border-slate-200">
+                  <div className="font-bold text-emerald-700 flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" /> {backfillResult.created} User Viewer berhasil dibuat
+                  </div>
+                  {backfillResult.errors.length > 0 && (
+                    <div className="mt-2 text-rose-600 space-y-0.5">
+                      {backfillResult.errors.map((err, i) => (
+                        <div key={i}>• {err}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  onClick={() => setIsBackfillModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg cursor-pointer"
+                >
+                  Tutup
+                </button>
+                <button
+                  onClick={handleProcessBackfill}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg cursor-pointer shadow-xs"
+                >
+                  Proses Backfill
                 </button>
               </div>
             </div>
