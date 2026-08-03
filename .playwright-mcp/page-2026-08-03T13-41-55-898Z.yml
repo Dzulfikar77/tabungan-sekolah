@@ -1,0 +1,19 @@
+- generic [ref=f9e4]:
+  - generic [ref=f9e5]:
+    - heading "Portal Orang Tua & Siswa" [level=1] [ref=f9e10]
+    - paragraph [ref=f9e11]: YPIS Mambaul Ulum Surabaya
+    - paragraph [ref=f9e12]: Lihat saldo tabungan, riwayat transaksi, dan status pembayaran
+  - generic [ref=f9e13]:
+    - generic [ref=f9e14]:
+      - generic [ref=f9e15]:
+        - generic [ref=f9e16]: Nama Anak
+        - combobox "Ketik nama anak..." [active] [ref=f9e21]
+        - paragraph [ref=f9e22]: Ketik nama anak — saran muncul otomatis. Pilih anak Anda, lalu isi password.
+      - generic [ref=f9e23]:
+        - generic [ref=f9e24]: Password
+        - generic [ref=f9e25]:
+          - textbox "••••••••" [ref=f9e29]
+          - button [ref=f9e30] [cursor=pointer]
+      - button "Masuk" [ref=f9e34] [cursor=pointer]
+      - button "Lupa Password?" [ref=f9e39] [cursor=pointer]
+    - button "Kembali ke Login Admin" [ref=f9e41] [cursor=pointer]
