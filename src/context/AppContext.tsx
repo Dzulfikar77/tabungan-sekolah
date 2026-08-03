@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   User,
   UserRole,
@@ -35,6 +35,7 @@ import {
 import { generateTransactionNumber } from '../utils/format';
 import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
 import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError } from '../lib/db';
+import { supabase } from '../lib/supabase';
 
 const ROLE_RANK: Record<UserRole, number> = { Developer: 4, 'Super Admin': 3, Admin: 2, 'Wali Kelas': 1, Viewer: 0 };
 
@@ -192,36 +193,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments, users]);
 
   const [dbLoaded, setDbLoaded] = useState(false);
-  useEffect(() => {
-    const fetchFromSupabase = async () => {
-      const [dbStudents, dbTransactions, dbBooks, dbDistributions, dbBookPayments, dbSppPayments, dbAcademicYears, dbAuditLogs, dbUsers] = await Promise.all([
-        fetchAll<Student>('students'),
-        fetchAll<Transaction>('transactions'),
-        fetchAll<Book>('books'),
-        fetchAll<BookDistribution>('book_distributions'),
-        fetchAll<BookPayment>('book_payments'),
-        fetchAll<SppPayment>('spp_payments'),
-        fetchAll<AcademicYear>('academic_years'),
-        fetchAll<AuditLogItem>('audit_logs'),
-        fetchAll<User>('users'),
-      ]);
-      if (dbStudents.length > 0) setStudents((prev) => mergeById(dbStudents, prev));
-      if (dbTransactions.length > 0) setTransactions((prev) => mergeById(dbTransactions, prev));
-      if (dbBooks.length > 0) setBooks((prev) => mergeById(dbBooks, prev));
-      if (dbDistributions.length > 0) setBookDistributions((prev) => mergeById(dbDistributions, prev));
-      if (dbBookPayments.length > 0) setBookPayments((prev) => mergeById(dbBookPayments, prev));
-      if (dbSppPayments.length > 0) setSppPayments((prev) => mergeById(dbSppPayments, prev));
-      if (dbAcademicYears.length > 0) {
-        setAcademicYears((prev) => mergeById(dbAcademicYears, prev));
-        const dbCurrent = dbAcademicYears.find((y) => y.isCurrent);
-        if (dbCurrent) setCurrentAcademicYearIdState(dbCurrent.id);
-      }
-      if (dbAuditLogs.length > 0) setAuditLogs((prev) => mergeById(dbAuditLogs, prev));
-      if (dbUsers.length > 0) setUsers((prev) => mergeById(dbUsers, prev));
-      setDbLoaded(true);
-    };
-    fetchFromSupabase();
+  const fetchFromSupabase = useCallback(async () => {
+    const [dbStudents, dbTransactions, dbBooks, dbDistributions, dbBookPayments, dbSppPayments, dbAcademicYears, dbAuditLogs, dbUsers] = await Promise.all([
+      fetchAll<Student>('students'),
+      fetchAll<Transaction>('transactions'),
+      fetchAll<Book>('books'),
+      fetchAll<BookDistribution>('book_distributions'),
+      fetchAll<BookPayment>('book_payments'),
+      fetchAll<SppPayment>('spp_payments'),
+      fetchAll<AcademicYear>('academic_years'),
+      fetchAll<AuditLogItem>('audit_logs'),
+      fetchAll<User>('users'),
+    ]);
+    if (dbStudents.length > 0) setStudents((prev) => mergeById(dbStudents, prev));
+    if (dbTransactions.length > 0) setTransactions((prev) => mergeById(dbTransactions, prev));
+    if (dbBooks.length > 0) setBooks((prev) => mergeById(dbBooks, prev));
+    if (dbDistributions.length > 0) setBookDistributions((prev) => mergeById(dbDistributions, prev));
+    if (dbBookPayments.length > 0) setBookPayments((prev) => mergeById(dbBookPayments, prev));
+    if (dbSppPayments.length > 0) setSppPayments((prev) => mergeById(dbSppPayments, prev));
+    if (dbAcademicYears.length > 0) {
+      setAcademicYears((prev) => mergeById(dbAcademicYears, prev));
+      const dbCurrent = dbAcademicYears.find((y) => y.isCurrent);
+      if (dbCurrent) setCurrentAcademicYearIdState(dbCurrent.id);
+    }
+    if (dbAuditLogs.length > 0) setAuditLogs((prev) => mergeById(dbAuditLogs, prev));
+    if (dbUsers.length > 0) setUsers((prev) => mergeById(dbUsers, prev));
+    setDbLoaded(true);
   }, []);
+
+  useEffect(() => {
+    fetchFromSupabase();
+    // polling fallback: realtime postgres_changes butuh tabel di-enable di dashboard Supabase
+    const poll = setInterval(fetchFromSupabase, 20000);
+    const channel = supabase
+      .channel('tabungan-sekolah-sync')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        fetchFromSupabase();
+      })
+      .subscribe();
+    return () => {
+      clearInterval(poll);
+      supabase.removeChannel(channel);
+    };
+  }, [fetchFromSupabase]);
 
   const [syncErrors, setSyncErrors] = useState<SyncError[]>([]);
   useEffect(() => {
