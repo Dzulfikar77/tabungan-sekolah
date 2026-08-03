@@ -24,6 +24,30 @@ export function normalizeName(name: string): string {
 }
 
 /**
+ * Normalisasi nomor telepon: buang SEMUA non-digit.
+ * "0812-3456-789" -> "08123456789" | "+62 812 3456 789" -> "628123456789"
+ */
+export function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
+/**
+ * Verifikasi identitas orang tua saat login portal: nama (case/format bebas)
+ * DAN nomor telepon (format bebas) harus cocok dengan data siswa.
+ * Siswa tanpa data orang tua/telepon -> false.
+ */
+export function verifyParentIdentity(
+  student: Student | undefined,
+  parentNameInput: string,
+  phoneInput: string
+): boolean {
+  if (!student || !student.parentName || !student.phone) return false;
+  const nameOk = normalizeName(parentNameInput) === normalizeName(student.parentName);
+  const phoneOk = phoneInput.trim() !== '' && normalizePhone(phoneInput) === normalizePhone(student.phone);
+  return nameOk && phoneOk;
+}
+
+/**
  * Buat username viewer unik dari nama siswa.
  * @param studentName nama lengkap siswa
  * @param existingUsernames daftar username yang sudah dipakai (case-insensitive)

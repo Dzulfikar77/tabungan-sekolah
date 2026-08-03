@@ -55,7 +55,7 @@ Wave 4: final verification.
 
 ### Wave 1 — Foundation
 
-- [ ] 1. Buat util generate kredensial viewer + test
+- [x] 1. Buat util generate kredensial viewer + test
   - **References:**
     - Buat baru: `src/utils/viewerCredentials.ts`
     - Impor: `AcademicYear`, `User` dari `src/types.ts` (baris 161, 8)
@@ -90,7 +90,7 @@ Wave 4: final verification.
 
 ### Wave 2 — Context wiring
 
-- [ ] 2. Tambah helper + context methods di AppContext
+- [x] 2. Tambah helper + context methods di AppContext
   - **References:**
     - `src/context/AppContext.tsx` — `User` import (baris 8), `users` state (156-159), `addStudent` (372-421), `importStudentsBulk` (443-515), `softDeleteStudent` (433-441), `bulkPromoteStudents` (352-370), `executeCloseAccount` (955-975), `changeUserPassword` (272-279), `addAuditLog` (296-311), `deleteRow` import (35)
     - Impor baru: `generateViewerUsername, generateViewerPassword` dari `../utils/viewerCredentials`
@@ -130,7 +130,7 @@ Wave 4: final verification.
   - **QA failure:** panggil `changeViewerPassword` saat `currentUser` null → return error, tidak throw. Evidence: console log.
   - **Commit:** `feat(viewer-creds): add viewer user helper, changeViewerPassword, backfill in AppContext`
 
-- [ ] 3. Auto-create User Viewer di addStudent
+- [x] 3. Auto-create User Viewer di addStudent
   - **References:** `src/context/AppContext.tsx:372-421` (`addStudent`), import util dari todo 1, helper dari todo 2.
   - **Implementasi:** di `addStudent`, SETELAH `setStudents(...)` + `insertRow('students', newStudent)` (baris 392-393) dan SEBELUM blok initial-balance transaction (396):
     ```typescript
@@ -156,7 +156,7 @@ Wave 4: final verification.
   - **QA failure:** add student dengan nama duplikat "Aditya Pratama" (sudah ada) → username jadi `adityapratama-2`, tidak throw. Evidence: console dump.
   - **Commit:** `feat(viewer-creds): auto-create viewer user on addStudent`
 
-- [ ] 4. Auto-create User Viewer di importStudentsBulk (batch)
+- [x] 4. Auto-create User Viewer di importStudentsBulk (batch)
   - **References:** `src/context/AppContext.tsx:443-515` (`importStudentsBulk`), `src/components/StudentManagement.tsx:143-155` (handler import).
   - **Implementasi:** di dalam `newStudentsList.forEach((st, idx) => {...})` (baris 452), SETELAH `addedArray.push(newStudent)` (479) dan SEBELUM blok initial-balance (482):
     ```typescript
@@ -188,7 +188,7 @@ Wave 4: final verification.
 
 ### Wave 2b — Cleanup hooks
 
-- [ ] 5. Pasang deleteLinkedViewerUser di 3 path penghapusan siswa
+- [x] 5. Pasang deleteLinkedViewerUser di 3 path penghapusan siswa
   - **References:**
     - `executeCloseAccount` (`src/context/AppContext.tsx:955-975`)
     - `softDeleteStudent` (`src/context/AppContext.tsx:433-441`)
@@ -207,7 +207,7 @@ Wave 4: final verification.
 
 ### Wave 3 — UI
 
-- [ ] 6. Fix ViewerPage change-password pakai User.password + changeViewerPassword
+- [x] 6. Fix ViewerPage change-password pakai User.password + changeViewerPassword
   - **References:**
     - `src/components/ViewerPage.tsx:31-42` (destructure useApp), `88-114` (`handleChangePassword`), `92` (baca `student.viewerPassword`), `105` (`updateStudent`)
     - `src/context/AppContext.tsx` — `changeViewerPassword` dari todo 2
@@ -222,7 +222,7 @@ Wave 4: final verification.
   - **QA failure:** input password lama salah → tampil "Password lama salah.", state tak berubah. Evidence: UI state.
   - **Commit:** `fix(viewer-creds): viewer change-password uses User.password via changeViewerPassword`
 
-- [ ] 7. Tombol Backfill Kredensial di StudentManagement
+- [x] 7. Tombol Backfill Kredensial di StudentManagement
   - **References:**
     - `src/components/StudentManagement.tsx:27-37` (destructure useApp), `186-219` (header buttons), `559-635` (import modal sebagai pola UI)
     - `src/context/AppContext.tsx` — `backfillViewerCredentials` dari todo 2
@@ -240,14 +240,59 @@ Wave 4: final verification.
 
 ## Final verification wave
 
-- [ ] F1. Plan-compliance audit
+- [x] F1. Plan-compliance audit
   - Bandingkan setiap todo di plan ini dengan diff aktual. Setiap References/Acceptance terpenuhi. Evidence: `git diff --stat` + checklist.
-- [ ] F2. Code quality (tsc + lint)
+- [x] F2. Code quality (tsc + lint)
   - `npm run lint` (`tsc --noEmit`) exit 0. `npx tsx src/utils/viewerCredentials.test.ts` exit 0. Evidence: stdout.
-- [ ] F3. Manual QA flow end-to-end
+- [x] F3. Manual QA flow end-to-end
   - Flow: reset localStorage → login admin → Backfill → catat 1 kredensial → login viewer portal → ubah password → logout → login password baru → tambah siswa baru (admin) → login siswa baru → tutup tabungan siswa itu → login viewer siswa itu gagal → soft-delete siswa lain → login viewer-nya gagal → bulkPromote kelas ke Lulus → login viewer siswa lulus gagal. Evidence: console dumps + login attempt hasil per langkah.
-- [ ] F4. Scope fidelity
+- [x] F4. Scope fidelity
   - Tidak ada: migrasi DB, kolom baru, hash password, perubahan ViewerLoginPage, perubahan close-savings 2-tier, tampilan kredensial di tabel siswa. Evidence: `git diff -- supabase/ src/components/ViewerLoginPage.tsx` kosong.
+
+## Lupa Password (addendum — belum dieksekusi)
+
+Ditambahkan setelah plan asli selesai diimplementasikan. Status: design-final, menunggu `$start-work`.
+
+**Desain:** self-service verifikasi identitas — parent pilih anak (autocomplete yang sama) → verifikasi Nama Orang Tua + No. HP (cocok persis setelah normalisasi; digit-only untuk HP) → set password baru (min 4). Batas 5 percobaan gagal → arahkan hubungi sekolah. Fallback admin: `changeUserPassword` Developer yang sudah ada (UserManagement via SettingsModal). Tidak ada email/SMS infra di app → verifikasi berbasis data yang parent tahu (nama ortu sendiri + HP sendiri).
+
+- [x] 8. `src/utils/viewerCredentials.ts`: tambah `normalizePhone(phone)` (strip non-digit) + `verifyParentIdentity(student, parentNameInput, phoneInput): boolean` — wajib `student.parentName` DAN `student.phone` ada; cocok normalized-name DAN normalized-phone; kosong → false
+  - Test di `viewerCredentials.test.ts`: HP "0812-3456-789" vs "08123456789" → true; parentName case/spasi → true; salah phone → false; salah nama → false; phone siswa kosong → false; student undefined → false
+  - Acceptance: `npx tsx src/utils/viewerCredentials.test.ts` exit 0
+  - Commit: `feat(viewer-creds): add parent identity verification for forgot-password`
+- [x] 9. `src/context/AppContext.tsx`: tambah `resetViewerPassword(studentId, newPassword)` di interface + value — UNGATED (dipanggil sebelum login, tanpa currentUser): cek length ≥4; cari user role Viewer dengan studentId; `setUsers` map + `updateRow('users', id, { password })`; `addAuditLog` (otomatis skip saat currentUser null); return `{ success }` / `{ success:false, error }`
+  - Acceptance: `npm run lint` 0 error
+  - Commit: `feat(viewer-creds): add resetViewerPassword context method`
+- [x] 10. `src/components/ViewerLoginPage.tsx`: alur "Lupa Password?" — link di bawah tombol Masuk; mode forgot: combobox pilih anak (state `selectedStudent` yang sudah ada) → setelah pilih tampil field Nama Orang Tua + No. HP + tombol Verifikasi; sukses verifikasi → field password baru + konfirmasi + Simpan; sukses simpan → pesan "Password berhasil diganti" + tombol kembali ke login (reset semua state forgot); gagal verifikasi → counter percobaan, ≥5 → pesan hubungi sekolah; tombol "Batal" kembali ke mode login biasa
+  - Acceptance: QA manual — pilih anak → verifikasi benar → set pw → login pw baru sukses; verifikasi salah ×5 → terkunci
+  - Commit: `feat(viewer-creds): add forgot-password flow to viewer login`
+- [x] 11. Verifikasi: `npm run lint` + `npx tsx src/utils/viewerCredentials.test.ts` + `npm run build` + QA Playwright (flow lengkap: lupa-password → verifikasi → pw baru → login)
+
+**Catatan keamanan:** verifikasi berbasis data semi-publik (nama ortu + HP) — cukup untuk data sensitivitas rendah (saldo anak); brute-force dibatasi counter 5. Jika sekolah butuh lebih ketat (email/OTP), itu memerlukan infra baru — di luar lingkup.
+
+## Lupa Password ADMIN (addendum 2 — belum dieksekusi)
+
+**Desain (keputusan user):** recovery key dari `.env` (`VITE_ADMIN_RECOVERY_KEY`; kosong = fitur nonaktif + pesan hubungi atasan) untuk SEMUA role staff. Hierarki eskalasi: Admin → Super Admin (peer reset), Super Admin → Developer (peer reset), Developer → AI (script `scripts/reset-password.ts`). Aturan reset: `ROLE_RANK = { Developer:4, 'Super Admin':3, Admin:2, 'Wali Kelas':1, Viewer:0 }` — target harus rank < pelaku. Developer TIDAK bisa reset Developer lain (harus lewat AI).
+
+- [x] 12. `src/context/AppContext.tsx`: 
+  - konstanta `ROLE_RANK` (di file, dekat atas)
+  - `verifyRecoveryKey(key: string): boolean` — bandingkan dengan `import.meta.env.VITE_ADMIN_RECOVERY_KEY`; key kosong di env → false
+  - `resetStaffPassword(targetUserId: string, newPassword: string): { success: boolean; error?: string }` — guard: `currentUser` ada, bukan demoMode, `ROLE_RANK[currentUser.role] > ROLE_RANK[target.role]`, `newPassword.length >= 4`; `setUsers` map + `updateRow('users', targetUserId, { password })` + auditLog
+  - `selfResetAdminPassword(username: string, key: string, newPassword: string): { success: boolean; error?: string }` — guard `verifyRecoveryKey(key)`; cari user staff (role != Viewer) by username; `newPassword.length >= 4`; update users+DB+auditLog (auditLog skip saat currentUser null — tetap panggil, guard internal)
+  - Ekspos `resetStaffPassword` + `selfResetAdminPassword` + `verifyRecoveryKey` di interface + value
+  - Acceptance: `npm run lint` 0 error
+  - Commit: `feat(admin-creds): recovery key + hierarchical staff password reset`
+- [x] 13. `src/components/LoginPage.tsx`: tombol "Lupa Password?" (admin login) → panel: input username + recovery key + password baru + konfirmasi → submit `selfResetAdminPassword`; sukses → pesan + kembali login; pesan eskalasi dinamis berdasarkan role target: Admin → "Hubungi Super Admin / Kepala Sekolah", Super Admin → "Hubungi Developer", Developer → "Reset via developer/AI (script reset-password)". Bila `VITE_ADMIN_RECOVERY_KEY` kosong → panel menampilkan pesan hubungi atasan saja (tanpa form)
+  - Acceptance: QA manual — key benar → pw terganti; key salah → error; key kosong → form hidden
+  - Commit: `feat(admin-creds): forgot-password panel on admin login`
+- [x] 14. `src/components/SettingsModal.tsx` (atau komponen UserManagement yang ada): di daftar user, tombol "Reset Password" per user staff — visible HANYA bila `ROLE_RANK[currentUser.role] > ROLE_RANK[user.role]`; prompt password baru (min 4) → `resetStaffPassword`; pesan sukses/gagal. Developer melihat tombol reset untuk Super Admin/Admin/Wali Kelas (BUKAN Developer lain — tombol hidden + catatan "reset Developer via developer/AI")
+  - Acceptance: QA manual — Super Admin reset Admin ok; Developer reset Super Admin ok; Developer reset Developer lain → ditolak
+  - Commit: `feat(admin-creds): hierarchical peer reset in user management`
+- [x] 15. `scripts/reset-password.ts` (baru): `npx tsx scripts/reset-password.ts <username> <newPassword>` — update `users` via Supabase (service role dari env `SUPABASE_SERVICE_ROLE_KEY`, fallback anon + RLS note); log sukses. Path AI untuk Developer lockout. `.env.example`: tambah `VITE_ADMIN_RECOVERY_KEY` + `SUPABASE_SERVICE_ROLE_KEY` (jika belum ada)
+  - Acceptance: jalankan script dengan user test → password terupdate di DB
+  - Commit: `feat(admin-creds): add reset-password script for developer/ai recovery`
+- [x] 16. Verifikasi: `npm run lint` + `npx tsx src/utils/viewerCredentials.test.ts` + `npm run build` + QA Playwright (admin forgot: key benar/salah/kosong; peer reset hierarki naik/turun) + README section "Lupa Password" (alur viewer + admin + SQL fallback `UPDATE users SET password=... WHERE username=...`)
+
+**Catatan:** password plaintext seluruh app — di luar scope; recovery key adalah bootstrap global, wajib kuat + diganti berkala. SQL fallback di Supabase Editor tetap jaring pengaman terakhir.
 
 ## Commit strategy
 

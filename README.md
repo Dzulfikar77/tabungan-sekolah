@@ -163,6 +163,21 @@ Mutation  → update state + localStorage + sync ke Supabase (fire-and-forget)
 - **Ubah password** sendiri
 - **Cetak bukti tabungan** (PDF)
 
+### Lupa Password
+
+#### Portal Orang Tua / Siswa
+1. Klik "Lupa Password?" di halaman login portal orang tua.
+2. Ketik nama anak, pilih dari daftar saran.
+3. Isi Nama Orang Tua dan No. Telepon sesuai data pendaftaran.
+4. Set password baru (minimal 4 karakter).
+5. Batas 5 percobaan gagal — setelahnya hubungi sekolah.
+
+#### Admin / Staff
+- **Recovery Key:** admin dapat reset password sendiri via "Lupa Password?" di halaman login admin. Masukkan username + recovery key (dari variabel `VITE_ADMIN_RECOVERY_KEY` di `.env`) + password baru. Bila key belum dikonfigurasi, tampil pesan hubungi atasan sesuai hierarki.
+- **Hierarki reset:** Super Admin dapat reset password Admin/Wali Kelas/Viewer; Developer dapat reset semua kecuali Developer lain. Buka Pengaturan > Manajemen User > tombol "Reset Password".
+- **Developer lockout:** jalankan `npx tsx scripts/reset-password.ts <username> <newPassword>` (butuh `SUPABASE_SERVICE_ROLE_KEY` di `.env`).
+- **SQL fallback (jaring terakhir):** di Supabase SQL Editor: `UPDATE users SET password = 'password_baru' WHERE username = 'username';`
+
 ### Pembayaran SPP
 - Pemisahan jenjang **TK** (TK A, TK B) dan **MI** (Kelas 1-6) dengan tarif berbeda
 - Default MI gratis (Rp 0), bisa diisi kapan saja di Pengaturan

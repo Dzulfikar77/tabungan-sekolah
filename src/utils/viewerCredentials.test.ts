@@ -7,7 +7,7 @@
  * Exit 0 = semua lulus, 1 = ada gagal.
  */
 
-import { generateViewerUsername, generateViewerPassword, normalizeName, resolveViewerLogin, searchViewerSuggestions } from './viewerCredentials';
+import { generateViewerUsername, generateViewerPassword, normalizeName, resolveViewerLogin, searchViewerSuggestions, verifyParentIdentity } from './viewerCredentials';
 import type { AcademicYear, Student, User } from '../types';
 
 let failed = 0;
@@ -129,6 +129,15 @@ assert(
   searchViewerSuggestions(suggestUsers, renamedSug, 'auraputrimaharani', 20).some((s) => s.studentId === 'st-p1'),
   'saran ikut rename siswa (nama live)'
 );
+
+console.log('verifyParentIdentity:');
+const ortuSt = { parentName: 'Rahmat Hidayat', phone: '08123456789' };
+assert(verifyParentIdentity(ortuSt as any, 'rahmat hidayat', '0812-3456-789') === true, 'case/space + phone formatting cocok');
+assert(verifyParentIdentity(ortuSt as any, 'Rahmat Hidayat', '089999') === false, 'no. HP salah -> false');
+assert(verifyParentIdentity(ortuSt as any, 'Budi Santoso', '08123456789') === false, 'nama ortu salah -> false');
+assert(verifyParentIdentity(ortuSt as any, 'Rahmat Hidayat', '') === false, 'HP kosong -> false');
+assert(verifyParentIdentity({ ...ortuSt, phone: undefined } as any, 'Rahmat Hidayat', '08123456789') === false, 'HP siswa kosong -> false');
+assert(verifyParentIdentity(undefined, 'Rahmat Hidayat', '08123456789') === false, 'student undefined -> false');
 
 if (failed > 0) {
   console.error(`\n${failed} assertion(s) FAILED`);

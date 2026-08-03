@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "active_work_id": null,
+  "works": {
+    "w-forgot-password": {
+      "work_id": "w-forgot-password",
+      "active_plan": ".omo/plans/student-viewer-credentials.md",
+      "plan_name": "student-viewer-credentials",
+      "session_ids": ["codex:build-forgot-password"],
+      "status": "completed",
+      "worktree_path": null
+    }
+  }
+}

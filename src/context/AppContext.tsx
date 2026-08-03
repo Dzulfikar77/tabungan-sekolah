@@ -35,6 +35,8 @@ import { generateTransactionNumber } from '../utils/format';
 import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
 import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError } from '../lib/db';
 
+const ROLE_RANK: Record<UserRole, number> = { Developer: 4, 'Super Admin': 3, Admin: 2, 'Wali Kelas': 1, Viewer: 0 };
+
 interface AppContextType {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
@@ -95,6 +97,10 @@ interface AppContextType {
   updateUserRole: (id: string, role: UserRole) => void;
   changeUserPassword: (id: string, newPassword: string) => void;
   changeViewerPassword: (newPassword: string) => { success: boolean; error?: string };
+  resetViewerPassword: (studentId: string, newPassword: string) => { success: boolean; error?: string };
+  verifyRecoveryKey: (key: string) => boolean;
+  resetStaffPassword: (targetUserId: string, newPassword: string) => { success: boolean; error?: string };
+  selfResetAdminPassword: (username: string, key: string, newPassword: string) => { success: boolean; error?: string };
   backfillViewerCredentials: () => { created: number; errors: string[] };
   deleteUser: (id: string) => void;
 }
@@ -317,6 +323,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? { ...u, password: newPassword } : u)));
     updateRow('users', currentUser.id, { password: newPassword });
     addAuditLog('Ubah Password Viewer', currentUser.username, currentUser.username, `Viewer ${currentUser.name} mengubah password sendiri.`);
+    return { success: true };
+  };
+
+  const resetViewerPassword = (studentId: string, newPassword: string) => {
+    if (!newPassword || newPassword.length < 4) {
+      return { success: false, error: 'Password baru minimal 4 karakter.' };
+    }
+    const target = users.find((u) => u.role === 'Viewer' && u.studentId === studentId);
+    if (!target) {
+      return { success: false, error: 'Akun viewer tidak ditemukan.' };
+    }
+    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, password: newPassword } : u)));
+    updateRow('users', target.id, { password: newPassword });
+    addAuditLog('Reset Password Viewer', 'User: ' + target.username, 'User: ' + target.username, 'Password viewer ' + target.username + ' direset melalui lupa-password.');
+    return { success: true };
+  };
+
+  const verifyRecoveryKey = (key: string) => {
+    const envKey = import.meta.env.VITE_ADMIN_RECOVERY_KEY;
+    if (!envKey) return false;
+    return key.trim() === envKey;
+  };
+
+  const resetStaffPassword = (targetUserId: string, newPassword: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    const target = users.find((u) => u.id === targetUserId);
+    if (!target) {
+      return { success: false, error: 'User tidak ditemukan.' };
+    }
+    if (ROLE_RANK[currentUser.role] <= ROLE_RANK[target.role]) {
+      return { success: false, error: 'Anda tidak memiliki wewenang untuk mereset password user ini.' };
+    }
+    if (newPassword.length < 4) {
+      return { success: false, error: 'Password baru minimal 4 karakter.' };
+    }
+    setUsers((prev) => prev.map((u) => (u.id === targetUserId ? { ...u, password: newPassword } : u)));
+    updateRow('users', targetUserId, { password: newPassword });
+    addAuditLog('Reset Password User', 'User: ' + target.username, 'User: ' + target.username, 'Password ' + target.username + ' direset oleh ' + currentUser.name + '.');
+    return { success: true };
+  };
+
+  const selfResetAdminPassword = (username: string, key: string, newPassword: string) => {
+    if (!verifyRecoveryKey(key)) {
+      return { success: false, error: 'Recovery key salah.' };
+    }
+    if (newPassword.length < 4) {
+      return { success: false, error: 'Password baru minimal 4 karakter.' };
+    }
+    const target = users.find((u) => u.role !== 'Viewer' && u.username.toLowerCase() === username.trim().toLowerCase());
+    if (!target) {
+      return { success: false, error: 'Username tidak ditemukan.' };
+    }
+    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, password: newPassword } : u)));
+    updateRow('users', target.id, { password: newPassword });
+    addAuditLog('Reset Password via Recovery Key', 'User: ' + target.username, 'User: ' + target.username, 'Password ' + target.username + ' direset via recovery key.');
     return { success: true };
   };
 
@@ -1705,6 +1768,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateUserRole,
         changeUserPassword,
         changeViewerPassword,
+        resetViewerPassword,
+        verifyRecoveryKey,
+        resetStaffPassword,
+        selfResetAdminPassword,
         backfillViewerCredentials,
         deleteUser,
       }}

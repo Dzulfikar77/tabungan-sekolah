@@ -19,6 +19,14 @@ import {
   Calendar,
 } from 'lucide-react';
 
+const ROLE_RANK: Record<UserRole, number> = {
+  Developer: 4,
+  'Super Admin': 3,
+  Admin: 2,
+  'Wali Kelas': 1,
+  Viewer: 0,
+};
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,6 +46,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     addUser,
     updateUserRole,
     changeUserPassword,
+    resetStaffPassword,
     deleteUser,
   } = useApp();
 
@@ -172,6 +181,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     if (!confirm(`Hapus user "${name}" (${username})? Tindakan ini tidak dapat dibatalkan.`)) return;
     deleteUser(id);
     setUserMsg({ success: true, msg: `User ${name} dihapus.` });
+  };
+
+  const canResetStaffPassword = (targetRole: UserRole, studentId?: string) => {
+    // Guard: can only reset users strictly lower in rank
+    if (ROLE_RANK[currentUser.role] <= ROLE_RANK[targetRole]) return false;
+    // Guard: for Viewer, skip if linked to a student (managed via student lifecycle)
+    if (targetRole === 'Viewer' && studentId) return false;
+    return true;
+  };
+
+  const handleResetStaffPassword = (id: string, name: string, targetRole: UserRole, studentId?: string) => {
+    if (!canResetStaffPassword(targetRole, studentId)) {
+      setUserMsg({ success: false, msg: 'Tidak memiliki wewenang untuk reset password user ini.' });
+      return;
+    }
+    const newPw = prompt(`Reset password untuk ${name}:\nMasukkan password baru (min 4 karakter):`);
+    if (newPw === null) return;
+    if (!newPw.trim() || newPw.trim().length < 4) {
+      setUserMsg({ success: false, msg: 'Password baru minimal 4 karakter.' });
+      return;
+    }
+    const res = resetStaffPassword(id, newPw.trim());
+    if (res.success) {
+      setUserMsg({ success: true, msg: `Password ${name} berhasil direset.` });
+    } else {
+      setUserMsg({ success: false, msg: res.error || 'Gagal mereset password.' });
+    }
   };
 
   return (
@@ -368,11 +404,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         </form>
 
         {/* Manajemen User — khusus Developer */}
-        {currentUser.role === 'Developer' && (
+        {(currentUser.role === 'Developer' || currentUser.role === 'Super Admin') && (
           <div className="space-y-3 text-xs">
             <hr className="border-slate-100 my-4" />
             <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400 flex items-center gap-1.5">
-              <KeyRound className="w-4 h-4 text-purple-600" /> Manajemen User (Developer)
+              <KeyRound className="w-4 h-4 text-purple-600" /> Manajemen User
             </h4>
 
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
@@ -403,11 +439,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <button
                       type="button"
                       onClick={() => handleChangePassword(u.id, u.name)}
-                      disabled={u.demoMode}
+                      disabled={u.demoMode || currentUser.role !== 'Developer'}
                       className="px-2 py-1 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-lg font-semibold text-[11px] cursor-pointer disabled:cursor-not-allowed"
                     >
                       Ganti Password
                     </button>
+                    {/* Reset Password — hierarchy-guarded (rank strictly higher); existing changeUserPassword above stays Developer-only */}
+                    {canResetStaffPassword(u.role, u.studentId) && (
+                      <button
+                        type="button"
+                        onClick={() => handleResetStaffPassword(u.id, u.name, u.role, u.studentId)}
+                        disabled={u.demoMode}
+                        className="px-2 py-1 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white rounded-lg font-semibold text-[11px] cursor-pointer disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        <KeyRound className="w-3 h-3" /> Reset Password
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleDeleteUser(u.id, u.name, u.username)}
