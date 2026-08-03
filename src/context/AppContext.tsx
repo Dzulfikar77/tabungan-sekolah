@@ -51,6 +51,7 @@ interface AppContextType {
   academicYears: AcademicYear[];
   currentAcademicYear: AcademicYear;
   addAcademicYear: (year: string) => void;
+  deleteAcademicYear: (id: string) => { success: boolean; error?: string };
   setCurrentAcademicYearId: (id: string) => void;
   bulkPromoteStudents: (fromClass: string, toClass: string) => void;
 

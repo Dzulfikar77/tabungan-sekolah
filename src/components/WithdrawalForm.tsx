@@ -63,8 +63,10 @@ export const WithdrawalForm: React.FC = () => {
 
   const NOMINAL_PRESETS = [2000, 5000, 10000, 15000, 20000, 25000];
 
+  // Semua tahun ajaran: penarikan & tutup tabungan harus bisa proses siswa tahun lama (lulus/pindah).
+  // ponytail: kalau nanti mau lihat hanya tahun aktif lagi, tambahkan `&& s.academicYearId === currentAcademicYear.id`.
   const activeStudents = filterByAccessLevel(students.filter(
-    (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
+    (s) => !s.isDeleted && s.status === 'Aktif'
   ), currentUser);
 
   const filteredStudents = activeStudents.filter((s) => {
