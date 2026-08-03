@@ -57,6 +57,8 @@ export const WithdrawalForm: React.FC = () => {
   const [closeSavingsIds, setCloseSavingsIds] = useState<Set<string>>(new Set());
   const [closeSavingsReason, setCloseSavingsReason] = useState('Lulus / Pindah Sekolah');
   const [closeSavingsResult, setCloseSavingsResult] = useState<{ pendingCount: number; closedCount: number; totalWithdrawn: number; errors: string[] } | null>(null);
+  const [closeSavingsClass, setCloseSavingsClass] = useState<string>('ALL');
+  const [closeSavingsSearch, setCloseSavingsSearch] = useState('');
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   const GRADUATING_CLASSES: ClassGrade[] = ['TK B', 'Kelas 6A', 'Kelas 6B'];
@@ -78,6 +80,13 @@ export const WithdrawalForm: React.FC = () => {
   });
 
   const selectedStudent = activeStudents.find((s) => s.id === selectedStudentId);
+
+  const visibleCloseStudents = activeStudents.filter((s) => {
+    const matchesClass = closeSavingsClass === 'ALL' || s.classGrade === closeSavingsClass;
+    const q = closeSavingsSearch.trim().toLowerCase();
+    const matchesSearch = !q || s.name.toLowerCase().includes(q) || s.nis.toLowerCase().includes(q);
+    return matchesClass && matchesSearch;
+  });
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawVal = e.target.value;
@@ -154,6 +163,8 @@ export const WithdrawalForm: React.FC = () => {
     setCloseSavingsIds(defaultIds);
     setCloseSavingsReason('Lulus / Pindah Sekolah');
     setCloseSavingsResult(null);
+    setCloseSavingsClass('ALL');
+    setCloseSavingsSearch('');
     setWithdrawalMode('tutup');
   };
 
@@ -167,7 +178,7 @@ export const WithdrawalForm: React.FC = () => {
   };
 
   const toggleClassInCloseSavings = (cls: ClassGrade) => {
-    const classStudentIds = activeStudents.filter((s) => s.classGrade === cls).map((s) => s.id);
+    const classStudentIds = visibleCloseStudents.filter((s) => s.classGrade === cls).map((s) => s.id);
     const allSelected = classStudentIds.every((id) => closeSavingsIds.has(id));
     setCloseSavingsIds((prev) => {
       const next = new Set(prev);
@@ -531,13 +542,57 @@ export const WithdrawalForm: React.FC = () => {
             </div>
           )}
 
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-1">
+              <button
+                type="button"
+                onClick={() => setCloseSavingsClass('ALL')}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                  closeSavingsClass === 'ALL'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Semua ({activeStudents.length})
+              </button>
+              {ALL_CLASSES.map((cls) => {
+                const count = activeStudents.filter((s) => s.classGrade === cls).length;
+                return (
+                  <button
+                    key={cls}
+                    type="button"
+                    onClick={() => setCloseSavingsClass(cls)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                      closeSavingsClass === cls
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : count > 0
+                          ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                    }`}
+                  >
+                    {cls} ({count})
+                  </button>
+                );
+              })}
+            </div>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Ketik NIS atau Nama Siswa..."
+                value={closeSavingsSearch}
+                onChange={(e) => setCloseSavingsSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+          </div>
+
           <div className="max-h-80 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
-            {activeStudents.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-xs">Tidak ada siswa aktif.</div>
+            {visibleCloseStudents.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-xs">Tidak ada siswa sesuai filter.</div>
             ) : (
-              ALL_CLASSES.map((cls) => {
-                const classStudents = activeStudents.filter((s) => s.classGrade === cls);
-                if (classStudents.length === 0) return null;
+              ALL_CLASSES.filter((cls) => visibleCloseStudents.some((s) => s.classGrade === cls)).map((cls) => {
+                const classStudents = visibleCloseStudents.filter((s) => s.classGrade === cls);
                 const selectedCount = classStudents.filter((s) => closeSavingsIds.has(s.id)).length;
                 const allSelected = selectedCount === classStudents.length;
                 const isGraduating = GRADUATING_CLASSES.includes(cls);
