@@ -41,7 +41,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     currentUser,
     academicYears,
     addAcademicYear,
-    setCurrentAcademicYearId,
+    deleteAcademicYear,
     users,
     addUser,
     updateUserRole,
@@ -306,12 +306,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       <button
                         type="button"
                         onClick={() => {
-                          setCurrentAcademicYearId(ay.id);
-                          setYearMsg({ success: true, msg: `Tahun ajaran ${ay.year} aktif sekarang.` });
+                          if (confirm(`Hapus tahun ajaran ${ay.year}?\n\nData siswa & transaksi TETAP tersimpan (tidak ikut dihapus).\nTahun ${ay.year} hanya dilepas dari daftar.\nLanjutkan?`)) {
+                            const res = deleteAcademicYear(ay.id);
+                            if (res.success) {
+                              setYearMsg({ success: true, msg: `Tahun ajaran ${ay.year} dihapus.` });
+                            } else {
+                              setYearMsg({ success: false, msg: res.error || 'Gagal menghapus tahun ajaran.' });
+                            }
+                          }
                         }}
-                        className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-[11px] cursor-pointer"
+                        className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold text-[11px] cursor-pointer"
                       >
-                        Aktifkan
+                        Hapus
                       </button>
                     )}
                   </div>

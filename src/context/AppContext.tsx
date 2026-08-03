@@ -485,6 +485,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog('Ganti Tahun Ajaran Aktif', `Aktif: ${currentAcademicYear.year}`, `Aktif: ${target.year}`, `Mengubah tahun ajaran aktif menjadi ${target.year}`);
   };
 
+  const deleteAcademicYear = (id: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    const target = academicYears.find((y) => y.id === id);
+    if (!target) return { success: false, error: 'Tahun ajaran tidak ditemukan.' };
+    if (target.isCurrent) return { success: false, error: 'Tahun ajaran aktif tidak dapat dihapus.' };
+
+    setAcademicYears((prev) => prev.filter((y) => y.id !== id));
+    deleteRow('academic_years', id);
+    addAuditLog('Hapus Tahun Ajaran', `Hapus: ${target.year}`, '-', `Tahun ajaran ${target.year} dihapus dari database. Data siswa & transaksi terkait tetap tersimpan.`);
+    return { success: true };
+  };
+
   const bulkPromoteStudents = (fromClass: string, toClass: string) => {
     if (!currentUser || currentUser.demoMode) return;
     const affected = students.filter((s) => !s.isDeleted && s.classGrade === fromClass);
@@ -1881,6 +1895,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         academicYears,
         currentAcademicYear,
         addAcademicYear,
+        deleteAcademicYear,
         setCurrentAcademicYearId,
         bulkPromoteStudents,
         students,
