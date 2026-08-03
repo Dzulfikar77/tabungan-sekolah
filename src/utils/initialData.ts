@@ -6,8 +6,8 @@
 import { Student, Book, Transaction, AcademicYear, AuditLogItem, SchoolSettings, User, BookPayment, BookDistribution, SppPayment, ClassGrade } from '../types';
 
 export const initialSchoolSettings: SchoolSettings = {
-  name: 'SD & TK Nusantara Utama',
-  address: 'Jl. Pemuda No. 45, Kebayoran Baru, Jakarta Selatan',
+  name: 'YPIS Mambaul Ulum Surabaya',
+  address: 'Jl. Wonokusumo Kidul no 44 Surabaya',
   phone: '(021) 789-0123',
   monthlyDeductionEnabled: true,
   monthlyDeductionAmount: 2000,
@@ -17,8 +17,7 @@ export const initialSchoolSettings: SchoolSettings = {
 };
 
 export const initialAcademicYears: AcademicYear[] = [
-  { id: 'ay-1', year: '2024/2025', isCurrent: false, createdAt: '2024-07-01T08:00:00.000Z' },
-  { id: 'ay-2', year: '2025/2026', isCurrent: true, createdAt: '2025-07-01T08:00:00.000Z' },
+  { id: 'ay-1', year: '2026/2027', isCurrent: true, createdAt: '2026-07-01T08:00:00.000Z' },
 ];
 
 export const ALL_CLASSES: ClassGrade[] = [
