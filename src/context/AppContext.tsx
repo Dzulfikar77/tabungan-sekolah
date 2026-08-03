@@ -113,7 +113,9 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = 'tabungan_sekolah_v1_data';
+const LOCAL_STORAGE_KEY = 'tabungan_sekolah_v3_data';
+
+const hasSupabase = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 function mergeById<T extends { id: string }>(db: T[], local: T[]): T[] {
   const dbIds = new Set(db.map((x) => x.id));
@@ -130,7 +132,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_years`);
-    return saved ? JSON.parse(saved) : initialAcademicYears;
+    return saved ? JSON.parse(saved) : (hasSupabase ? [] : initialAcademicYears);
   });
 
   const [currentAcademicYearId, setCurrentAcademicYearIdState] = useState<string>(() => {
@@ -140,32 +142,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [students, setStudents] = useState<Student[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_students`);
-    return saved ? JSON.parse(saved) : initialStudents;
+    return saved ? JSON.parse(saved) : (hasSupabase ? [] : initialStudents);
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_transactions`);
-    return saved ? JSON.parse(saved) : initialTransactions;
+    return saved ? JSON.parse(saved) : (hasSupabase ? [] : initialTransactions);
   });
 
   const [books, setBooks] = useState<Book[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_books`);
-    return saved ? JSON.parse(saved) : initialBooks;
+    return saved ? JSON.parse(saved) : (hasSupabase ? [] : initialBooks);
   });
 
   const [bookDistributions, setBookDistributions] = useState<BookDistribution[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_distributions`);
-    return saved ? JSON.parse(saved) : initialBookDistributions;
+    return saved ? JSON.parse(saved) : (hasSupabase ? [] : initialBookDistributions);
   });
 
   const [bookPayments, setBookPayments] = useState<BookPayment[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_book_payments`);
-    return saved ? JSON.parse(saved) : initialBookPayments;
+    return saved ? JSON.parse(saved) : (hasSupabase ? [] : initialBookPayments);
   });
 
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_audit_logs`);
-    return saved ? JSON.parse(saved) : initialAuditLogs;
+    return saved ? JSON.parse(saved) : (hasSupabase ? [] : initialAuditLogs);
   });
 
   const [users, setUsers] = useState<User[]>(() => {
@@ -175,11 +177,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [sppPayments, setSppPayments] = useState<SppPayment[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_spp_payments`);
-    return saved ? JSON.parse(saved) : initialSppPayments;
+    return saved ? JSON.parse(saved) : (hasSupabase ? [] : initialSppPayments);
   });
 
-  // Save state to localStorage
+  const [dbLoaded, setDbLoaded] = useState(false);
+
+  // Save state to localStorage (offline mode only — cloud mode: Supabase is source of truth)
   useEffect(() => {
+    if (!dbLoaded || hasSupabase) return;
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_school`, JSON.stringify(schoolSettings));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_years`, JSON.stringify(academicYears));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_students`, JSON.stringify(students));
@@ -190,9 +195,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit_logs`, JSON.stringify(auditLogs));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_spp_payments`, JSON.stringify(sppPayments));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
-  }, [schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments, users]);
+  }, [dbLoaded, schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments, users]);
 
-  const [dbLoaded, setDbLoaded] = useState(false);
   const fetchFromSupabase = useCallback(async () => {
     const [dbStudents, dbTransactions, dbBooks, dbDistributions, dbBookPayments, dbSppPayments, dbAcademicYears, dbAuditLogs, dbUsers] = await Promise.all([
       fetchAll<Student>('students'),
@@ -1970,7 +1974,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           </div>
         </div>
       )}
-      {children}
+      {hasSupabase && !dbLoaded ? (
+        <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Memuat data...</div>
+      ) : (
+        children
+      )}
     </AppContext.Provider>
   );
 };
