@@ -1,0 +1,143 @@
+- generic [ref=f5e85]:
+  - banner [ref=f5e86]:
+    - generic [ref=f5e87]:
+      - generic [ref=f5e94]:
+        - heading "SD & TK Nusantara Utama" [level=1] [ref=f5e95]
+        - paragraph [ref=f5e96]:
+          - generic [ref=f5e97]: Sistem Tabungan Digital
+          - generic [ref=f5e99]: Jl. Pemuda No. 45, Kebayoran Baru, Jakarta Selatan
+      - generic [ref=f5e100]:
+        - generic [ref=f5e101]:
+          - generic [ref=f5e102]: 15.11.28
+          - generic [ref=f5e103]: Senin, 3 Agustus 2026
+        - generic [ref=f5e104]:
+          - generic [ref=f5e107]: "Tahun Ajaran:"
+          - generic [ref=f5e108]: 2026/2027
+        - generic [ref=f5e109]: Developer
+        - generic [ref=f5e113]:
+          - button "Pengaturan Sekolah & Backup" [ref=f5e114] [cursor=pointer]
+          - button "Keluar" [ref=f5e118] [cursor=pointer]
+    - navigation [ref=f5e124]:
+      - button "Dashboard" [ref=f5e125] [cursor=pointer]
+      - button "Siswa" [ref=f5e132] [cursor=pointer]
+      - button "SPP" [ref=f5e139] [cursor=pointer]
+      - button "Setoran" [active] [ref=f5e144] [cursor=pointer]
+      - button "Penarikan / Approval 1" [ref=f5e149] [cursor=pointer]:
+        - generic [ref=f5e153]: Penarikan / Approval
+        - generic [ref=f5e154]: "1"
+      - button "Koperasi & Kegiatan" [ref=f5e155] [cursor=pointer]
+      - button "Laporan" [ref=f5e161] [cursor=pointer]
+      - button "Audit Log" [ref=f5e166] [cursor=pointer]
+  - main [ref=f5e172]:
+    - generic [ref=f5e363]:
+      - generic [ref=f5e364]:
+        - generic [ref=f5e365]:
+          - generic [ref=f5e371]:
+            - heading "Input Setoran Tabungan Siswa" [level=2] [ref=f5e372]
+            - paragraph [ref=f5e373]: Pilih kelas & nama siswa, lalu tentukan nominal setoran tabungan
+          - generic [ref=f5e374]:
+            - generic [ref=f5e375]:
+              - generic [ref=f5e376]: 1. Pilih Kelas *
+              - generic [ref=f5e379]:
+                - button "Semua (1)" [ref=f5e380] [cursor=pointer]
+                - button "TK A (0)" [ref=f5e381] [cursor=pointer]
+                - button "TK B (0)" [ref=f5e382] [cursor=pointer]
+                - button "Kelas 1A (0)" [ref=f5e383] [cursor=pointer]
+                - button "Kelas 1 B (0)" [ref=f5e384] [cursor=pointer]
+                - button "Kelas 2A (0)" [ref=f5e385] [cursor=pointer]
+                - button "Kelas 2B (0)" [ref=f5e386] [cursor=pointer]
+                - button "Kelas 3A (0)" [ref=f5e387] [cursor=pointer]
+                - button "Kelas 3B (0)" [ref=f5e388] [cursor=pointer]
+                - button "Kelas 4A (0)" [ref=f5e389] [cursor=pointer]
+                - button "Kelas 4B (0)" [ref=f5e390] [cursor=pointer]
+                - button "Kelas 5A (0)" [ref=f5e391] [cursor=pointer]
+                - button "Kelas 5B (0)" [ref=f5e392] [cursor=pointer]
+                - button "Kelas 6A (0)" [ref=f5e393] [cursor=pointer]
+                - button "Kelas 6B (0)" [ref=f5e394] [cursor=pointer]
+            - generic [ref=f5e395]:
+              - generic [ref=f5e396]: 2. Cari & Pilih Nama Siswa *
+              - textbox "Ketik Nama Siswa atau NIS untuk mencari..." [ref=f5e404]
+              - button "zada (101010101) — 1 Rp 100.000" [ref=f5e406] [cursor=pointer]:
+                - generic [ref=f5e407]:
+                  - text: zada
+                  - generic [ref=f5e408]: (101010101) — 1
+                - generic [ref=f5e409]: Rp 100.000
+              - paragraph [ref=f5e410]: Klik nama siswa di daftar untuk memilih.
+            - generic [ref=f5e411]:
+              - generic [ref=f5e412]: 3. Nominal Setoran *
+              - generic [ref=f5e413]:
+                - generic [ref=f5e414]: "Pilih Nominal Cepat:"
+                - generic [ref=f5e415]:
+                  - button "2.000" [ref=f5e416] [cursor=pointer]
+                  - button "5.000" [ref=f5e417] [cursor=pointer]
+                  - button "10.000" [ref=f5e418] [cursor=pointer]
+                  - button "15.000" [ref=f5e419] [cursor=pointer]
+                  - button "20.000" [ref=f5e420] [cursor=pointer]
+                  - button "25.000" [ref=f5e421] [cursor=pointer]
+              - generic [ref=f5e422]:
+                - generic [ref=f5e423]: Rp
+                - textbox "5.000" [ref=f5e424]
+              - paragraph [ref=f5e425]: Format otomatis pemisah ribuan. Default nominal setoran adalah Rp 5.000
+            - generic [ref=f5e426]:
+              - generic [ref=f5e427]: Keterangan / Catatan
+              - 'textbox "Contoh: Setoran Tabungan Rutin" [ref=f5e428]': Setoran Tabungan Rutin
+            - button "Simpan Setoran Sekarang" [ref=f5e429] [cursor=pointer]
+        - generic [ref=f5e433]:
+          - generic [ref=f5e434]:
+            - generic [ref=f5e435]: Bukti Transaksi Terakhir
+            - generic [ref=f5e440]: Belum ada transaksi setoran yang baru saja diproses dalam sesi ini.
+          - paragraph [ref=f5e442]: Setoran yang disimpan akan langsung memperbarui saldo siswa secara realtime dan dicatat pada Audit Log sistem.
+        - generic [ref=f5e443]:
+          - generic [ref=f5e444]:
+            - generic [ref=f5e445]:
+              - heading "Antrean Perbaikan Transaksi" [level=3] [ref=f5e446]
+              - generic [ref=f5e450]: "0"
+            - generic [ref=f5e451]: Tidak ada permintaan perbaikan transaksi.
+          - generic [ref=f5e455]: Persetujuan perbaikan hanya dimiliki oleh Kepala Sekolah & Developer.
+      - generic [ref=f5e459]:
+        - heading "Riwayat Setoran Tabungan (2 Transaksi)" [level=3] [ref=f5e460]
+        - table [ref=f5e466]:
+          - rowgroup [ref=f5e467]:
+            - row [ref=f5e468]:
+              - columnheader "No" [ref=f5e469]
+              - columnheader "No. Transaksi" [ref=f5e470]
+              - columnheader "Siswa" [ref=f5e471]
+              - columnheader "Kelas" [ref=f5e472]
+              - columnheader "Nominal" [ref=f5e473]
+              - columnheader "Keterangan" [ref=f5e474]
+              - columnheader "Petugas" [ref=f5e475]
+              - columnheader "Tanggal & Waktu" [ref=f5e476]
+              - columnheader "Aksi" [ref=f5e477]
+          - rowgroup [ref=f5e478]:
+            - row [ref=f5e479]:
+              - cell "1" [ref=f5e480]
+              - cell "ST/2026/00009" [ref=f5e481]
+              - cell "zada (101010101)" [ref=f5e482]:
+                - text: zada
+                - generic [ref=f5e483]: (101010101)
+              - cell "1" [ref=f5e484]
+              - cell "Rp 10.000" [ref=f5e485]
+              - cell "Setoran Tabungan Rutin" [ref=f5e486]
+              - cell "Mas Dev (Developer)" [ref=f5e487]
+              - cell "31 Juli 2026 pukul 11.06.45" [ref=f5e488]
+              - cell [ref=f5e489]:
+                - generic [ref=f5e490]:
+                  - button "Perbaiki Transaksi" [ref=f5e491] [cursor=pointer]
+                  - button "Cetak Kuitansi PDF" [ref=f5e495] [cursor=pointer]
+            - row [ref=f5e500]:
+              - cell "2" [ref=f5e501]
+              - cell "ST/2026/00012" [ref=f5e502]
+              - cell "zada (101010101)" [ref=f5e503]:
+                - text: zada
+                - generic [ref=f5e504]: (101010101)
+              - cell "1" [ref=f5e505]
+              - cell "Rp 100.000" [ref=f5e506]
+              - cell "Setoran Tabungan Rutin" [ref=f5e507]
+              - cell "Mas Dev (Developer)" [ref=f5e508]
+              - cell "31 Juli 2026 pukul 22.03.14" [ref=f5e509]
+              - cell [ref=f5e510]:
+                - generic [ref=f5e511]:
+                  - button "Perbaiki Transaksi" [ref=f5e512] [cursor=pointer]
+                  - button "Cetak Kuitansi PDF" [ref=f5e516] [cursor=pointer]
+  - contentinfo [ref=f5e361]:
+    - generic [ref=f5e362]: Sistem Informasi Sekolah • Powered by Dzulfikar Dev

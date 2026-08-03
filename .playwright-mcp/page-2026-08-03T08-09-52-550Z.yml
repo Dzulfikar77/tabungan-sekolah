@@ -1,0 +1,18 @@
+- generic [ref=f4e43]:
+  - generic [ref=f4e44]:
+    - heading "Sistem Informasi Sekolah" [level=1] [ref=f4e50]
+    - paragraph [ref=f4e51]: SD & TK Nusantara Utama
+  - generic [ref=f4e52]:
+    - generic [ref=f4e53]:
+      - generic [ref=f4e54]:
+        - generic [ref=f4e55]: Username
+        - textbox "Masukkan username" [active] [ref=f4e60]
+      - generic [ref=f4e61]:
+        - generic [ref=f4e62]: Kata Sandi
+        - generic [ref=f4e63]:
+          - textbox "••••••••" [ref=f4e67]
+          - button [ref=f4e68] [cursor=pointer]
+      - button "Masuk" [ref=f4e72] [cursor=pointer]
+    - button "Lupa Password?" [ref=f4e77] [cursor=pointer]
+    - generic [ref=f4e78]: Atau
+    - button "Login sebagai Orang Tua / Siswa" [ref=f4e81] [cursor=pointer]
