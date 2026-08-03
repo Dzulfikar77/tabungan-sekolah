@@ -1,0 +1,19 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - heading "Portal Orang Tua & Siswa" [level=1] [ref=e10]
+    - paragraph [ref=e11]: SD & TK Nusantara Utama
+    - paragraph [ref=e12]: Lihat saldo tabungan, riwayat transaksi, dan status pembayaran
+  - generic [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: Nama Anak
+        - combobox "Ketik nama anak..." [active] [ref=e21]
+        - paragraph [ref=e22]: Ketik nama anak — saran muncul otomatis. Pilih anak Anda, lalu isi password.
+      - generic [ref=e23]:
+        - generic [ref=e24]: Password
+        - generic [ref=e25]:
+          - textbox "••••••••" [ref=e29]
+          - button [ref=e30] [cursor=pointer]
+      - button "Masuk" [ref=e34] [cursor=pointer]
+      - button "Lupa Password?" [ref=e39] [cursor=pointer]
+    - button "Kembali ke Login Admin" [ref=e41] [cursor=pointer]

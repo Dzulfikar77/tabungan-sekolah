@@ -1,0 +1,214 @@
+- generic [ref=e2]:
+  - generic [ref=e1105]:
+    - generic [ref=e1106]: "Peringatan: Gagal menyimpan data ke cloud (transactions — Could not find the 'edit_request' column of 'transactions' in the schema cache). Data hanya tersimpan sementara di perangkat Anda. Periksa koneksi internet; jika masalah berlanjut, hubungi segera developer. (+4 operasi gagal lainnya)"
+    - button "Tutup" [ref=e1107] [cursor=pointer]
+  - generic [ref=e85]:
+    - banner [ref=e86]:
+      - generic [ref=e87]:
+        - generic [ref=e94]:
+          - heading "SD & TK Nusantara Utama" [level=1] [ref=e95]
+          - paragraph [ref=e96]:
+            - generic [ref=e97]: Sistem Tabungan Digital
+            - generic [ref=e99]: Jl. Pemuda No. 45, Kebayoran Baru, Jakarta Selatan
+        - generic [ref=e100]:
+          - generic [ref=e101]:
+            - generic [ref=e102]: 14.32.53
+            - generic [ref=e103]: Senin, 3 Agustus 2026
+          - generic [ref=e104]:
+            - generic [ref=e107]: "Tahun Ajaran:"
+            - generic [ref=e108]: 2025/2026
+          - generic [ref=e109]: Developer
+          - generic [ref=e113]:
+            - button "Pengaturan Sekolah & Backup" [ref=e114] [cursor=pointer]
+            - button "Keluar" [ref=e118] [cursor=pointer]
+      - navigation [ref=e124]:
+        - button "Dashboard" [ref=e125] [cursor=pointer]
+        - button "Siswa" [ref=e132] [cursor=pointer]
+        - button "SPP" [ref=e139] [cursor=pointer]
+        - button "Setoran" [ref=e144] [cursor=pointer]
+        - button "Penarikan / Approval 1" [ref=e149] [cursor=pointer]:
+          - generic [ref=e153]: Penarikan / Approval
+          - generic [ref=e154]: "1"
+        - button "Koperasi & Kegiatan" [ref=e155] [cursor=pointer]
+        - button "Laporan" [ref=e161] [cursor=pointer]
+        - button "Audit Log" [ref=e166] [cursor=pointer]
+    - main [ref=e172]:
+      - generic [ref=e1161]:
+        - generic [ref=e1165]:
+          - heading "Mekanisme Approval Penarikan 2 Lapis (Dua Tingkat)" [level=4] [ref=e1166]
+          - paragraph [ref=e1167]:
+            - text: "1."
+            - strong [ref=e1168]: "Pengajuan:"
+            - text: Admin atau Super Admin mengajukan potongan/penarikan saldo siswa. Status transaksi langsung menjadi Menunggu Persetujuan dan SALDO SISWA SAMA SEKALI BELUM BERKURANG.2.
+            - strong [ref=e1169]: "Persetujuan (Approval):"
+            - text: Hanya
+            - strong [ref=e1170]: Super Admin (Kepala Sekolah)
+            - text: "&"
+            - strong [ref=e1171]: Developer
+            - text: yang memiliki wewenang untuk menyetujui atau menolak. Setelah disetujui, saldo siswa baru akan terpotong secara otomatis.
+        - generic [ref=e1172]:
+          - generic [ref=e1173]:
+            - 'button "Model 1: Penarikan Reguler" [ref=e1174] [cursor=pointer]'
+            - 'button "Model 2: Tutup Tabungan" [ref=e1178] [cursor=pointer]'
+          - paragraph [ref=e1182]: "Model 1: penarikan biasa (bayar buku/kegiatan/SPP) — data siswa tetap. Model 2: tutup tabungan (lulus/pindah sekolah) — saldo ditarik penuh & data siswa dihapus setelah disetujui."
+        - generic [ref=e1183]:
+          - generic [ref=e1184]:
+            - generic [ref=e1190]:
+              - heading "Form Pengajuan Penarikan / Potongan Tabungan" [level=2] [ref=e1191]
+              - paragraph [ref=e1192]: Memerlukan persetujuan Super Admin sebelum saldo terpotong
+            - generic [ref=e1193]:
+              - generic [ref=e1194]:
+                - generic [ref=e1195]: 1. Pilih Kelas *
+                - generic [ref=e1198]:
+                  - button "Semua (99)" [ref=e1199] [cursor=pointer]
+                  - button "TK A (7)" [ref=e1200] [cursor=pointer]
+                  - button "TK B (7)" [ref=e1201] [cursor=pointer]
+                  - button "Kelas 1A (7)" [ref=e1202] [cursor=pointer]
+                  - button "Kelas 1 B (7)" [ref=e1203] [cursor=pointer]
+                  - button "Kelas 2A (7)" [ref=e1204] [cursor=pointer]
+                  - button "Kelas 2B (7)" [ref=e1205] [cursor=pointer]
+                  - button "Kelas 3A (7)" [ref=e1206] [cursor=pointer]
+                  - button "Kelas 3B (7)" [ref=e1207] [cursor=pointer]
+                  - button "Kelas 4A (7)" [ref=e1208] [cursor=pointer]
+                  - button "Kelas 4B (7)" [ref=e1209] [cursor=pointer]
+                  - button "Kelas 5A (7)" [ref=e1210] [cursor=pointer]
+                  - button "Kelas 5B (8)" [ref=e1211] [cursor=pointer]
+                  - button "Kelas 6A (7)" [ref=e1212] [cursor=pointer]
+                  - button "Kelas 6B (7)" [ref=e1213] [cursor=pointer]
+              - generic [ref=e1214]:
+                - generic [ref=e1215]: 2. Cari & Pilih Nama Siswa *
+                - textbox "Ketik NIS atau Nama Siswa..." [ref=e1223]: Dewi Lestari
+                - button "Dewi Lestari (2025028) — Kelas 1 B Rp 220.000" [ref=e1854] [cursor=pointer]:
+                  - generic [ref=e1330]:
+                    - text: Dewi Lestari
+                    - generic [ref=e1331]: (2025028) — Kelas 1 B
+                  - generic [ref=e1332]: Rp 220.000
+                - paragraph [ref=e1621]: Klik nama siswa di daftar untuk memilih.
+              - generic [ref=e1725]:
+                - generic [ref=e1726]:
+                  - generic [ref=e1727]: Dewi Lestari
+                  - generic [ref=e1732]:
+                    - text: "NIS: 2025028 | Kelas:"
+                    - strong [ref=e1733]: Kelas 1 B
+                - generic [ref=e1734]:
+                  - generic [ref=e1735]: Saldo Tersedia
+                  - generic [ref=e1736]: Rp 220.000
+              - generic [ref=e1622]:
+                - generic [ref=e1623]: 3. Nominal Penarikan *
+                - generic [ref=e1624]:
+                  - generic [ref=e1625]: "Pilih Nominal Cepat:"
+                  - generic [ref=e1626]:
+                    - button "2.000" [ref=e1627] [cursor=pointer]
+                    - button "5.000" [ref=e1628] [cursor=pointer]
+                    - button "10.000" [ref=e1629] [cursor=pointer]
+                    - button "15.000" [ref=e1630] [cursor=pointer]
+                    - button "20.000" [ref=e1631] [cursor=pointer]
+                    - button "25.000" [ref=e1632] [cursor=pointer]
+                - generic [ref=e1633]:
+                  - generic [ref=e1634]: Rp
+                  - textbox "5.000" [ref=e1635]
+                - paragraph [ref=e1636]: Format otomatis pemisah ribuan. Default nominal penarikan adalah Rp 5.000
+              - generic [ref=e1738]: Pengajuan penarikan Rp 10.000 berhasil dikirim dengan status "Menunggu Persetujuan". Saldo siswa TETAP SAMA sampai disetujui Kepala Sekolah.
+              - generic [ref=e1637]:
+                - generic [ref=e1638]: Alasan Penarikan *
+                - 'textbox "Contoh: Pembelian LKS / Pengambilan Saldo oleh Orang Tua" [ref=e1639]': Pengambilan Tabungan
+              - button "Kirim Pengajuan Penarikan" [ref=e1640] [cursor=pointer]
+          - generic [ref=e1644]:
+            - generic [ref=e1645]:
+              - generic [ref=e1646]:
+                - heading "Antrean Approval Pending" [level=3] [ref=e1647]
+                - generic [ref=e1651]: "1"
+              - generic [ref=e1653]:
+                - generic [ref=e1654]:
+                  - generic [ref=e1655]:
+                    - generic [ref=e1656]: Dewi Lestari
+                    - generic [ref=e1657]: 2025043 (Kelas 3B)
+                  - generic [ref=e1658]:
+                    - generic [ref=e1659]: Rp 50.000
+                    - generic [ref=e1660]: Pending Approval
+                - generic [ref=e1661]: "\"Pembelian Seragam Olahraga Tambahan\""
+                - generic [ref=e1662]:
+                  - generic [ref=e1663]: "Oleh: Budi Santoso, S.Pd"
+                  - generic [ref=e1664]: 25 Juli 2026 pukul 21.10.00
+                - generic [ref=e1665]:
+                  - button "Setujui" [ref=e1666] [cursor=pointer]
+                  - button "Tolak" [ref=e1670] [cursor=pointer]
+            - generic [ref=e1675]: Akses persetujuan hanya dimiliki oleh Kepala Sekolah & Developer.
+        - generic [ref=e1676]:
+          - generic [ref=e1677]:
+            - generic [ref=e1678]:
+              - heading "Antrean Perbaikan Transaksi" [level=3] [ref=e1679]
+              - generic [ref=e1683]: "1"
+            - generic [ref=e2055]: "Gagal menyetujui: Saldo siswa (Rp 220.000) tidak mencukupi setelah perbaikan nominal (menjadi Rp -50.000)."
+            - generic [ref=e2014]:
+              - generic [ref=e2015]:
+                - generic [ref=e2016]:
+                  - generic [ref=e2017]: Dewi Lestari
+                  - generic [ref=e2018]: PT/2025/00013 · 2025028 (Kelas 1 B)
+                  - generic [ref=e2019]: Penarikan
+                - generic [ref=e2020]:
+                  - generic [ref=e2021]:
+                    - text: Rp 30.000
+                    - generic [ref=e2022]: → Rp 300.000
+                  - generic [ref=e2023]: Pending Approve
+              - generic [ref=e2024]:
+                - generic [ref=e2025]:
+                  - generic [ref=e2026]: "Keterangan:"
+                  - generic [ref=e2027]: Pengambilan Tabungan → Pengambilan Tabungan
+                - generic [ref=e2028]:
+                  - generic [ref=e2029]: "Diajukan oleh:"
+                  - generic [ref=e2030]: Mas Dev (Developer)
+                - generic [ref=e2031]:
+                  - generic [ref=e2032]: "Waktu:"
+                  - generic [ref=e2033]: 3 Agustus 2026 pukul 14.32.40
+              - generic [ref=e2034]:
+                - button "Setujui" [active] [ref=e2035] [cursor=pointer]
+                - button "Tolak" [ref=e2039] [cursor=pointer]
+          - generic [ref=e1688]: Persetujuan perbaikan hanya dimiliki oleh Kepala Sekolah & Developer.
+        - generic [ref=e1692]:
+          - heading "Riwayat Penarikan Tabungan (2 Transaksi)" [level=3] [ref=e1743]
+          - table [ref=e1699]:
+            - rowgroup [ref=e1700]:
+              - row [ref=e1701]:
+                - columnheader "No" [ref=e1702]
+                - columnheader "No. Transaksi" [ref=e1703]
+                - columnheader "Siswa" [ref=e1704]
+                - columnheader "Kelas" [ref=e1705]
+                - columnheader "Nominal" [ref=e1706]
+                - columnheader "Status" [ref=e1707]
+                - columnheader "Pengaju" [ref=e1708]
+                - columnheader "Disetujui Oleh" [ref=e1709]
+                - columnheader "Tanggal" [ref=e1710]
+                - columnheader "Aksi" [ref=e1711]
+            - rowgroup [ref=e1712]:
+              - row [ref=e2044]:
+                - cell "1" [ref=e1745]
+                - cell "PT/2025/00013" [ref=e1746]
+                - cell "Dewi Lestari (2025028)" [ref=e1747]:
+                  - text: Dewi Lestari
+                  - generic [ref=e1748]: (2025028)
+                - cell "Kelas 1 B" [ref=e1749]
+                - cell "-Rp 30.000" [ref=e1860]
+                - cell "Disetujui" [ref=e1751]
+                - cell "Mas Dev (Developer)" [ref=e1752]
+                - cell "-" [ref=e1753]
+                - cell "3 Agustus 2026 pukul 14.29.35" [ref=e1754]
+                - cell [ref=e2045]:
+                  - generic [ref=e1756]:
+                    - generic "Menunggu persetujuan Super Admin" [ref=e2046]: Pending Edit
+                    - button "Cetak Kuitansi" [ref=e1761] [cursor=pointer]
+              - row [ref=e1766]:
+                - cell "2" [ref=e1767]
+                - cell "ST/2026/00004" [ref=e1715]
+                - cell "Dewi Lestari (2025043)" [ref=e1716]:
+                  - text: Dewi Lestari
+                  - generic [ref=e1717]: (2025043)
+                - cell "Kelas 3B" [ref=e1718]
+                - cell "-Rp 50.000" [ref=e1719]
+                - cell "Menunggu Persetujuan" [ref=e1720]
+                - cell "Budi Santoso, S.Pd" [ref=e1721]
+                - cell "-" [ref=e1722]
+                - cell "25 Juli 2026 pukul 21.10.00" [ref=e1723]
+                - cell [ref=e1724]
+    - contentinfo [ref=e423]:
+      - generic [ref=e424]: Sistem Informasi Sekolah • Powered by Dzulfikar Dev

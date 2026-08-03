@@ -5,10 +5,12 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ClassGrade } from '../types';
+import { ClassGrade, Transaction } from '../types';
 import { formatRupiah, formatNumberInput, parseFormattedNumber, formatDate, filterByAccessLevel } from '../utils/format';
 import { generateTransactionReceiptPDF } from '../utils/pdfGenerator';
 import { ALL_CLASSES } from '../utils/initialData';
+import { TransactionEditModal } from './TransactionEditModal';
+import { PendingEditApprovals } from './PendingEditApprovals';
 import {
   ArrowDownCircle,
   Clock,
@@ -24,6 +26,7 @@ import {
   AlertTriangle,
   Wallet,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 
 export const WithdrawalForm: React.FC = () => {
@@ -54,6 +57,7 @@ export const WithdrawalForm: React.FC = () => {
   const [closeSavingsIds, setCloseSavingsIds] = useState<Set<string>>(new Set());
   const [closeSavingsReason, setCloseSavingsReason] = useState('Lulus / Pindah Sekolah');
   const [closeSavingsResult, setCloseSavingsResult] = useState<{ pendingCount: number; closedCount: number; totalWithdrawn: number; errors: string[] } | null>(null);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   const GRADUATING_CLASSES: ClassGrade[] = ['TK B', 'Kelas 6A', 'Kelas 6B'];
 
@@ -681,7 +685,10 @@ export const WithdrawalForm: React.FC = () => {
         </div>
       </div>
 
-      {/* History Table of Withdrawals */}
+      {/* Pending Edit Approvals Panel */}
+      <PendingEditApprovals type="Penarikan" />
+
+        {/* History Table of Withdrawals */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden p-5">
         <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2">
           <History className="w-4 h-4 text-rose-600" />
@@ -701,7 +708,7 @@ export const WithdrawalForm: React.FC = () => {
                 <th className="py-2.5 px-3">Pengaju</th>
                 <th className="py-2.5 px-3">Disetujui Oleh</th>
                 <th className="py-2.5 px-3">Tanggal</th>
-                <th className="py-2.5 px-3 text-center">Cetak</th>
+                <th className="py-2.5 px-3 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
@@ -740,15 +747,36 @@ export const WithdrawalForm: React.FC = () => {
                     <td className="py-2.5 px-3 text-slate-600">{t.approvedByName || '-'}</td>
                     <td className="py-2.5 px-3 text-slate-400 text-[11px]">{formatDate(t.createdAt)}</td>
                     <td className="py-2.5 px-3 text-center">
-                      {t.status === 'Disetujui' && (
-                        <button
-                          onClick={() => generateTransactionReceiptPDF(t, schoolSettings)}
-                          title="Cetak Kuitansi"
-                          className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <div className="flex items-center justify-center gap-1.5">
+                        {t.status === 'Disetujui' && !t.hasPendingEdit && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingTx(t)}
+                            title="Perbaiki Transaksi"
+                            className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg cursor-pointer transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {t.hasPendingEdit && (
+                          <span
+                            title="Menunggu persetujuan Super Admin"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 whitespace-nowrap"
+                          >
+                            <Clock className="w-2.5 h-2.5" /> Pending Edit
+                          </span>
+                        )}
+                        {t.status === 'Disetujui' && (
+                          <button
+                            type="button"
+                            onClick={() => generateTransactionReceiptPDF(t, schoolSettings)}
+                            title="Cetak Kuitansi"
+                            className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -772,12 +800,14 @@ export const WithdrawalForm: React.FC = () => {
             />
             <div className="flex justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setRejectingTxId(null)}
                 className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg cursor-pointer"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={handleConfirmReject}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg cursor-pointer"
               >
@@ -786,6 +816,11 @@ export const WithdrawalForm: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTx && (
+        <TransactionEditModal transaction={editingTx} onClose={() => setEditingTx(null)} />
       )}
     </div>
   );

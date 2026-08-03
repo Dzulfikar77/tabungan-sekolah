@@ -9,6 +9,8 @@ import { formatRupiah, formatNumberInput, parseFormattedNumber, formatDate, filt
 import { generateTransactionReceiptPDF } from '../utils/pdfGenerator';
 import { Transaction, ClassGrade } from '../types';
 import { ALL_CLASSES } from '../utils/initialData';
+import { TransactionEditModal } from './TransactionEditModal';
+import { PendingEditApprovals } from './PendingEditApprovals';
 import {
   Banknote,
   CheckCircle2,
@@ -18,6 +20,8 @@ import {
   UserCheck,
   History,
   Filter,
+  Pencil,
+  Clock,
 } from 'lucide-react';
 
 export const DepositForm: React.FC = () => {
@@ -38,6 +42,7 @@ export const DepositForm: React.FC = () => {
   const [warningMessage, setWarningMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [lastSuccessTransaction, setLastSuccessTransaction] = useState<Transaction | null>(null);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   const NOMINAL_PRESETS = [2000, 5000, 10000, 15000, 20000, 25000];
 
@@ -398,6 +403,8 @@ export const DepositForm: React.FC = () => {
             </p>
           </div>
         </div>
+
+        <PendingEditApprovals type="Setoran" />
       </div>
 
       {/* History Table of Deposits */}
@@ -445,13 +452,34 @@ export const DepositForm: React.FC = () => {
                     <td className="py-2.5 px-3 text-slate-600">{t.createdByName}</td>
                     <td className="py-2.5 px-3 text-slate-400 text-[11px]">{formatDate(t.createdAt)}</td>
                     <td className="py-2.5 px-3 text-center">
-                      <button
-                        onClick={() => generateTransactionReceiptPDF(t, schoolSettings)}
-                        title="Cetak Kuitansi PDF"
-                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        {t.status === 'Disetujui' && !t.hasPendingEdit && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingTx(t)}
+                            title="Perbaiki Transaksi"
+                            className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg cursor-pointer transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {t.hasPendingEdit && (
+                          <span
+                            title="Menunggu persetujuan Super Admin"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 whitespace-nowrap"
+                          >
+                            <Clock className="w-2.5 h-2.5" /> Pending Edit
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => generateTransactionReceiptPDF(t, schoolSettings)}
+                          title="Cetak Kuitansi PDF"
+                          className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -460,6 +488,10 @@ export const DepositForm: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {editingTx && (
+        <TransactionEditModal transaction={editingTx} onClose={() => setEditingTx(null)} />
+      )}
     </div>
   );
 };

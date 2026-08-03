@@ -9,6 +9,7 @@ import {
   UserRole,
   Student,
   Transaction,
+  TransactionEditRequest,
   TransactionStatus,
   Book,
   BookDistribution,
@@ -65,6 +66,9 @@ interface AppContextType {
   approveWithdrawal: (transactionId: string) => { success: boolean; error?: string };
   rejectWithdrawal: (transactionId: string, rejectionReason?: string) => { success: boolean; error?: string };
   closeStudentSavings: (studentIds: string[], reason: string) => { success: boolean; pendingCount: number; closedCount: number; totalWithdrawn: number; errors: string[] };
+  requestEditTransaction: (transactionId: string, newAmount: number, newReason: string) => { success: boolean; error?: string };
+  approveEditTransaction: (transactionId: string) => { success: boolean; error?: string };
+  rejectEditTransaction: (transactionId: string, rejectionReason?: string) => { success: boolean; error?: string };
 
   toggleMonthlyDeduction: (enabled: boolean) => void;
   runMonthlyDeduction: () => MonthlyDeductionSummary;
@@ -1115,6 +1119,146 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
+  const requestEditTransaction = (transactionId: string, newAmount: number, newReason: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    const tx = transactions.find((t) => t.id === transactionId);
+    if (!tx) {
+      return { success: false, error: 'Transaksi tidak ditemukan.' };
+    }
+    if (tx.status !== 'Disetujui') {
+      return { success: false, error: 'Hanya transaksi berstatus Disetujui yang dapat diperbaiki.' };
+    }
+    if (tx.hasPendingEdit) {
+      return { success: false, error: 'Transaksi ini sudah memiliki permintaan perbaikan yang menunggu persetujuan.' };
+    }
+    if (tx.type === 'Potongan Bulanan') {
+      return { success: false, error: 'Transaksi Potongan Bulanan otomatis tidak dapat diperbaiki.' };
+    }
+    if (newAmount <= 0) {
+      return { success: false, error: 'Nominal baru harus lebih besar dari 0.' };
+    }
+    if (newAmount > 99999000) {
+      return { success: false, error: 'Nominal melebihi batas maksimal transaksi (Rp 99.999.000).' };
+    }
+    if (newAmount === tx.amount && newReason.trim() === tx.reason.trim()) {
+      return { success: false, error: 'Tidak ada perubahan: nominal dan keterangan sama dengan data saat ini.' };
+    }
+
+    const editRequest: TransactionEditRequest = {
+      requestedById: currentUser.id,
+      requestedByName: currentUser.name,
+      requestedByRole: currentUser.role,
+      requestedAt: new Date().toISOString(),
+      oldAmount: tx.amount,
+      newAmount,
+      oldReason: tx.reason,
+      newReason: newReason.trim(),
+    };
+
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === transactionId ? { ...t, hasPendingEdit: true, editRequest } : t))
+    );
+    updateRow('transactions', transactionId, { has_pending_edit: true, edit_request: editRequest });
+
+    addAuditLog(
+      'Perbaikan Transaksi Diajukan',
+      `${tx.transactionNumber}: Rp ${tx.amount.toLocaleString('id-ID')} / Ket: ${tx.reason}`,
+      `${tx.transactionNumber}: Rp ${newAmount.toLocaleString('id-ID')} / Ket: ${newReason.trim()}`,
+      `Permintaan perbaikan ${tx.type} ${tx.studentName} (${tx.transactionNumber}) diajukan oleh ${currentUser.name}. Menunggu persetujuan Super Admin.`
+    );
+
+    return { success: true };
+  };
+
+  const approveEditTransaction = (transactionId: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer') {
+      return { success: false, error: 'Hanya Super Admin (Kepala Sekolah) yang dapat menyetujui perbaikan transaksi.' };
+    }
+    const tx = transactions.find((t) => t.id === transactionId);
+    if (!tx) {
+      return { success: false, error: 'Transaksi tidak ditemukan.' };
+    }
+    if (!tx.hasPendingEdit || !tx.editRequest) {
+      return { success: false, error: 'Tidak ada permintaan perbaikan untuk transaksi ini.' };
+    }
+    const student = students.find((s) => s.id === tx.studentId);
+    if (!student) {
+      return { success: false, error: 'Data siswa tidak ditemukan.' };
+    }
+
+    const { oldAmount, newAmount, newReason } = tx.editRequest;
+    const diff = newAmount - oldAmount;
+    const newBalance = tx.type === 'Setoran' ? student.balance + diff : student.balance - diff;
+    if (newBalance < 0) {
+      return {
+        success: false,
+        error: `Saldo siswa (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi setelah perbaikan nominal (menjadi Rp ${newBalance.toLocaleString('id-ID')}).`,
+      };
+    }
+
+    setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: newBalance } : s)));
+    updateRow('students', student.id, { balance: newBalance });
+
+    setTransactions((prev) =>
+      prev.map((t) =>
+        t.id === transactionId
+          ? {
+              ...t,
+              amount: newAmount,
+              reason: newReason,
+              hasPendingEdit: false,
+              editRequest: undefined,
+            }
+          : t
+      )
+    );
+    updateRow('transactions', transactionId, { amount: newAmount, reason: newReason, has_pending_edit: false, edit_request: null });
+
+    addAuditLog(
+      'Perbaikan Transaksi Disetujui',
+      `${tx.transactionNumber}: Rp ${oldAmount.toLocaleString('id-ID')} / Ket: ${tx.editRequest.oldReason}`,
+      `${tx.transactionNumber}: Rp ${newAmount.toLocaleString('id-ID')} / Ket: ${newReason}`,
+      `Perbaikan ${tx.type} ${tx.studentName} (${tx.transactionNumber}) disetujui oleh ${currentUser.name}. Saldo ${student.name} diperbarui menjadi Rp ${newBalance.toLocaleString('id-ID')}.`
+    );
+
+    return { success: true };
+  };
+
+  const rejectEditTransaction = (transactionId: string, rejectionReason?: string) => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer') {
+      return { success: false, error: 'Hanya Super Admin (Kepala Sekolah) yang dapat menolak perbaikan transaksi.' };
+    }
+    const tx = transactions.find((t) => t.id === transactionId);
+    if (!tx) {
+      return { success: false, error: 'Transaksi tidak ditemukan.' };
+    }
+    if (!tx.hasPendingEdit || !tx.editRequest) {
+      return { success: false, error: 'Tidak ada permintaan perbaikan untuk transaksi ini.' };
+    }
+
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === transactionId ? { ...t, hasPendingEdit: false, editRequest: undefined } : t))
+    );
+    updateRow('transactions', transactionId, { has_pending_edit: false, edit_request: null });
+
+    addAuditLog(
+      'Perbaikan Transaksi Ditolak',
+      `${tx.transactionNumber}: Rp ${tx.editRequest.oldAmount.toLocaleString('id-ID')} → Rp ${tx.editRequest.newAmount.toLocaleString('id-ID')}`,
+      `${tx.transactionNumber}: tetap Rp ${tx.amount.toLocaleString('id-ID')}`,
+      `Permintaan perbaikan ${tx.transactionNumber} ditolak oleh ${currentUser.name}. Alasan: ${rejectionReason || 'Tidak ada alasan'}. Data asli dipertahankan.`
+    );
+
+    return { success: true };
+  };
+
   const executeCloseAccount = (student: Student) => {
     const finalAmount = student.balance;
     deleteLinkedViewerUser(student.id, 'tutup tabungan');
@@ -1744,6 +1888,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requestWithdrawal,
         approveWithdrawal,
         rejectWithdrawal,
+        requestEditTransaction,
+        approveEditTransaction,
+        rejectEditTransaction,
         closeStudentSavings: requestCloseSavings,
         toggleMonthlyDeduction,
         runMonthlyDeduction,

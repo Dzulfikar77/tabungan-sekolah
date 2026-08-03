@@ -59,6 +59,18 @@ export type TransactionStatus =
   | 'Menunggu Approval Super Admin'
   | 'Ditolak';
 
+// Permintaan perbaikan (edit) transaksi yang sudah disetujui — butuh persetujuan Super Admin
+export interface TransactionEditRequest {
+  requestedById: string;
+  requestedByName: string;
+  requestedByRole: UserRole;
+  requestedAt: string;
+  oldAmount: number;
+  newAmount: number;
+  oldReason: string;
+  newReason: string;
+}
+
 export interface Transaction {
   id: string;
   transactionNumber: string; // e.g. ST/2026/00001
@@ -84,6 +96,8 @@ export interface Transaction {
   academicYearId: string;
   createdAt: string; // ISO String
   closesAccount?: boolean; // Tutup tabungan (lulus/pindah): saldo 0 + data siswa dihapus saat disetujui
+  hasPendingEdit?: boolean; // Ada permintaan perbaikan menunggu persetujuan Super Admin
+  editRequest?: TransactionEditRequest; // Detail permintaan perbaikan (nominal/keterangan baru)
 }
 
 export type KoperasiKegiatanType = 'Koperasi' | 'Kegiatan';

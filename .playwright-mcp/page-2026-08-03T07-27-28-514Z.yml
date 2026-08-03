@@ -1,0 +1,730 @@
+- generic [ref=e85]:
+  - banner [ref=e86]:
+    - generic [ref=e87]:
+      - generic [ref=e94]:
+        - heading "SD & TK Nusantara Utama" [level=1] [ref=e95]
+        - paragraph [ref=e96]:
+          - generic [ref=e97]: Sistem Tabungan Digital
+          - generic [ref=e99]: Jl. Pemuda No. 45, Kebayoran Baru, Jakarta Selatan
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - generic [ref=e102]: 14.27.27
+          - generic [ref=e103]: Senin, 3 Agustus 2026
+        - generic [ref=e104]:
+          - generic [ref=e107]: "Tahun Ajaran:"
+          - generic [ref=e108]: 2025/2026
+        - generic [ref=e109]: Developer
+        - generic [ref=e113]:
+          - button "Pengaturan Sekolah & Backup" [ref=e114] [cursor=pointer]
+          - button "Keluar" [ref=e118] [cursor=pointer]
+    - navigation [ref=e124]:
+      - button "Dashboard" [ref=e125] [cursor=pointer]
+      - button "Siswa" [ref=e132] [cursor=pointer]
+      - button "SPP" [ref=e139] [cursor=pointer]
+      - button "Setoran" [ref=e144] [cursor=pointer]
+      - button "Penarikan / Approval 1" [ref=e149] [cursor=pointer]:
+        - generic [ref=e153]: Penarikan / Approval
+        - generic [ref=e154]: "1"
+      - button "Koperasi & Kegiatan" [ref=e155] [cursor=pointer]
+      - button "Laporan" [ref=e161] [cursor=pointer]
+      - button "Audit Log" [ref=e166] [cursor=pointer]
+  - main [ref=e172]:
+    - generic [ref=e425]:
+      - generic [ref=e426]:
+        - generic [ref=e427]:
+          - generic [ref=e433]:
+            - heading "Input Setoran Tabungan Siswa" [level=2] [ref=e434]
+            - paragraph [ref=e435]: Pilih kelas & nama siswa, lalu tentukan nominal setoran tabungan
+          - generic [ref=e436]:
+            - generic [ref=e437]:
+              - generic [ref=e438]: 1. Pilih Kelas *
+              - generic [ref=e441]:
+                - button "Semua (99)" [ref=e442] [cursor=pointer]
+                - button "TK A (7)" [ref=e443] [cursor=pointer]
+                - button "TK B (7)" [ref=e444] [cursor=pointer]
+                - button "Kelas 1A (7)" [ref=e445] [cursor=pointer]
+                - button "Kelas 1 B (7)" [ref=e446] [cursor=pointer]
+                - button "Kelas 2A (7)" [ref=e447] [cursor=pointer]
+                - button "Kelas 2B (7)" [ref=e448] [cursor=pointer]
+                - button "Kelas 3A (7)" [ref=e449] [cursor=pointer]
+                - button "Kelas 3B (7)" [ref=e450] [cursor=pointer]
+                - button "Kelas 4A (7)" [ref=e451] [cursor=pointer]
+                - button "Kelas 4B (7)" [ref=e452] [cursor=pointer]
+                - button "Kelas 5A (7)" [ref=e453] [cursor=pointer]
+                - button "Kelas 5B (8)" [ref=e454] [cursor=pointer]
+                - button "Kelas 6A (7)" [ref=e455] [cursor=pointer]
+                - button "Kelas 6B (7)" [ref=e456] [cursor=pointer]
+            - generic [ref=e457]:
+              - generic [ref=e458]: 2. Cari & Pilih Nama Siswa *
+              - textbox "Ketik Nama Siswa atau NIS untuk mencari..." [ref=e466]
+              - generic [ref=e467]:
+                - button "Alya Nazifa (2025002) — TK A Rp 320.000" [ref=e468] [cursor=pointer]:
+                  - generic [ref=e469]:
+                    - text: Alya Nazifa
+                    - generic [ref=e470]: (2025002) — TK A
+                  - generic [ref=e471]: Rp 320.000
+                - button "Aris Setiawan (2025003) — TK A Rp 4.500" [ref=e472] [cursor=pointer]:
+                  - generic [ref=e473]:
+                    - text: Aris Setiawan
+                    - generic [ref=e474]: (2025003) — TK A
+                  - generic [ref=e475]: Rp 4.500
+                - button "Anindya Putri (2025004) — TK A Rp 550.000" [ref=e476] [cursor=pointer]:
+                  - generic [ref=e477]:
+                    - text: Anindya Putri
+                    - generic [ref=e478]: (2025004) — TK A
+                  - generic [ref=e479]: Rp 550.000
+                - button "Azka Alfarizi (2025005) — TK A Rp 75.000" [ref=e480] [cursor=pointer]:
+                  - generic [ref=e481]:
+                    - text: Azka Alfarizi
+                    - generic [ref=e482]: (2025005) — TK A
+                  - generic [ref=e483]: Rp 75.000
+                - button "Aura Kasih (2025006) — TK A Rp 120.000" [ref=e484] [cursor=pointer]:
+                  - generic [ref=e485]:
+                    - text: Aura Kasih
+                    - generic [ref=e486]: (2025006) — TK A
+                  - generic [ref=e487]: Rp 120.000
+                - button "Ahmad Fauzi (2025007) — TK A Rp 250.000" [ref=e488] [cursor=pointer]:
+                  - generic [ref=e489]:
+                    - text: Ahmad Fauzi
+                    - generic [ref=e490]: (2025007) — TK A
+                  - generic [ref=e491]: Rp 250.000
+                - button "Bagus Wardhana (2025008) — TK B Rp 185.000" [ref=e492] [cursor=pointer]:
+                  - generic [ref=e493]:
+                    - text: Bagus Wardhana
+                    - generic [ref=e494]: (2025008) — TK B
+                  - generic [ref=e495]: Rp 185.000
+                - button "Bening Sekar (2025009) — TK B Rp 320.000" [ref=e496] [cursor=pointer]:
+                  - generic [ref=e497]:
+                    - text: Bening Sekar
+                    - generic [ref=e498]: (2025009) — TK B
+                  - generic [ref=e499]: Rp 320.000
+                - button "Bintang Ramadhan (2025010) — TK B Rp 4.500" [ref=e500] [cursor=pointer]:
+                  - generic [ref=e501]:
+                    - text: Bintang Ramadhan
+                    - generic [ref=e502]: (2025010) — TK B
+                  - generic [ref=e503]: Rp 4.500
+                - button "Bilal Firmansyah (2025011) — TK B Rp 550.000" [ref=e504] [cursor=pointer]:
+                  - generic [ref=e505]:
+                    - text: Bilal Firmansyah
+                    - generic [ref=e506]: (2025011) — TK B
+                  - generic [ref=e507]: Rp 550.000
+                - button "Bella Saphira (2025012) — TK B Rp 75.000" [ref=e508] [cursor=pointer]:
+                  - generic [ref=e509]:
+                    - text: Bella Saphira
+                    - generic [ref=e510]: (2025012) — TK B
+                  - generic [ref=e511]: Rp 75.000
+                - button "Bryan Santoso (2025013) — TK B Rp 120.000" [ref=e512] [cursor=pointer]:
+                  - generic [ref=e513]:
+                    - text: Bryan Santoso
+                    - generic [ref=e514]: (2025013) — TK B
+                  - generic [ref=e515]: Rp 120.000
+                - button "Bunga Citra (2025014) — TK B Rp 250.000" [ref=e516] [cursor=pointer]:
+                  - generic [ref=e517]:
+                    - text: Bunga Citra
+                    - generic [ref=e518]: (2025014) — TK B
+                  - generic [ref=e519]: Rp 250.000
+                - button "Cakra Buana (2025015) — Kelas 1A Rp 185.000" [ref=e520] [cursor=pointer]:
+                  - generic [ref=e521]:
+                    - text: Cakra Buana
+                    - generic [ref=e522]: (2025015) — Kelas 1A
+                  - generic [ref=e523]: Rp 185.000
+                - button "Chintya Dewi (2025016) — Kelas 1A Rp 320.000" [ref=e524] [cursor=pointer]:
+                  - generic [ref=e525]:
+                    - text: Chintya Dewi
+                    - generic [ref=e526]: (2025016) — Kelas 1A
+                  - generic [ref=e527]: Rp 320.000
+                - button "Candra Wijaya (2025017) — Kelas 1A Rp 4.500" [ref=e528] [cursor=pointer]:
+                  - generic [ref=e529]:
+                    - text: Candra Wijaya
+                    - generic [ref=e530]: (2025017) — Kelas 1A
+                  - generic [ref=e531]: Rp 4.500
+                - button "Clara Shinta (2025018) — Kelas 1A Rp 550.000" [ref=e532] [cursor=pointer]:
+                  - generic [ref=e533]:
+                    - text: Clara Shinta
+                    - generic [ref=e534]: (2025018) — Kelas 1A
+                  - generic [ref=e535]: Rp 550.000
+                - button "Crisna Mukti (2025019) — Kelas 1A Rp 75.000" [ref=e536] [cursor=pointer]:
+                  - generic [ref=e537]:
+                    - text: Crisna Mukti
+                    - generic [ref=e538]: (2025019) — Kelas 1A
+                  - generic [ref=e539]: Rp 75.000
+                - button "Cello Aliansyah (2025020) — Kelas 1A Rp 120.000" [ref=e540] [cursor=pointer]:
+                  - generic [ref=e541]:
+                    - text: Cello Aliansyah
+                    - generic [ref=e542]: (2025020) — Kelas 1A
+                  - generic [ref=e543]: Rp 120.000
+                - button "Cantika Putri (2025021) — Kelas 1A Rp 250.000" [ref=e544] [cursor=pointer]:
+                  - generic [ref=e545]:
+                    - text: Cantika Putri
+                    - generic [ref=e546]: (2025021) — Kelas 1A
+                  - generic [ref=e547]: Rp 250.000
+                - button "Dafa Ibnu (2025022) — Kelas 1 B Rp 185.000" [ref=e548] [cursor=pointer]:
+                  - generic [ref=e549]:
+                    - text: Dafa Ibnu
+                    - generic [ref=e550]: (2025022) — Kelas 1 B
+                  - generic [ref=e551]: Rp 185.000
+                - button "Dian Sastrowardoyo (2025023) — Kelas 1 B Rp 320.000" [ref=e552] [cursor=pointer]:
+                  - generic [ref=e553]:
+                    - text: Dian Sastrowardoyo
+                    - generic [ref=e554]: (2025023) — Kelas 1 B
+                  - generic [ref=e555]: Rp 320.000
+                - button "Dimas Anggara (2025024) — Kelas 1 B Rp 4.500" [ref=e556] [cursor=pointer]:
+                  - generic [ref=e557]:
+                    - text: Dimas Anggara
+                    - generic [ref=e558]: (2025024) — Kelas 1 B
+                  - generic [ref=e559]: Rp 4.500
+                - button "Dinda Kirana (2025025) — Kelas 1 B Rp 550.000" [ref=e560] [cursor=pointer]:
+                  - generic [ref=e561]:
+                    - text: Dinda Kirana
+                    - generic [ref=e562]: (2025025) — Kelas 1 B
+                  - generic [ref=e563]: Rp 550.000
+                - button "Doni Kusuma (2025026) — Kelas 1 B Rp 75.000" [ref=e564] [cursor=pointer]:
+                  - generic [ref=e565]:
+                    - text: Doni Kusuma
+                    - generic [ref=e566]: (2025026) — Kelas 1 B
+                  - generic [ref=e567]: Rp 75.000
+                - button "Desi Ratnasari (2025027) — Kelas 1 B Rp 120.000" [ref=e568] [cursor=pointer]:
+                  - generic [ref=e569]:
+                    - text: Desi Ratnasari
+                    - generic [ref=e570]: (2025027) — Kelas 1 B
+                  - generic [ref=e571]: Rp 120.000
+                - button "Dewi Lestari (2025028) — Kelas 1 B Rp 250.000" [ref=e572] [cursor=pointer]:
+                  - generic [ref=e573]:
+                    - text: Dewi Lestari
+                    - generic [ref=e574]: (2025028) — Kelas 1 B
+                  - generic [ref=e575]: Rp 250.000
+                - button "Eko Prasetyo (2025029) — Kelas 2A Rp 185.000" [ref=e576] [cursor=pointer]:
+                  - generic [ref=e577]:
+                    - text: Eko Prasetyo
+                    - generic [ref=e578]: (2025029) — Kelas 2A
+                  - generic [ref=e579]: Rp 185.000
+                - button "Elvira Devinamira (2025030) — Kelas 2A Rp 320.000" [ref=e580] [cursor=pointer]:
+                  - generic [ref=e581]:
+                    - text: Elvira Devinamira
+                    - generic [ref=e582]: (2025030) — Kelas 2A
+                  - generic [ref=e583]: Rp 320.000
+                - button "Erlangga Putra (2025031) — Kelas 2A Rp 4.500" [ref=e584] [cursor=pointer]:
+                  - generic [ref=e585]:
+                    - text: Erlangga Putra
+                    - generic [ref=e586]: (2025031) — Kelas 2A
+                  - generic [ref=e587]: Rp 4.500
+                - button "Eka Rahmawati (2025032) — Kelas 2A Rp 550.000" [ref=e588] [cursor=pointer]:
+                  - generic [ref=e589]:
+                    - text: Eka Rahmawati
+                    - generic [ref=e590]: (2025032) — Kelas 2A
+                  - generic [ref=e591]: Rp 550.000
+                - button "Evan Dimas (2025033) — Kelas 2A Rp 75.000" [ref=e592] [cursor=pointer]:
+                  - generic [ref=e593]:
+                    - text: Evan Dimas
+                    - generic [ref=e594]: (2025033) — Kelas 2A
+                  - generic [ref=e595]: Rp 75.000
+                - button "Ester Larasati (2025034) — Kelas 2A Rp 120.000" [ref=e596] [cursor=pointer]:
+                  - generic [ref=e597]:
+                    - text: Ester Larasati
+                    - generic [ref=e598]: (2025034) — Kelas 2A
+                  - generic [ref=e599]: Rp 120.000
+                - button "Endang Suherman (2025035) — Kelas 2A Rp 250.000" [ref=e600] [cursor=pointer]:
+                  - generic [ref=e601]:
+                    - text: Endang Suherman
+                    - generic [ref=e602]: (2025035) — Kelas 2A
+                  - generic [ref=e603]: Rp 250.000
+                - button "Fahri Husaini (2025036) — Kelas 2B Rp 185.000" [ref=e604] [cursor=pointer]:
+                  - generic [ref=e605]:
+                    - text: Fahri Husaini
+                    - generic [ref=e606]: (2025036) — Kelas 2B
+                  - generic [ref=e607]: Rp 185.000
+                - button "Fatimah Az-Zahra (2025037) — Kelas 2B Rp 320.000" [ref=e608] [cursor=pointer]:
+                  - generic [ref=e609]:
+                    - text: Fatimah Az-Zahra
+                    - generic [ref=e610]: (2025037) — Kelas 2B
+                  - generic [ref=e611]: Rp 320.000
+                - button "Fathan Mubarak (2025038) — Kelas 2B Rp 4.500" [ref=e612] [cursor=pointer]:
+                  - generic [ref=e613]:
+                    - text: Fathan Mubarak
+                    - generic [ref=e614]: (2025038) — Kelas 2B
+                  - generic [ref=e615]: Rp 4.500
+                - button "Fiona Anjani (2025039) — Kelas 2B Rp 550.000" [ref=e616] [cursor=pointer]:
+                  - generic [ref=e617]:
+                    - text: Fiona Anjani
+                    - generic [ref=e618]: (2025039) — Kelas 2B
+                  - generic [ref=e619]: Rp 550.000
+                - button "Faris Maulana (2025040) — Kelas 2B Rp 75.000" [ref=e620] [cursor=pointer]:
+                  - generic [ref=e621]:
+                    - text: Faris Maulana
+                    - generic [ref=e622]: (2025040) — Kelas 2B
+                  - generic [ref=e623]: Rp 75.000
+                - button "Fitri Carlina (2025041) — Kelas 2B Rp 120.000" [ref=e624] [cursor=pointer]:
+                  - generic [ref=e625]:
+                    - text: Fitri Carlina
+                    - generic [ref=e626]: (2025041) — Kelas 2B
+                  - generic [ref=e627]: Rp 120.000
+                - button "Ferdinan Hidayat (2025042) — Kelas 2B Rp 250.000" [ref=e628] [cursor=pointer]:
+                  - generic [ref=e629]:
+                    - text: Ferdinan Hidayat
+                    - generic [ref=e630]: (2025042) — Kelas 2B
+                  - generic [ref=e631]: Rp 250.000
+                - button "Gilang Dirga (2025043) — Kelas 3A Rp 185.000" [ref=e632] [cursor=pointer]:
+                  - generic [ref=e633]:
+                    - text: Gilang Dirga
+                    - generic [ref=e634]: (2025043) — Kelas 3A
+                  - generic [ref=e635]: Rp 185.000
+                - button "Gisella Anastasia (2025044) — Kelas 3A Rp 320.000" [ref=e636] [cursor=pointer]:
+                  - generic [ref=e637]:
+                    - text: Gisella Anastasia
+                    - generic [ref=e638]: (2025044) — Kelas 3A
+                  - generic [ref=e639]: Rp 320.000
+                - button "Galang Rambu (2025045) — Kelas 3A Rp 4.500" [ref=e640] [cursor=pointer]:
+                  - generic [ref=e641]:
+                    - text: Galang Rambu
+                    - generic [ref=e642]: (2025045) — Kelas 3A
+                  - generic [ref=e643]: Rp 4.500
+                - button "Grace Natalie (2025046) — Kelas 3A Rp 550.000" [ref=e644] [cursor=pointer]:
+                  - generic [ref=e645]:
+                    - text: Grace Natalie
+                    - generic [ref=e646]: (2025046) — Kelas 3A
+                  - generic [ref=e647]: Rp 550.000
+                - button "Guruh Soekarno (2025047) — Kelas 3A Rp 75.000" [ref=e648] [cursor=pointer]:
+                  - generic [ref=e649]:
+                    - text: Guruh Soekarno
+                    - generic [ref=e650]: (2025047) — Kelas 3A
+                  - generic [ref=e651]: Rp 75.000
+                - button "Gita Gutawa (2025048) — Kelas 3A Rp 120.000" [ref=e652] [cursor=pointer]:
+                  - generic [ref=e653]:
+                    - text: Gita Gutawa
+                    - generic [ref=e654]: (2025048) — Kelas 3A
+                  - generic [ref=e655]: Rp 120.000
+                - button "Ganesha Putra (2025049) — Kelas 3A Rp 250.000" [ref=e656] [cursor=pointer]:
+                  - generic [ref=e657]:
+                    - text: Ganesha Putra
+                    - generic [ref=e658]: (2025049) — Kelas 3A
+                  - generic [ref=e659]: Rp 250.000
+                - button "Haikal Kamil (2025050) — Kelas 3B Rp 185.000" [ref=e660] [cursor=pointer]:
+                  - generic [ref=e661]:
+                    - text: Haikal Kamil
+                    - generic [ref=e662]: (2025050) — Kelas 3B
+                  - generic [ref=e663]: Rp 185.000
+                - button "Hana Saraswati (2025051) — Kelas 3B Rp 320.000" [ref=e664] [cursor=pointer]:
+                  - generic [ref=e665]:
+                    - text: Hana Saraswati
+                    - generic [ref=e666]: (2025051) — Kelas 3B
+                  - generic [ref=e667]: Rp 320.000
+                - button "Hafiz Indonesia (2025052) — Kelas 3B Rp 4.500" [ref=e668] [cursor=pointer]:
+                  - generic [ref=e669]:
+                    - text: Hafiz Indonesia
+                    - generic [ref=e670]: (2025052) — Kelas 3B
+                  - generic [ref=e671]: Rp 4.500
+                - button "Hesti Purwadinata (2025053) — Kelas 3B Rp 550.000" [ref=e672] [cursor=pointer]:
+                  - generic [ref=e673]:
+                    - text: Hesti Purwadinata
+                    - generic [ref=e674]: (2025053) — Kelas 3B
+                  - generic [ref=e675]: Rp 550.000
+                - button "Hery Setiawan (2025054) — Kelas 3B Rp 75.000" [ref=e676] [cursor=pointer]:
+                  - generic [ref=e677]:
+                    - text: Hery Setiawan
+                    - generic [ref=e678]: (2025054) — Kelas 3B
+                  - generic [ref=e679]: Rp 75.000
+                - button "Helena Yulia (2025055) — Kelas 3B Rp 120.000" [ref=e680] [cursor=pointer]:
+                  - generic [ref=e681]:
+                    - text: Helena Yulia
+                    - generic [ref=e682]: (2025055) — Kelas 3B
+                  - generic [ref=e683]: Rp 120.000
+                - button "Hendra Hendrawan (2025056) — Kelas 3B Rp 250.000" [ref=e684] [cursor=pointer]:
+                  - generic [ref=e685]:
+                    - text: Hendra Hendrawan
+                    - generic [ref=e686]: (2025056) — Kelas 3B
+                  - generic [ref=e687]: Rp 250.000
+                - button "Irfan Bachdim (2025057) — Kelas 4A Rp 185.000" [ref=e688] [cursor=pointer]:
+                  - generic [ref=e689]:
+                    - text: Irfan Bachdim
+                    - generic [ref=e690]: (2025057) — Kelas 4A
+                  - generic [ref=e691]: Rp 185.000
+                - button "Inul Daratista (2025058) — Kelas 4A Rp 320.000" [ref=e692] [cursor=pointer]:
+                  - generic [ref=e693]:
+                    - text: Inul Daratista
+                    - generic [ref=e694]: (2025058) — Kelas 4A
+                  - generic [ref=e695]: Rp 320.000
+                - button "Iqbaal Ramadhan (2025059) — Kelas 4A Rp 4.500" [ref=e696] [cursor=pointer]:
+                  - generic [ref=e697]:
+                    - text: Iqbaal Ramadhan
+                    - generic [ref=e698]: (2025059) — Kelas 4A
+                  - generic [ref=e699]: Rp 4.500
+                - button "Indah Permatasari (2025060) — Kelas 4A Rp 550.000" [ref=e700] [cursor=pointer]:
+                  - generic [ref=e701]:
+                    - text: Indah Permatasari
+                    - generic [ref=e702]: (2025060) — Kelas 4A
+                  - generic [ref=e703]: Rp 550.000
+                - button "Ibrahim Rasyid (2025061) — Kelas 4A Rp 75.000" [ref=e704] [cursor=pointer]:
+                  - generic [ref=e705]:
+                    - text: Ibrahim Rasyid
+                    - generic [ref=e706]: (2025061) — Kelas 4A
+                  - generic [ref=e707]: Rp 75.000
+                - button "Aditya Pratama (2025001) — TK A Rp 195.000" [ref=e708] [cursor=pointer]:
+                  - generic [ref=e709]:
+                    - text: Aditya Pratama
+                    - generic [ref=e710]: (2025001) — TK A
+                  - generic [ref=e711]: Rp 195.000
+                - button "Ika Nurjanah (2025062) — Kelas 4A Rp 120.000" [ref=e712] [cursor=pointer]:
+                  - generic [ref=e713]:
+                    - text: Ika Nurjanah
+                    - generic [ref=e714]: (2025062) — Kelas 4A
+                  - generic [ref=e715]: Rp 120.000
+                - button "Iwan Fals (2025063) — Kelas 4A Rp 250.000" [ref=e716] [cursor=pointer]:
+                  - generic [ref=e717]:
+                    - text: Iwan Fals
+                    - generic [ref=e718]: (2025063) — Kelas 4A
+                  - generic [ref=e719]: Rp 250.000
+                - button "Jefri Nichol (2025064) — Kelas 4B Rp 185.000" [ref=e720] [cursor=pointer]:
+                  - generic [ref=e721]:
+                    - text: Jefri Nichol
+                    - generic [ref=e722]: (2025064) — Kelas 4B
+                  - generic [ref=e723]: Rp 185.000
+                - button "Jessica Mila (2025065) — Kelas 4B Rp 320.000" [ref=e724] [cursor=pointer]:
+                  - generic [ref=e725]:
+                    - text: Jessica Mila
+                    - generic [ref=e726]: (2025065) — Kelas 4B
+                  - generic [ref=e727]: Rp 320.000
+                - button "Joko Susilo (2025066) — Kelas 4B Rp 4.500" [ref=e728] [cursor=pointer]:
+                  - generic [ref=e729]:
+                    - text: Joko Susilo
+                    - generic [ref=e730]: (2025066) — Kelas 4B
+                  - generic [ref=e731]: Rp 4.500
+                - button "Juwita Bahar (2025067) — Kelas 4B Rp 550.000" [ref=e732] [cursor=pointer]:
+                  - generic [ref=e733]:
+                    - text: Juwita Bahar
+                    - generic [ref=e734]: (2025067) — Kelas 4B
+                  - generic [ref=e735]: Rp 550.000
+                - button "Jonathan Christie (2025068) — Kelas 4B Rp 75.000" [ref=e736] [cursor=pointer]:
+                  - generic [ref=e737]:
+                    - text: Jonathan Christie
+                    - generic [ref=e738]: (2025068) — Kelas 4B
+                  - generic [ref=e739]: Rp 75.000
+                - button "Jasmine Larasati (2025069) — Kelas 4B Rp 120.000" [ref=e740] [cursor=pointer]:
+                  - generic [ref=e741]:
+                    - text: Jasmine Larasati
+                    - generic [ref=e742]: (2025069) — Kelas 4B
+                  - generic [ref=e743]: Rp 120.000
+                - button "Jordan Perkasa (2025070) — Kelas 4B Rp 250.000" [ref=e744] [cursor=pointer]:
+                  - generic [ref=e745]:
+                    - text: Jordan Perkasa
+                    - generic [ref=e746]: (2025070) — Kelas 4B
+                  - generic [ref=e747]: Rp 250.000
+                - button "Kenzie Alvaro (2025071) — Kelas 5A Rp 185.000" [ref=e748] [cursor=pointer]:
+                  - generic [ref=e749]:
+                    - text: Kenzie Alvaro
+                    - generic [ref=e750]: (2025071) — Kelas 5A
+                  - generic [ref=e751]: Rp 185.000
+                - button "Keysha Aurelia (2025072) — Kelas 5A Rp 320.000" [ref=e752] [cursor=pointer]:
+                  - generic [ref=e753]:
+                    - text: Keysha Aurelia
+                    - generic [ref=e754]: (2025072) — Kelas 5A
+                  - generic [ref=e755]: Rp 320.000
+                - button "Kevin Sanjaya (2025073) — Kelas 5A Rp 4.500" [ref=e756] [cursor=pointer]:
+                  - generic [ref=e757]:
+                    - text: Kevin Sanjaya
+                    - generic [ref=e758]: (2025073) — Kelas 5A
+                  - generic [ref=e759]: Rp 4.500
+                - button "Kania Dewi (2025074) — Kelas 5A Rp 550.000" [ref=e760] [cursor=pointer]:
+                  - generic [ref=e761]:
+                    - text: Kania Dewi
+                    - generic [ref=e762]: (2025074) — Kelas 5A
+                  - generic [ref=e763]: Rp 550.000
+                - button "Kiki Rizky (2025075) — Kelas 5A Rp 75.000" [ref=e764] [cursor=pointer]:
+                  - generic [ref=e765]:
+                    - text: Kiki Rizky
+                    - generic [ref=e766]: (2025075) — Kelas 5A
+                  - generic [ref=e767]: Rp 75.000
+                - button "Kartika Putri (2025076) — Kelas 5A Rp 120.000" [ref=e768] [cursor=pointer]:
+                  - generic [ref=e769]:
+                    - text: Kartika Putri
+                    - generic [ref=e770]: (2025076) — Kelas 5A
+                  - generic [ref=e771]: Rp 120.000
+                - button "Krisna Murti (2025077) — Kelas 5A Rp 250.000" [ref=e772] [cursor=pointer]:
+                  - generic [ref=e773]:
+                    - text: Krisna Murti
+                    - generic [ref=e774]: (2025077) — Kelas 5A
+                  - generic [ref=e775]: Rp 250.000
+                - button "Luthfi Hasan (2025078) — Kelas 5B Rp 185.000" [ref=e776] [cursor=pointer]:
+                  - generic [ref=e777]:
+                    - text: Luthfi Hasan
+                    - generic [ref=e778]: (2025078) — Kelas 5B
+                  - generic [ref=e779]: Rp 185.000
+                - button "Luna Maya (2025079) — Kelas 5B Rp 320.000" [ref=e780] [cursor=pointer]:
+                  - generic [ref=e781]:
+                    - text: Luna Maya
+                    - generic [ref=e782]: (2025079) — Kelas 5B
+                  - generic [ref=e783]: Rp 320.000
+                - button "Luki Wijaya (2025080) — Kelas 5B Rp 4.500" [ref=e784] [cursor=pointer]:
+                  - generic [ref=e785]:
+                    - text: Luki Wijaya
+                    - generic [ref=e786]: (2025080) — Kelas 5B
+                  - generic [ref=e787]: Rp 4.500
+                - button "Laila Sari (2025081) — Kelas 5B Rp 550.000" [ref=e788] [cursor=pointer]:
+                  - generic [ref=e789]:
+                    - text: Laila Sari
+                    - generic [ref=e790]: (2025081) — Kelas 5B
+                  - generic [ref=e791]: Rp 550.000
+                - button "Leo Consul (2025082) — Kelas 5B Rp 75.000" [ref=e792] [cursor=pointer]:
+                  - generic [ref=e793]:
+                    - text: Leo Consul
+                    - generic [ref=e794]: (2025082) — Kelas 5B
+                  - generic [ref=e795]: Rp 75.000
+                - button "Listia Rahma (2025083) — Kelas 5B Rp 120.000" [ref=e796] [cursor=pointer]:
+                  - generic [ref=e797]:
+                    - text: Listia Rahma
+                    - generic [ref=e798]: (2025083) — Kelas 5B
+                  - generic [ref=e799]: Rp 120.000
+                - button "Lukman Sardi (2025084) — Kelas 5B Rp 250.000" [ref=e800] [cursor=pointer]:
+                  - generic [ref=e801]:
+                    - text: Lukman Sardi
+                    - generic [ref=e802]: (2025084) — Kelas 5B
+                  - generic [ref=e803]: Rp 250.000
+                - button "Muhammad Rizky (2025085) — Kelas 6A Rp 185.000" [ref=e804] [cursor=pointer]:
+                  - generic [ref=e805]:
+                    - text: Muhammad Rizky
+                    - generic [ref=e806]: (2025085) — Kelas 6A
+                  - generic [ref=e807]: Rp 185.000
+                - button "Maudy Ayunda (2025086) — Kelas 6A Rp 320.000" [ref=e808] [cursor=pointer]:
+                  - generic [ref=e809]:
+                    - text: Maudy Ayunda
+                    - generic [ref=e810]: (2025086) — Kelas 6A
+                  - generic [ref=e811]: Rp 320.000
+                - button "Marcell Darwin (2025087) — Kelas 6A Rp 4.500" [ref=e812] [cursor=pointer]:
+                  - generic [ref=e813]:
+                    - text: Marcell Darwin
+                    - generic [ref=e814]: (2025087) — Kelas 6A
+                  - generic [ref=e815]: Rp 4.500
+                - button "Mulan Jameela (2025088) — Kelas 6A Rp 550.000" [ref=e816] [cursor=pointer]:
+                  - generic [ref=e817]:
+                    - text: Mulan Jameela
+                    - generic [ref=e818]: (2025088) — Kelas 6A
+                  - generic [ref=e819]: Rp 550.000
+                - button "Mario Teguh (2025089) — Kelas 6A Rp 75.000" [ref=e820] [cursor=pointer]:
+                  - generic [ref=e821]:
+                    - text: Mario Teguh
+                    - generic [ref=e822]: (2025089) — Kelas 6A
+                  - generic [ref=e823]: Rp 75.000
+                - button "Maya Estianty (2025090) — Kelas 6A Rp 120.000" [ref=e824] [cursor=pointer]:
+                  - generic [ref=e825]:
+                    - text: Maya Estianty
+                    - generic [ref=e826]: (2025090) — Kelas 6A
+                  - generic [ref=e827]: Rp 120.000
+                - button "Mahendra Putra (2025091) — Kelas 6A Rp 250.000" [ref=e828] [cursor=pointer]:
+                  - generic [ref=e829]:
+                    - text: Mahendra Putra
+                    - generic [ref=e830]: (2025091) — Kelas 6A
+                  - generic [ref=e831]: Rp 250.000
+                - button "Naufal Samudra (2025092) — Kelas 6B Rp 185.000" [ref=e832] [cursor=pointer]:
+                  - generic [ref=e833]:
+                    - text: Naufal Samudra
+                    - generic [ref=e834]: (2025092) — Kelas 6B
+                  - generic [ref=e835]: Rp 185.000
+                - button "Nabila Syakieb (2025093) — Kelas 6B Rp 320.000" [ref=e836] [cursor=pointer]:
+                  - generic [ref=e837]:
+                    - text: Nabila Syakieb
+                    - generic [ref=e838]: (2025093) — Kelas 6B
+                  - generic [ref=e839]: Rp 320.000
+                - button "Narendra Arya (2025094) — Kelas 6B Rp 4.500" [ref=e840] [cursor=pointer]:
+                  - generic [ref=e841]:
+                    - text: Narendra Arya
+                    - generic [ref=e842]: (2025094) — Kelas 6B
+                  - generic [ref=e843]: Rp 4.500
+                - button "Nia Ramadhani (2025095) — Kelas 6B Rp 550.000" [ref=e844] [cursor=pointer]:
+                  - generic [ref=e845]:
+                    - text: Nia Ramadhani
+                    - generic [ref=e846]: (2025095) — Kelas 6B
+                  - generic [ref=e847]: Rp 550.000
+                - button "Nicholas Saputra (2025096) — Kelas 6B Rp 75.000" [ref=e848] [cursor=pointer]:
+                  - generic [ref=e849]:
+                    - text: Nicholas Saputra
+                    - generic [ref=e850]: (2025096) — Kelas 6B
+                  - generic [ref=e851]: Rp 75.000
+                - button "Nadin Amizah (2025097) — Kelas 6B Rp 120.000" [ref=e852] [cursor=pointer]:
+                  - generic [ref=e853]:
+                    - text: Nadin Amizah
+                    - generic [ref=e854]: (2025097) — Kelas 6B
+                  - generic [ref=e855]: Rp 120.000
+                - button "Novan Santoso (2025098) — Kelas 6B Rp 250.000" [ref=e856] [cursor=pointer]:
+                  - generic [ref=e857]:
+                    - text: Novan Santoso
+                    - generic [ref=e858]: (2025098) — Kelas 6B
+                  - generic [ref=e859]: Rp 250.000
+                - button "zada (10101010) — Kelas 5B Rp 1.010.000" [ref=e860] [cursor=pointer]:
+                  - generic [ref=e861]:
+                    - text: zada
+                    - generic [ref=e862]: (10101010) — Kelas 5B
+                  - generic [ref=e863]: Rp 1.010.000
+              - paragraph [ref=e864]: Klik nama siswa di daftar untuk memilih.
+            - generic [ref=e865]:
+              - generic [ref=e866]: 3. Nominal Setoran *
+              - generic [ref=e867]:
+                - generic [ref=e868]: "Pilih Nominal Cepat:"
+                - generic [ref=e869]:
+                  - button "2.000" [ref=e870] [cursor=pointer]
+                  - button "5.000" [ref=e871] [cursor=pointer]
+                  - button "10.000" [ref=e872] [cursor=pointer]
+                  - button "15.000" [ref=e873] [cursor=pointer]
+                  - button "20.000" [ref=e874] [cursor=pointer]
+                  - button "25.000" [ref=e875] [cursor=pointer]
+              - generic [ref=e876]:
+                - generic [ref=e877]: Rp
+                - textbox "5.000" [ref=e878]
+              - paragraph [ref=e879]: Format otomatis pemisah ribuan. Default nominal setoran adalah Rp 5.000
+            - generic [ref=e880]:
+              - generic [ref=e881]: Keterangan / Catatan
+              - 'textbox "Contoh: Setoran Tabungan Rutin" [ref=e882]': Setoran Tabungan Rutin
+            - button "Simpan Setoran Sekarang" [ref=e883] [cursor=pointer]
+        - generic [ref=e887]:
+          - generic [ref=e888]:
+            - generic [ref=e889]: Bukti Transaksi Terakhir
+            - generic [ref=e894]: Belum ada transaksi setoran yang baru saja diproses dalam sesi ini.
+          - paragraph [ref=e896]: Setoran yang disimpan akan langsung memperbarui saldo siswa secara realtime dan dicatat pada Audit Log sistem.
+        - generic [ref=e897]:
+          - generic [ref=e898]:
+            - generic [ref=e899]:
+              - heading "Antrean Perbaikan Transaksi" [level=3] [ref=e900]
+              - generic [ref=e904]: "0"
+            - generic [ref=e905]: Tidak ada permintaan perbaikan transaksi.
+          - generic [ref=e909]: Persetujuan perbaikan hanya dimiliki oleh Kepala Sekolah & Developer.
+      - generic [ref=e913]:
+        - heading "Riwayat Setoran Tabungan (6 Transaksi)" [level=3] [ref=e914]
+        - table [ref=e920]:
+          - rowgroup [ref=e921]:
+            - row [ref=e922]:
+              - columnheader "No" [ref=e923]
+              - columnheader "No. Transaksi" [ref=e924]
+              - columnheader "Siswa" [ref=e925]
+              - columnheader "Kelas" [ref=e926]
+              - columnheader "Nominal" [ref=e927]
+              - columnheader "Keterangan" [ref=e928]
+              - columnheader "Petugas" [ref=e929]
+              - columnheader "Tanggal & Waktu" [ref=e930]
+              - columnheader "Aksi" [ref=e931]
+          - rowgroup [ref=e932]:
+            - row [ref=e933]:
+              - cell "1" [ref=e934]
+              - cell "ST/2026/00001" [ref=e935]
+              - cell "Ahmad Fauzi (2025007)" [ref=e936]:
+                - text: Ahmad Fauzi
+                - generic [ref=e937]: (2025007)
+              - cell "TK A" [ref=e938]
+              - cell "Rp 100.000" [ref=e939]
+              - cell "Setoran Awal Tahun Ajaran" [ref=e940]
+              - cell "Budi Santoso, S.Pd" [ref=e941]
+              - cell "10 Juli 2026 pukul 17.00.00" [ref=e942]
+              - cell [ref=e943]:
+                - generic [ref=e944]:
+                  - button "Perbaiki Transaksi" [active] [ref=e945] [cursor=pointer]
+                  - button "Cetak Kuitansi PDF" [ref=e949] [cursor=pointer]
+            - row [ref=e954]:
+              - cell "2" [ref=e955]
+              - cell "ST/2026/00002" [ref=e956]
+              - cell "Ahmad Fauzi (2025007)" [ref=e957]:
+                - text: Ahmad Fauzi
+                - generic [ref=e958]: (2025007)
+              - cell "TK A" [ref=e959]
+              - cell "Rp 86.000" [ref=e960]
+              - cell "Setoran Mingguan" [ref=e961]
+              - cell "Budi Santoso, S.Pd" [ref=e962]
+              - cell "17 Juli 2026 pukul 18.20.00" [ref=e963]
+              - cell [ref=e964]:
+                - generic [ref=e965]:
+                  - button "Perbaiki Transaksi" [ref=e966] [cursor=pointer]
+                  - button "Cetak Kuitansi PDF" [ref=e970] [cursor=pointer]
+            - row [ref=e975]:
+              - cell "3" [ref=e976]
+              - cell "ST/2026/00003" [ref=e977]
+              - cell "Siti Nurhaliza (2025022)" [ref=e978]:
+                - text: Siti Nurhaliza
+                - generic [ref=e979]: (2025022)
+              - cell "Kelas 1 B" [ref=e980]
+              - cell "Rp 321.000" [ref=e981]
+              - cell "Setoran Orang Tua" [ref=e982]
+              - cell "Budi Santoso, S.Pd" [ref=e983]
+              - cell "18 Juli 2026 pukul 15.45.00" [ref=e984]
+              - cell [ref=e985]:
+                - generic [ref=e986]:
+                  - button "Perbaiki Transaksi" [ref=e987] [cursor=pointer]
+                  - button "Cetak Kuitansi PDF" [ref=e991] [cursor=pointer]
+            - row [ref=e996]:
+              - cell "4" [ref=e997]
+              - cell "ST/2025/00006" [ref=e998]
+              - cell "zada (10101010)" [ref=e999]:
+                - text: zada
+                - generic [ref=e1000]: (10101010)
+              - cell "Kelas 5B" [ref=e1001]
+              - cell "Rp 1.000.000" [ref=e1002]
+              - cell "Setoran Saldo Awal Pendaftaran" [ref=e1003]
+              - cell "Mas Dev (Developer)" [ref=e1004]
+              - cell "31 Juli 2026 pukul 09.35.57" [ref=e1005]
+              - cell [ref=e1006]:
+                - generic [ref=e1007]:
+                  - button "Perbaiki Transaksi" [ref=e1008] [cursor=pointer]
+                  - button "Cetak Kuitansi PDF" [ref=e1012] [cursor=pointer]
+            - row [ref=e1017]:
+              - cell "5" [ref=e1018]
+              - cell "ST/2025/00007" [ref=e1019]
+              - cell "Aditya Pratama (2025001)" [ref=e1020]:
+                - text: Aditya Pratama
+                - generic [ref=e1021]: (2025001)
+              - cell "TK A" [ref=e1022]
+              - cell "Rp 10.000" [ref=e1023]
+              - cell "Setoran Tabungan Rutin" [ref=e1024]
+              - cell "Mas Dev (Developer)" [ref=e1025]
+              - cell "31 Juli 2026 pukul 09.38.15" [ref=e1026]
+              - cell [ref=e1027]:
+                - generic [ref=e1028]:
+                  - button "Perbaiki Transaksi" [ref=e1029] [cursor=pointer]
+                  - button "Cetak Kuitansi PDF" [ref=e1033] [cursor=pointer]
+            - row [ref=e1038]:
+              - cell "6" [ref=e1039]
+              - cell "ST/2025/00008" [ref=e1040]
+              - cell "zada (10101010)" [ref=e1041]:
+                - text: zada
+                - generic [ref=e1042]: (10101010)
+              - cell "Kelas 5B" [ref=e1043]
+              - cell "Rp 10.000" [ref=e1044]
+              - cell "Setoran Tabungan Rutin" [ref=e1045]
+              - cell "Mas Dev (Developer)" [ref=e1046]
+              - cell "31 Juli 2026 pukul 09.50.05" [ref=e1047]
+              - cell [ref=e1048]:
+                - generic [ref=e1049]:
+                  - button "Perbaiki Transaksi" [ref=e1050] [cursor=pointer]
+                  - button "Cetak Kuitansi PDF" [ref=e1054] [cursor=pointer]
+      - generic [ref=e1060]:
+        - generic [ref=e1061]:
+          - heading "Perbaiki Transaksi" [level=3] [ref=e1062]
+          - button "Tutup" [ref=e1066] [cursor=pointer]
+        - generic [ref=e1071]:
+          - generic [ref=e1072]:
+            - generic [ref=e1073]: "No Transaksi:"
+            - generic [ref=e1074]: ST/2026/00001
+          - generic [ref=e1075]:
+            - generic [ref=e1076]: "Siswa:"
+            - generic [ref=e1077]: Ahmad Fauzi (2025007)
+          - generic [ref=e1078]:
+            - generic [ref=e1079]: "Jenis:"
+            - generic [ref=e1080]: Setoran
+          - generic [ref=e1081]:
+            - generic [ref=e1082]: "Nominal Saat Ini:"
+            - generic [ref=e1083]: Rp 100.000
+          - generic [ref=e1084]:
+            - generic [ref=e1085]: "Keterangan Saat Ini:"
+            - generic [ref=e1086]: Setoran Awal Tahun Ajaran
+        - generic [ref=e1087]:
+          - generic [ref=e1088]:
+            - generic [ref=e1089]: Nominal Baru *
+            - generic [ref=e1090]:
+              - generic [ref=e1091]: Rp
+              - textbox "Nominal Baru *" [ref=e1092]: "100.000"
+          - generic [ref=e1093]:
+            - generic [ref=e1094]: Keterangan Baru *
+            - textbox "Keterangan Baru *" [ref=e1095]: Setoran Awal Tahun Ajaran
+          - generic [ref=e1096]:
+            - text: Perubahan baru diterapkan setelah disetujui oleh
+            - strong [ref=e1097]: Super Admin (Kepala Sekolah)
+            - text: . Tanggal & jam transaksi tidak dapat diubah.
+          - generic [ref=e1098]:
+            - button "Batal" [ref=e1099] [cursor=pointer]
+            - button "Ajukan Perbaikan" [ref=e1100] [cursor=pointer]
+  - contentinfo [ref=e423]:
+    - generic [ref=e424]: Sistem Informasi Sekolah • Powered by Dzulfikar Dev
