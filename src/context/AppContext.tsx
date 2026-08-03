@@ -211,7 +211,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (dbDistributions.length > 0) setBookDistributions((prev) => mergeById(dbDistributions, prev));
       if (dbBookPayments.length > 0) setBookPayments((prev) => mergeById(dbBookPayments, prev));
       if (dbSppPayments.length > 0) setSppPayments((prev) => mergeById(dbSppPayments, prev));
-      if (dbAcademicYears.length > 0) setAcademicYears((prev) => mergeById(dbAcademicYears, prev));
+      if (dbAcademicYears.length > 0) {
+        setAcademicYears((prev) => mergeById(dbAcademicYears, prev));
+        const dbCurrent = dbAcademicYears.find((y) => y.isCurrent);
+        if (dbCurrent) setCurrentAcademicYearIdState(dbCurrent.id);
+      }
       if (dbAuditLogs.length > 0) setAuditLogs((prev) => mergeById(dbAuditLogs, prev));
       if (dbUsers.length > 0) setUsers((prev) => mergeById(dbUsers, prev));
       setDbLoaded(true);
