@@ -39,14 +39,7 @@ export const ALL_CLASSES: ClassGrade[] = [
 
 export const initialUsers: User[] = [
   { id: 'u-dev', username: 'masdev', name: 'Mas Dev (Developer)', role: 'Developer', password: '@mimu123' },
-  { id: 'u-demo', username: 'demo', name: 'Akun Demo (Read-Only)', role: 'Developer', password: '12345', demoMode: true },
-  { id: 'u-demo-tk', username: 'demo-tk', name: 'Demo TK (Read-Only)', role: 'Developer', password: 'demotk123', demoMode: true, accessLevel: 'TK' },
-  { id: 'u-demo-mi', username: 'demo-mi', name: 'Demo MI (Read-Only)', role: 'Developer', password: 'demomi123', demoMode: true, accessLevel: 'MI' },
-  { id: 'u-super', username: 'kepsek', name: 'Dra. Endang Rahayu (Kepala Sekolah)', role: 'Super Admin' },
-  { id: 'u-admin', username: 'bendahara', name: 'Budi Santoso, S.Pd (Bendahara)', role: 'Admin' },
-  { id: 'u-wali1', username: 'walikelas1a', name: 'Siti Rahma, S.Pd (Wali Kelas 1A)', role: 'Wali Kelas', assignedClass: 'Kelas 1A' },
-  { id: 'u-wali2', username: 'walikelas2a', name: 'Hendra Kusuma, S.Pd (Wali Kelas 2A)', role: 'Wali Kelas', assignedClass: 'Kelas 2A' },
-  { id: 'u-viewer', username: 'ortu1', name: 'Orang Tua / Siswa (Ahmad Fauzi)', role: 'Viewer', studentId: 'st-7', password: 'ortu2345' },
+  { id: 'u-demo-super', username: 'demo', name: 'Demo Super Admin (Read-Only)', role: 'Super Admin', password: 'demo123', demoMode: true },
 ];
 
 const sampleStudentNames = [
