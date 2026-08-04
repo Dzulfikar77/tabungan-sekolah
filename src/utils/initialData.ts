@@ -82,8 +82,6 @@ export const initialStudents: Student[] = ALL_CLASSES.flatMap((classGrade, class
       balance: bal,
       parentName: pName,
       phone: `0812${String(1000000 + idNum * 12345).slice(0, 8)}`,
-      viewerPassword: idNum === 7 ? 'ahmad123' : undefined,
-      viewerUsername: idNum === 7 ? 'ahmadfauzi' : undefined,
       createdAt: '2025-07-10T09:00:00.000Z',
     };
   });
