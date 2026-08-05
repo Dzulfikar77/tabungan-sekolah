@@ -35,6 +35,7 @@ import {
 import { generateTransactionNumber } from '../utils/format';
 import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
 import { mergeSchoolSettings } from '../utils/schoolSettings';
+import { inspectBackupPayload } from '../utils/backup';
 import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError, onSyncState, SyncState } from '../lib/db';
 import { supabase } from '../lib/supabase';
 
@@ -229,11 +230,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     auditLogs,
   });
 
-  const saveSnapshot = () => {
+  const saveSnapshot = (force = false) => {
     try {
       const existing: { timestamp: string; data: unknown }[] = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]');
       const last = existing[existing.length - 1];
-      if (last && Date.now() - new Date(last.timestamp).getTime() < SNAPSHOT_DEDUP_MS) return;
+      if (!force && last && Date.now() - new Date(last.timestamp).getTime() < SNAPSHOT_DEDUP_MS) return;
       existing.push({ timestamp: new Date().toISOString(), data: buildBackupPayload() });
       if (existing.length > MAX_SNAPSHOTS) existing.splice(0, existing.length - MAX_SNAPSHOTS);
       localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(existing));
@@ -2105,9 +2106,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       const data = JSON.parse(jsonString);
-      if (!data.schoolSettings || !data.students || !data.transactions) {
-        return { success: false, error: 'Format file cadangan tidak valid!' };
+      const preview = inspectBackupPayload(data);
+      if (!preview.valid) {
+        return { success: false, error: preview.error || 'Format file cadangan tidak valid!' };
       }
+
+      // Safety net: snapshot paksa kondisi sebelum restore (untuk rollback manual)
+      saveSnapshot(true);
 
       const results = await Promise.all([
         upsertRow('school_settings', data.schoolSettings),

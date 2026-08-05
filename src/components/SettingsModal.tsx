@@ -5,6 +5,8 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { inspectBackupPayload } from '../utils/backup';
+import type { BackupPreview } from '../utils/backup';
 import { UserRole } from '../types';
 import {
   Building2,
@@ -64,6 +66,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const [restoreJson, setRestoreJson] = useState('');
   const [restoreMessage, setRestoreMessage] = useState<{ success?: boolean; msg?: string } | null>(null);
+  const [restorePreview, setRestorePreview] = useState<BackupPreview | null>(null);
+  const [restoreLoading, setRestoreLoading] = useState(false);
 
   const [newYear, setNewYear] = useState('');
   const [yearMsg, setYearMsg] = useState<{ success?: boolean; msg?: string } | null>(null);
@@ -113,11 +117,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     link.click();
   };
 
-  const handleProcessRestore = async () => {
+  const handleInspectRestore = () => {
     if (!restoreJson.trim()) return;
+    setRestoreMessage(null);
+    let data: unknown;
+    try {
+      data = JSON.parse(restoreJson.trim());
+    } catch {
+      setRestorePreview({ valid: false, counts: { students: 0, transactions: 0, bookPayments: 0, sppPayments: 0, bookDistributions: 0, academicYears: 0 }, error: 'File JSON tidak valid — gagal di-parsing.' });
+      setRestoreMessage({ success: false, msg: 'File JSON tidak valid — gagal di-parsing.' });
+      return;
+    }
+    const preview = inspectBackupPayload(data);
+    setRestorePreview(preview);
+    if (!preview.valid) {
+      setRestoreMessage({ success: false, msg: preview.error || 'Data cadangan tidak valid.' });
+    }
+  };
+
+  const handleProcessRestore = async () => {
+    if (!restorePreview?.valid || !restoreJson.trim()) return;
+    setRestoreLoading(true);
+    setRestoreMessage(null);
     const res = await restoreBackupData(restoreJson.trim());
+    setRestoreLoading(false);
     if (res.success) {
       setRestoreMessage({ success: true, msg: 'Database berhasil dipulihkan dari cadangan JSON!' });
+      setRestorePreview(null);
     } else {
       setRestoreMessage({ success: false, msg: res.error || 'Gagal memulihkan database.' });
     }
@@ -593,11 +619,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 rows={3}
               />
               <button
-                onClick={handleProcessRestore}
+                onClick={handleInspectRestore}
                 disabled={!restoreJson.trim()}
+                className="w-full py-2 bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 text-slate-700 font-semibold rounded-lg cursor-pointer"
+              >
+                Periksa &amp; Preview Cadangan
+              </button>
+
+              {restorePreview?.valid && (
+                <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-[11px] text-emerald-800 space-y-0.5">
+                  <div className="font-bold">Akan dipulihkan:</div>
+                  <div>Siswa: {restorePreview.counts.students} · Transaksi: {restorePreview.counts.transactions}</div>
+                  <div>Pembayaran Buku: {restorePreview.counts.bookPayments} · SPP: {restorePreview.counts.sppPayments} · Distribusi: {restorePreview.counts.bookDistributions}</div>
+                  <div className="text-[10px] text-emerald-600">Snapshot kondisi saat ini dibuat otomatis sebagai cadangan rollback.</div>
+                </div>
+              )}
+
+              <button
+                onClick={handleProcessRestore}
+                disabled={!restorePreview?.valid || restoreLoading}
                 className="w-full py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-semibold rounded-lg cursor-pointer"
               >
-                Proses Restore System State
+                {restoreLoading ? 'Memulihkan…' : 'Proses Restore System State'}
               </button>
 
               {restoreMessage && (
