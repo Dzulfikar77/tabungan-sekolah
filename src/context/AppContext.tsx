@@ -459,7 +459,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { created: createdUsers.length, errors: [] };
   };
 
-  const addAuditLog = (action: string, valueBefore: string, valueAfter: string, details: string) => {
+  const addAuditLog = async (action: string, valueBefore: string, valueAfter: string, details: string) => {
     if (!currentUser) return;
     const newLog: AuditLogItem = {
       id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -472,17 +472,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       valueAfter,
       details,
     };
+    const res = await insertRow('audit_logs', newLog);
+    if (!res.success) {
+      return;
+    }
     setAuditLogs((prev) => [newLog, ...prev]);
-    insertRow('audit_logs', newLog);
   };
 
-  const updateSchoolSettings = (settings: Partial<SchoolSettings>) => {
+  const updateSchoolSettings = async (settings: Partial<SchoolSettings>) => {
     if (!currentUser || currentUser.demoMode) return;
     const before = JSON.stringify(schoolSettings);
     const nextSettings = { ...schoolSettings, ...settings };
+    const res = await upsertRow('school_settings', { id: 'singleton', ...nextSettings });
+    if (!res.success) {
+      return;
+    }
     setSchoolSettings(nextSettings);
-    upsertRow('school_settings', { id: 'singleton', ...nextSettings });
-    addAuditLog('Update Pengaturan Sekolah', before, JSON.stringify(nextSettings), 'Mengubah nama, alamat, atau logo sekolah');
+    await addAuditLog('Update Pengaturan Sekolah', before, JSON.stringify(nextSettings), 'Mengubah nama, alamat, atau logo sekolah');
   };
 
   const addAcademicYear = (yearStr: string) => {
