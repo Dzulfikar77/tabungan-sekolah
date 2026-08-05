@@ -21,6 +21,9 @@ import {
   GraduationCap,
   Shield,
   Layers,
+  RefreshCw,
+  CheckCircle2,
+  CloudOff,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -41,7 +44,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     schoolSettings,
     currentAcademicYear,
     transactions,
+    syncState,
   } = useApp();
+
+  const isSyncing = syncState.pending > 0;
 
   const pendingApprovalsCount = transactions.filter(
     (t) => t.status === 'Menunggu Persetujuan'
@@ -121,6 +127,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="font-semibold text-slate-800">{currentAcademicYear.year}</span>
           </div>
 
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold ${isSyncing ? 'bg-amber-50 text-amber-700 border-amber-200' : syncState.lastSyncAt ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+            {isSyncing ? (
+              <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Menyimpan…</span></>
+            ) : syncState.lastSyncAt ? (
+              <><CheckCircle2 className="w-3.5 h-3.5" /><span>Tersimpan {new Date(syncState.lastSyncAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span></>
+            ) : (
+              <><CloudOff className="w-3.5 h-3.5" /><span>Belum sync</span></>
+            )}
+          </div>
           {/* Role Badge */}
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${roleColors[currentUser.role].bg} ${roleColors[currentUser.role].text} ${roleColors[currentUser.role].border}`}>
             <Shield className="w-3.5 h-3.5" />

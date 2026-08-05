@@ -35,7 +35,7 @@ import {
 import { generateTransactionNumber } from '../utils/format';
 import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
 import { mergeSchoolSettings } from '../utils/schoolSettings';
-import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError } from '../lib/db';
+import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError, onSyncState, SyncState } from '../lib/db';
 import { supabase } from '../lib/supabase';
 
 const ROLE_RANK: Record<UserRole, number> = { Developer: 4, 'Super Admin': 3, Admin: 2, 'Wali Kelas': 1, Viewer: 0 };
@@ -100,6 +100,7 @@ interface AppContextType {
 
   syncErrors: SyncError[];
   clearSyncErrors: () => void;
+  syncState: SyncState;
 
   users: User[];
   addUser: (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => { success: boolean; error?: string };
@@ -306,6 +307,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
   const clearSyncErrors = () => setSyncErrors([]);
+
+  const [syncState, setSyncState] = useState<SyncState>({ pending: 0, lastSyncAt: null });
+  useEffect(() => {
+    return onSyncState((s) => setSyncState(s));
+  }, []);
 
   const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0];
 
@@ -2211,6 +2217,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         restoreLastSnapshot,
         syncErrors,
         clearSyncErrors,
+        syncState,
         users,
         addUser,
         updateUserRole,
@@ -2228,7 +2235,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         <div className="bg-rose-600 text-white px-4 py-2.5 text-xs font-medium shadow-lg relative z-50">
           <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
             <span className="leading-snug">
-              Peringatan: Gagal menyimpan data ke cloud ({syncErrors[0].table} — {syncErrors[0].message.slice(0, 150)}). Data hanya tersimpan sementara di perangkat Anda. Periksa koneksi internet; jika masalah berlanjut, hubungi segera developer.
+              Peringatan: Gagal menyimpan data ke cloud ({syncErrors[0].table} — {syncErrors[0].message.slice(0, 150)}, {new Date(syncErrors[0].timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}). Data hanya tersimpan sementara di perangkat Anda. Periksa koneksi internet; jika masalah berlanjut, hubungi segera developer.
               {syncErrors.length > 1 && ` (+${syncErrors.length - 1} operasi gagal lainnya)`}
             </span>
             <button onClick={clearSyncErrors} className="shrink-0 bg-white/20 hover:bg-white/30 rounded px-2 py-1 cursor-pointer">
