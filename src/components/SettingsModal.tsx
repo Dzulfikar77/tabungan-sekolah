@@ -110,9 +110,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     link.click();
   };
 
-  const handleProcessRestore = () => {
+  const handleProcessRestore = async () => {
     if (!restoreJson.trim()) return;
-    const res = restoreBackupData(restoreJson.trim());
+    const res = await restoreBackupData(restoreJson.trim());
     if (res.success) {
       setRestoreMessage({ success: true, msg: 'Database berhasil dipulihkan dari cadangan JSON!' });
     } else {

@@ -25,8 +25,8 @@ export const PendingEditApprovals: React.FC<PendingEditApprovalsProps> = ({ type
 
   const canApprove = currentUser.role === 'Super Admin' || currentUser.role === 'Developer';
 
-  const handleApprove = (txId: string) => {
-    const res = approveEditTransaction(txId);
+  const handleApprove = async (txId: string) => {
+    const res = await approveEditTransaction(txId);
     if (!res.success) {
       setMessage(`Gagal menyetujui: ${res.error}`);
       return;
@@ -35,9 +35,9 @@ export const PendingEditApprovals: React.FC<PendingEditApprovalsProps> = ({ type
     setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!rejectingTxId) return;
-    const res = rejectEditTransaction(rejectingTxId, rejectReasonText || 'Ditolak');
+    const res = await rejectEditTransaction(rejectingTxId, rejectReasonText || 'Ditolak');
     if (!res.success) {
       setMessage(`Gagal menolak: ${res.error}`);
     } else {

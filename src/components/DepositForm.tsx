@@ -87,7 +87,7 @@ export const DepositForm: React.FC = () => {
     setErrorMessage('');
   };
 
-  const handleSubmitDeposit = (e: React.FormEvent) => {
+  const handleSubmitDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -107,7 +107,7 @@ export const DepositForm: React.FC = () => {
       return;
     }
 
-    const res = addDeposit(selectedStudentId, numAmount, reason || 'Setoran Tabungan');
+    const res = await addDeposit(selectedStudentId, numAmount, reason || 'Setoran Tabungan');
 
     if (!res.success) {
       setErrorMessage(res.error || 'Gagal menyimpan setoran.');

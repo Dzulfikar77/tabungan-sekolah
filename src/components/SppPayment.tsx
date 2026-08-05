@@ -86,11 +86,11 @@ export const SppPayment: React.FC = () => {
     setPaymentSuccess('');
   };
 
-  const handleConfirmPayment = (e: React.FormEvent) => {
+  const handleConfirmPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!paymentStudentId) return;
 
-    const res = addSppPayment(paymentStudentId, paymentMethod, currentPeriod);
+    const res = await addSppPayment(paymentStudentId, paymentMethod, currentPeriod);
     if (!res.success) {
       setPaymentError(res.error || 'Gagal memproses pembayaran SPP.');
     } else {

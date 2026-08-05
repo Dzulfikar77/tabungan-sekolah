@@ -86,25 +86,25 @@ export const Dashboard: React.FC = () => {
     return { classGrade: cls, count: list.length, balance: sum };
   });
 
-  const handleRunDeductionNow = () => {
+  const handleRunDeductionNow = async () => {
     const amount = schoolSettings.monthlyDeductionAmount || 2000;
     if (confirm(`Apakah Anda yakin ingin menjalankan Potongan Bulanan Otomatis (Rp ${amount.toLocaleString('id-ID')}) sekarang untuk semua siswa aktif? Siswa dengan saldo kurang akan dicatat sebagai tunggakan.`)) {
-      const summary = runMonthlyDeduction();
+      const summary = await runMonthlyDeduction();
       setDeductionSummary(summary);
       setSummaryModalOpen(true);
     }
   };
 
-  const handleApprove = (txId: string) => {
-    const res = approveWithdrawal(txId);
+  const handleApprove = async (txId: string) => {
+    const res = await approveWithdrawal(txId);
     if (!res.success) {
       alert(res.error);
     }
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (rejectingTxId) {
-      rejectWithdrawal(rejectingTxId, rejectReason || 'Ditolak dari Dashboard');
+      await rejectWithdrawal(rejectingTxId, rejectReason || 'Ditolak dari Dashboard');
       setRejectingTxId(null);
       setRejectReason('');
     }

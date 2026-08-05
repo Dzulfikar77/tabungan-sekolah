@@ -80,7 +80,7 @@ export const StudentManagement: React.FC = () => {
 
   const classes = ALL_CLASSES;
 
-  const handleSaveAddStudent = (e: React.FormEvent) => {
+  const handleSaveAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -89,7 +89,7 @@ export const StudentManagement: React.FC = () => {
       return;
     }
 
-    const res = addStudent({
+    const res = await addStudent({
       nis: nis.trim(),
       name: name.trim(),
       classGrade,
@@ -108,18 +108,22 @@ export const StudentManagement: React.FC = () => {
     }
   };
 
-  const handleSaveEditStudent = (e: React.FormEvent) => {
+  const handleSaveEditStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingStudent) {
-      updateStudent(editingStudent.id, {
+      const res = await updateStudent(editingStudent.id, {
         name,
         classGrade,
         status: editingStudent.status,
         parentName,
         phone,
       });
-      setIsEditModalOpen(false);
-      setEditingStudent(null);
+      if (res.success) {
+        setIsEditModalOpen(false);
+        setEditingStudent(null);
+      } else {
+        setFormError(res.error || 'Gagal menyimpan perubahan siswa.');
+      }
     }
   };
 
@@ -133,9 +137,9 @@ export const StudentManagement: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleDelete = (id: string, studentName: string) => {
+  const handleDelete = async (id: string, studentName: string) => {
     if (confirm(`Apakah Anda yakin ingin menghapus data siswa ${studentName}? Data histori transaksi akan tetap tersimpan di Audit Log.`)) {
-      softDeleteStudent(id);
+      await softDeleteStudent(id);
     }
   };
 
@@ -149,7 +153,7 @@ export const StudentManagement: React.FC = () => {
     if (!importFile) return;
     try {
       const { validStudents, errors: parseErrors } = await parseStudentsExcel(importFile, currentAcademicYear.id);
-      const res = importStudentsBulk(validStudents);
+      const res = await importStudentsBulk(validStudents);
       setImportResult({
         addedCount: res.addedCount,
         errors: [...parseErrors, ...res.errors],
@@ -166,8 +170,8 @@ export const StudentManagement: React.FC = () => {
     }
   };
 
-  const handleProcessBackfill = () => {
-    setBackfillResult(backfillViewerCredentials());
+  const handleProcessBackfill = async () => {
+    setBackfillResult(await backfillViewerCredentials());
   };
 
   const resetForm = () => {

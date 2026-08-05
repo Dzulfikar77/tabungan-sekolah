@@ -100,7 +100,7 @@ export const WithdrawalForm: React.FC = () => {
     setErrorMessage('');
   };
 
-  const handleWithdrawalSubmit = (e: React.FormEvent) => {
+  const handleWithdrawalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMsg('');
@@ -123,7 +123,7 @@ export const WithdrawalForm: React.FC = () => {
       return;
     }
 
-    const res = requestWithdrawal(selectedStudentId, numAmount, reason || 'Penarikan Tabungan');
+    const res = await requestWithdrawal(selectedStudentId, numAmount, reason || 'Penarikan Tabungan');
 
     if (!res.success) {
       setErrorMessage(res.error || 'Gagal mengajukan potongan.');
@@ -138,16 +138,16 @@ export const WithdrawalForm: React.FC = () => {
     }
   };
 
-  const handleApprove = (txId: string) => {
-    const res = approveWithdrawal(txId);
+  const handleApprove = async (txId: string) => {
+    const res = await approveWithdrawal(txId);
     if (!res.success) {
       alert(res.error);
     }
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (rejectingTxId) {
-      rejectWithdrawal(rejectingTxId, rejectReasonText || 'Ditolak dari menu approval');
+      await rejectWithdrawal(rejectingTxId, rejectReasonText || 'Ditolak dari menu approval');
       setRejectingTxId(null);
       setRejectReasonText('');
     }
@@ -191,7 +191,7 @@ export const WithdrawalForm: React.FC = () => {
     });
   };
 
-  const handleSubmitCloseSavings = () => {
+  const handleSubmitCloseSavings = async () => {
     if (closeSavingsIds.size === 0) return;
     const totalBalance = closeSavingsSelectedStudents.reduce((sum, s) => sum + s.balance, 0);
     if (!confirm(
@@ -203,7 +203,7 @@ export const WithdrawalForm: React.FC = () => {
       `Lanjutkan?`
     )) return;
 
-    const res = closeStudentSavings(Array.from(closeSavingsIds), closeSavingsReason);
+    const res = await closeStudentSavings(Array.from(closeSavingsIds), closeSavingsReason);
     setCloseSavingsResult({ pendingCount: res.pendingCount, closedCount: res.closedCount, totalWithdrawn: res.totalWithdrawn, errors: res.errors });
     if (res.success) {
       setCloseSavingsIds(new Set());

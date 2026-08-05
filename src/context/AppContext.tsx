@@ -58,23 +58,23 @@ interface AppContextType {
   bulkPromoteStudents: (fromClass: string, toClass: string) => void;
 
   students: Student[];
-  addStudent: (studentData: Omit<Student, 'id' | 'createdAt' | 'balance'> & { initialBalance?: number }) => { success: boolean; error?: string };
-  updateStudent: (id: string, data: Partial<Student>) => void;
-  softDeleteStudent: (id: string) => void;
-  importStudentsBulk: (newStudents: Partial<Student>[]) => { addedCount: number; errors: string[] };
+  addStudent: (studentData: Omit<Student, 'id' | 'createdAt' | 'balance'> & { initialBalance?: number }) => Promise<{ success: boolean; error?: string }>;
+  updateStudent: (id: string, data: Partial<Student>) => Promise<{ success: boolean; error?: string }>;
+  softDeleteStudent: (id: string) => Promise<{ success: boolean; error?: string }>;
+  importStudentsBulk: (newStudents: Partial<Student>[]) => Promise<{ addedCount: number; errors: string[] }>;
 
   transactions: Transaction[];
-  addDeposit: (studentId: string, amount: number, reason: string) => { success: boolean; transaction?: Transaction; error?: string };
-  requestWithdrawal: (studentId: string, amount: number, reason: string) => { success: boolean; transaction?: Transaction; error?: string };
-  approveWithdrawal: (transactionId: string) => { success: boolean; error?: string };
-  rejectWithdrawal: (transactionId: string, rejectionReason?: string) => { success: boolean; error?: string };
-  closeStudentSavings: (studentIds: string[], reason: string) => { success: boolean; pendingCount: number; closedCount: number; totalWithdrawn: number; errors: string[] };
-  requestEditTransaction: (transactionId: string, newAmount: number, newReason: string) => { success: boolean; error?: string };
-  approveEditTransaction: (transactionId: string) => { success: boolean; error?: string };
-  rejectEditTransaction: (transactionId: string, rejectionReason?: string) => { success: boolean; error?: string };
+  addDeposit: (studentId: string, amount: number, reason: string) => Promise<{ success: boolean; transaction?: Transaction; error?: string; autoDeducted?: boolean; deductionTransactions?: Transaction[] }>;
+  requestWithdrawal: (studentId: string, amount: number, reason: string) => Promise<{ success: boolean; transaction?: Transaction; error?: string }>;
+  approveWithdrawal: (transactionId: string) => Promise<{ success: boolean; error?: string }>;
+  rejectWithdrawal: (transactionId: string, rejectionReason?: string) => Promise<{ success: boolean; error?: string }>;
+  closeStudentSavings: (studentIds: string[], reason: string) => Promise<{ success: boolean; pendingCount: number; closedCount: number; totalWithdrawn: number; errors: string[] }>;
+  requestEditTransaction: (transactionId: string, newAmount: number, newReason: string) => Promise<{ success: boolean; error?: string }>;
+  approveEditTransaction: (transactionId: string) => Promise<{ success: boolean; error?: string }>;
+  rejectEditTransaction: (transactionId: string, rejectionReason?: string) => Promise<{ success: boolean; error?: string }>;
 
   toggleMonthlyDeduction: (enabled: boolean) => void;
-  runMonthlyDeduction: () => MonthlyDeductionSummary;
+  runMonthlyDeduction: () => Promise<MonthlyDeductionSummary>;
 
   books: Book[];
   addBook: (book: Omit<Book, 'id'>) => void;
@@ -85,16 +85,16 @@ interface AppContextType {
   toggleBookDistribution: (bookId: string, studentId: string) => void;
 
   bookPayments: BookPayment[];
-  addBookPayment: (bookId: string, studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan') => { success: boolean; error?: string };
+  addBookPayment: (bookId: string, studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan') => Promise<{ success: boolean; error?: string }>;
 
   auditLogs: AuditLogItem[];
   addAuditLog: (action: string, valueBefore: string, valueAfter: string, details: string) => void;
 
   sppPayments: SppPayment[];
-  addSppPayment: (studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan', period: string) => { success: boolean; error?: string };
+  addSppPayment: (studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan', period: string) => Promise<{ success: boolean; error?: string }>;
 
   exportBackupData: () => string;
-  restoreBackupData: (jsonString: string) => { success: boolean; error?: string };
+  restoreBackupData: (jsonString: string) => Promise<{ success: boolean; error?: string }>;
 
   syncErrors: SyncError[];
   clearSyncErrors: () => void;
@@ -108,7 +108,7 @@ interface AppContextType {
   verifyRecoveryKey: (key: string) => boolean;
   resetStaffPassword: (targetUserId: string, newPassword: string) => { success: boolean; error?: string };
   selfResetAdminPassword: (username: string, key: string, newPassword: string) => { success: boolean; error?: string };
-  backfillViewerCredentials: () => { created: number; errors: string[] };
+  backfillViewerCredentials: () => Promise<{ created: number; errors: string[] }>;
   deleteUser: (id: string) => void;
 }
 
@@ -417,7 +417,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
-  const backfillViewerCredentials = () => {
+  const backfillViewerCredentials = async () => {
     if (!currentUser || currentUser.demoMode) {
       return { created: 0, errors: ['Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.'] };
     }
@@ -447,8 +447,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (createdUsers.length > 0) {
+      const results = await Promise.all(createdUsers.map((u) => insertRow('users', u)));
+      const failed = results.filter((r) => !r.success).length;
+      if (failed > 0) {
+        setUsers((prev) => prev.filter((u) => !createdUsers.some((c) => c.id === u.id)));
+        return { created: 0, errors: [`${failed} akun viewer gagal tersimpan ke database.`] };
+      }
       setUsers((prev) => [...createdUsers, ...prev]);
-      Promise.all(createdUsers.map((u) => insertRow('users', u)));
       addAuditLog('Backfill Kredensial Viewer', '-', `User Viewer dibuat: ${createdUsers.length}`, `Membuat ${createdUsers.length} User Viewer untuk siswa eksisting.`);
     }
     return { created: createdUsers.length, errors: [] };
@@ -546,7 +551,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog('Pindah Kelas Massal', `Kelas asal: ${fromClass}`, `Kelas tujuan: ${toClass}`, `Memindahkan ${affected.length} siswa dari kelas ${fromClass} ke ${toClass}`);
   };
 
-  const addStudent = (studentData: Omit<Student, 'id' | 'createdAt' | 'balance'> & { initialBalance?: number }) => {
+  const addStudent = async (studentData: Omit<Student, 'id' | 'createdAt' | 'balance'> & { initialBalance?: number }) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -566,8 +571,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
+    const studentRes = await insertRow('students', newStudent);
+    if (!studentRes.success) {
+      return { success: false, error: `Gagal menyimpan siswa ke database: ${studentRes.error}` };
+    }
     setStudents((prev) => [newStudent, ...prev]);
-    insertRow('students', newStudent);
 
     // Auto-create viewer user (username = nama, password = tahun ajaran + seq)
     const ay = academicYears.find((y) => y.id === newStudent.academicYearId) || currentAcademicYear;
@@ -579,10 +587,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       studentId: newStudent.id,
       password: generateViewerPassword(ay, users.filter((u) => u.role === 'Viewer').map((u) => u.password || '')),
     };
+    const userRes = await insertRow('users', viewerUser);
+    if (!userRes.success) {
+      // viewer gagal tapi siswa sudah tersimpan — sukses agar UI tidak menyembunyikan siswa
+      addAuditLog('Tambah Siswa Baru', '-', `Siswa: ${newStudent.name} (NIS: ${newStudent.nis})`, `Menambahkan siswa baru kelas ${newStudent.classGrade} dengan saldo awal Rp ${initialBal}`);
+      return { success: true };
+    }
     setUsers((prev) => [viewerUser, ...prev]);
-    insertRow('users', viewerUser);
 
-    // If initial balance > 0, auto-generate initial setoran
     if (initialBal > 0) {
       const trNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length);
       const initialTx: Transaction = {
@@ -602,36 +614,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         academicYearId: currentAcademicYear.id,
         createdAt: new Date().toISOString(),
       };
+      const txRes = await insertRow('transactions', initialTx);
+      if (!txRes.success) {
+        // setoran awal gagal dicatat tapi siswa tersimpan — sukses, error via sync banner
+        addAuditLog('Tambah Siswa Baru', '-', `Siswa: ${newStudent.name} (NIS: ${newStudent.nis})`, `Menambahkan siswa baru kelas ${newStudent.classGrade} dengan saldo awal Rp ${initialBal}`);
+        return { success: true };
+      }
       setTransactions((prev) => [initialTx, ...prev]);
-      insertRow('transactions', initialTx);
     }
 
     addAuditLog('Tambah Siswa Baru', '-', `Siswa: ${newStudent.name} (NIS: ${newStudent.nis})`, `Menambahkan siswa baru kelas ${newStudent.classGrade} dengan saldo awal Rp ${initialBal}`);
     return { success: true };
   };
 
-  const updateStudent = (id: string, data: Partial<Student>) => {
-    if (!currentUser || currentUser.demoMode) return;
+  const updateStudent = async (id: string, data: Partial<Student>) => {
+    if (!currentUser || currentUser.demoMode) return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     const student = students.find((s) => s.id === id);
-    if (!student) return;
+    if (!student) return { success: false, error: 'Siswa tidak ditemukan.' };
 
+    const res = await updateRow('students', id, data);
+    if (!res.success) {
+      return { success: false, error: `Gagal menyimpan perubahan siswa ke database: ${res.error}` };
+    }
     setStudents((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)));
-    updateRow('students', id, data);
     addAuditLog('Edit Data Siswa', JSON.stringify(student), JSON.stringify({ ...student, ...data }), `Mengubah data siswa ${student.name} (NIS: ${student.nis})`);
+    return { success: true };
   };
 
-  const softDeleteStudent = (id: string) => {
-    if (!currentUser || currentUser.demoMode) return;
+  const softDeleteStudent = async (id: string) => {
+    if (!currentUser || currentUser.demoMode) return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     const student = students.find((s) => s.id === id);
-    if (!student) return;
+    if (!student) return { success: false, error: 'Siswa tidak ditemukan.' };
 
+    const res = await updateRow('students', id, { isDeleted: true });
+    if (!res.success) {
+      return { success: false, error: `Gagal menghapus siswa di database: ${res.error}` };
+    }
     setStudents((prev) => prev.map((s) => (s.id === id ? { ...s, isDeleted: true } : s)));
-    updateRow('students', id, { isDeleted: true });
-    deleteLinkedViewerUser(id, 'soft delete siswa');
+    const linked = findLinkedViewerUser(id);
+    if (linked) {
+      setUsers((prev) => prev.filter((u) => u.id !== linked.id));
+      await deleteRow('users', linked.id);
+    }
     addAuditLog('Hapus Siswa (Soft Delete)', `Status: ${student.status}`, 'Status: Soft Deleted', `Menghapus siswa ${student.name} (NIS: ${student.nis}). Data histori tetap aman.`);
+    return { success: true };
   };
 
-  const importStudentsBulk = (newStudentsList: Partial<Student>[]) => {
+  const importStudentsBulk = async (newStudentsList: Partial<Student>[]) => {
     if (!currentUser || currentUser.demoMode) {
       return { addedCount: 0, errors: ['Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.'] };
     }
@@ -710,23 +739,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (addedArray.length > 0) {
-      setStudents((prev) => [...addedArray, ...prev]);
-      Promise.all(addedArray.map((s) => insertRow('students', s)));
+      const studentResults = await Promise.all(addedArray.map((s) => insertRow('students', s)));
+      const failedStudentIds = new Set(
+        addedArray.filter((_, i) => !studentResults[i]?.success).map((s) => s.id)
+      );
+      const userResults = addedUsers.length > 0 ? await Promise.all(addedUsers.map((u) => insertRow('users', u))) : [];
+      const failedUserIds = new Set(
+        addedUsers.filter((_, i) => !userResults[i]?.success).map((u) => u.id)
+      );
+      const txResults = addedTransactions.length > 0 ? await Promise.all(addedTransactions.map((t) => insertRow('transactions', t))) : [];
+      const failedTxIds = new Set(
+        addedTransactions.filter((_, i) => !txResults[i]?.success).map((t) => t.id)
+      );
+
+      const keptStudents = addedArray.filter((s) => !failedStudentIds.has(s.id));
+      addedCount = keptStudents.length;
+
+      if (failedStudentIds.size > 0 || failedUserIds.size > 0 || failedTxIds.size > 0) {
+        errors.push(
+          `${failedStudentIds.size} siswa, ${failedUserIds.size} akun viewer, ${failedTxIds.size} transaksi awal gagal tersimpan ke database dan tidak dimasukkan.`
+        );
+      }
+
+      setStudents((prev) => [...keptStudents, ...prev.filter((s) => !failedStudentIds.has(s.id))]);
       if (addedUsers.length > 0) {
-        setUsers((prev) => [...addedUsers, ...prev]);
-        Promise.all(addedUsers.map((u) => insertRow('users', u)));
+        setUsers((prev) => [...addedUsers.filter((u) => !failedUserIds.has(u.id)), ...prev]);
       }
       if (addedTransactions.length > 0) {
-        setTransactions((prev) => [...addedTransactions, ...prev]);
-        Promise.all(addedTransactions.map((t) => insertRow('transactions', t)));
+        setTransactions((prev) => [...addedTransactions.filter((t) => !failedTxIds.has(t.id)), ...prev]);
       }
-      addAuditLog('Import Massal Siswa Excel', '-', `Total diimport: ${addedCount}`, `Berhasil mengimport ${addedCount} data siswa dari Excel.`);
+
+      if (keptStudents.length > 0) {
+        addAuditLog('Import Massal Siswa Excel', '-', `Total diimport: ${keptStudents.length}`, `Berhasil mengimport ${keptStudents.length} data siswa dari Excel.`);
+      }
     }
 
     return { addedCount, errors };
   };
 
-  const addDeposit = (studentId: string, amount: number, reason: string) => {
+  const addDeposit = async (studentId: string, amount: number, reason: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -763,13 +814,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    // Realtime update balance
+    // Setoran + saldo harus keduanya sukses di DB sebelum UI update
+    const txRes = await insertRow('transactions', newTx);
+    const balRes = await updateRow('students', studentId, { balance: balanceAfter });
+    if (!txRes.success || !balRes.success) {
+      return { success: false, error: `Gagal menyimpan setoran ke database: ${txRes.error || balRes.error}` };
+    }
     setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, balance: balanceAfter } : s)));
     setTransactions((prev) => [newTx, ...prev]);
-    insertRow('transactions', newTx);
-    updateRow('students', studentId, { balance: balanceAfter });
 
-    // Auto-deduct pending debt jika saldo sudah mencukupi
+    // Auto-deduct pending debt — best-effort, gagal tidak membatalkan setoran
     const existingDebt = student.pendingDebt || 0;
     const deductionTransactions: Transaction[] = [];
     if (existingDebt > 0) {
@@ -794,20 +848,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           academicYearId: currentAcademicYear.id,
           createdAt: new Date().toISOString(),
         };
-        deductionTransactions.push(debtTx);
-        setStudents((prev) =>
-          prev.map((s) => {
-            if (s.id === studentId) {
-              const updated = { ...s, balance: finalBalance };
-              delete updated.pendingDebt;
-              return updated;
-            }
-            return s;
-          })
-        );
-        setTransactions((prev) => [debtTx, ...prev]);
-        insertRow('transactions', debtTx);
-        updateRow('students', studentId, { balance: finalBalance, pendingDebt: 0 });
+        const debtTxRes = await insertRow('transactions', debtTx);
+        const debtBalRes = await updateRow('students', studentId, { balance: finalBalance, pendingDebt: 0 });
+        if (debtTxRes.success && debtBalRes.success) {
+          deductionTransactions.push(debtTx);
+          setStudents((prev) =>
+            prev.map((s) => {
+              if (s.id === studentId) {
+                const updated = { ...s, balance: finalBalance };
+                delete updated.pendingDebt;
+                return updated;
+              }
+              return s;
+            })
+          );
+          setTransactions((prev) => [debtTx, ...prev]);
+        }
       } else if (balanceAfter > 0) {
         // Saldo ada tapi kurang: potong habis, kurangi tunggakan
         const remainingDebt = existingDebt - balanceAfter;
@@ -829,27 +885,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           academicYearId: currentAcademicYear.id,
           createdAt: new Date().toISOString(),
         };
-        deductionTransactions.push(debtTx);
-        setStudents((prev) =>
-          prev.map((s) => (s.id === studentId ? { ...s, balance: 0, pendingDebt: remainingDebt } : s))
-        );
-        setTransactions((prev) => [debtTx, ...prev]);
-        insertRow('transactions', debtTx);
-        updateRow('students', studentId, { balance: 0, pendingDebt: remainingDebt });
+        const debtTxRes = await insertRow('transactions', debtTx);
+        const debtBalRes = await updateRow('students', studentId, { balance: 0, pendingDebt: remainingDebt });
+        if (debtTxRes.success && debtBalRes.success) {
+          deductionTransactions.push(debtTx);
+          setStudents((prev) =>
+            prev.map((s) => (s.id === studentId ? { ...s, balance: 0, pendingDebt: remainingDebt } : s))
+          );
+          setTransactions((prev) => [debtTx, ...prev]);
+        }
       }
     }
 
+    const autoDeductedAmount = deductionTransactions.reduce((sum, t) => sum + t.amount, 0);
     addAuditLog(
       'Setoran Tabungan',
       `Saldo ${student.name}: Rp ${balanceBefore.toLocaleString('id-ID')}`,
       `Saldo ${student.name}: Rp ${balanceAfter.toLocaleString('id-ID')}${existingDebt > 0 ? ' (Ada potongan tunggakan)' : ''}`,
-      `Setoran Rp ${amount.toLocaleString('id-ID')} (${trNum}) oleh ${currentUser.name}${existingDebt > 0 ? `. Tunggakan otomatis dipotong Rp ${(balanceAfter - (students.find(s => s.id === studentId)?.balance || balanceAfter)).toLocaleString('id-ID')}` : ''}`
+      `Setoran Rp ${amount.toLocaleString('id-ID')} (${trNum}) oleh ${currentUser.name}${autoDeductedAmount > 0 ? `. Tunggakan otomatis dipotong Rp ${autoDeductedAmount.toLocaleString('id-ID')}` : ''}`
     );
 
     return { success: true, transaction: newTx, autoDeducted: deductionTransactions.length > 0, deductionTransactions };
   };
 
-  const requestWithdrawal = (studentId: string, amount: number, reason: string) => {
+  const requestWithdrawal = async (studentId: string, amount: number, reason: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -909,15 +968,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    // If Super Admin/Dev requested directly, deduct balance immediately
+    const txRes = await insertRow('transactions', newTx);
+    if (!txRes.success) {
+      return { success: false, error: `Gagal mengajukan penarikan ke database: ${txRes.error}` };
+    }
+
+    // Jika langsung disetujui (Super Admin/Dev), potong saldo setelah transaksi tersimpan
     if (initialStatus === 'Disetujui') {
       const balanceAfter = student.balance - amount;
+      const balRes = await updateRow('students', student.id, { balance: balanceAfter });
+      if (!balRes.success) {
+        await deleteRow('transactions', newTx.id);
+        return { success: false, error: `Transaksi tersimpan, tapi saldo gagal dipotong (${balRes.error}). Pengajuan dibatalkan.` };
+      }
       setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: balanceAfter } : s)));
-      updateRow('students', student.id, { balance: balanceAfter });
     }
 
     setTransactions((prev) => [newTx, ...prev]);
-    insertRow('transactions', newTx);
 
     addAuditLog(
       'Pengajuan Penarikan',
@@ -929,7 +996,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, transaction: newTx };
   };
 
-  const approveWithdrawal = (transactionId: string) => {
+  const approveWithdrawal = async (transactionId: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -952,6 +1019,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: 'Transaksi ini sudah disetujui oleh Admin/Wali Kelas. Menunggu persetujuan Kepala Sekolah.' };
       }
 
+      const txRes = await updateRow('transactions', transactionId, {
+        status: 'Menunggu Approval Super Admin',
+        approvedByAdmin: true,
+        approvedByAdminName: currentUser.name,
+      });
+      if (!txRes.success) {
+        return { success: false, error: `Gagal menyimpan persetujuan ke database: ${txRes.error}` };
+      }
+
       setTransactions((prev) =>
         prev.map((t) =>
           t.id === transactionId
@@ -965,24 +1041,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         )
       );
 
-      setBookPayments((prev) =>
-        prev.map((bp) =>
-          bp.savingsTransactionId === transactionId
-            ? {
-                ...bp,
-                status: 'Menunggu Approval Super Admin',
-                approvedByAdmin: true,
-                approvedByAdminName: currentUser.name,
-              }
-            : bp
-        )
-      );
       const tier1Bp = bookPayments.find((bp) => bp.savingsTransactionId === transactionId);
       if (tier1Bp) {
-        updateRow('book_payments', tier1Bp.id, { status: 'Menunggu Approval Super Admin', approvedByAdmin: true, approvedByAdminName: currentUser.name });
+        const bpRes = await updateRow('book_payments', tier1Bp.id, {
+          status: 'Menunggu Approval Super Admin',
+          approvedByAdmin: true,
+          approvedByAdminName: currentUser.name,
+        });
+        if (bpRes.success) {
+          setBookPayments((prev) =>
+            prev.map((bp) =>
+              bp.savingsTransactionId === transactionId
+                ? { ...bp, status: 'Menunggu Approval Super Admin', approvedByAdmin: true, approvedByAdminName: currentUser.name }
+                : bp
+            )
+          );
+        }
       }
-
-      updateRow('transactions', transactionId, { status: 'Menunggu Approval Super Admin', approvedByAdmin: true, approvedByAdminName: currentUser.name });
 
       addAuditLog(
         'Approval Penarikan (Admin / Wali Kelas)',
@@ -997,7 +1072,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Role Super Admin / Developer approval (Tier 2 / Final)
     if (currentUser.role === 'Super Admin' || currentUser.role === 'Developer') {
       if (tx.closesAccount) {
-        const finalAmount = executeCloseAccount(student);
+        const finalAmount = await executeCloseAccount(student);
+
+        const txRes = await updateRow('transactions', transactionId, {
+          amount: finalAmount,
+          status: 'Disetujui',
+          approvedByAdmin: true,
+          approvedBySuperAdmin: true,
+          approvedBySuperAdminName: currentUser.name,
+          approvedById: currentUser.id,
+          approvedByName: currentUser.name,
+          approvedByRole: currentUser.role,
+        });
+        if (!txRes.success) {
+          return { success: false, error: `Akun ditutup, tapi status transaksi gagal diperbarui: ${txRes.error}` };
+        }
 
         setTransactions((prev) =>
           prev.map((t) =>
@@ -1017,16 +1106,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               : t
           )
         );
-        updateRow('transactions', transactionId, {
-          amount: finalAmount,
-          status: 'Disetujui',
-          approvedByAdmin: true,
-          approvedBySuperAdmin: true,
-          approvedBySuperAdminName: currentUser.name,
-          approvedById: currentUser.id,
-          approvedByName: currentUser.name,
-          approvedByRole: currentUser.role,
-        });
 
         addAuditLog(
           'Approval Tutup Tabungan (Final)',
@@ -1048,9 +1127,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const balanceBefore = student.balance;
       const balanceAfter = balanceBefore - tx.amount;
 
-      // Deduct balance & finalize approval
+      // Saldo dipotong dulu di DB, baru status transaksi disetujui
+      const balRes = await updateRow('students', student.id, { balance: balanceAfter });
+      if (!balRes.success) {
+        return { success: false, error: `Saldo gagal dipotong: ${balRes.error}` };
+      }
+      const txRes = await updateRow('transactions', transactionId, {
+        status: 'Disetujui',
+        approvedByAdmin: true,
+        approvedBySuperAdmin: true,
+        approvedBySuperAdminName: currentUser.name,
+        approvedById: currentUser.id,
+        approvedByName: currentUser.name,
+        approvedByRole: currentUser.role,
+      });
+      if (!txRes.success) {
+        await updateRow('students', student.id, { balance: balanceBefore });
+        return { success: false, error: `Status transaksi gagal diperbarui (${txRes.error}). Saldo dikembalikan ke Rp ${balanceBefore.toLocaleString('id-ID')}.` };
+      }
+
       setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: balanceAfter } : s)));
-      updateRow('students', student.id, { balance: balanceAfter });
       setTransactions((prev) =>
         prev.map((t) =>
           t.id === transactionId
@@ -1068,38 +1164,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : t
         )
       );
-      updateRow('transactions', transactionId, {
-        status: 'Disetujui',
-        approvedByAdmin: true,
-        approvedBySuperAdmin: true,
-        approvedBySuperAdminName: currentUser.name,
-        approvedById: currentUser.id,
-        approvedByName: currentUser.name,
-        approvedByRole: currentUser.role,
-      });
 
-      setBookPayments((prev) =>
-        prev.map((bp) =>
-          bp.savingsTransactionId === transactionId
-            ? {
-                ...bp,
-                status: 'Disetujui',
-                approvedByAdmin: true,
-                approvedByAdminName: bp.approvedByAdminName || currentUser.name,
-                approvedBySuperAdmin: true,
-                approvedBySuperAdminName: currentUser.name,
-              }
-            : bp
-        )
-      );
       const tier2Bp = bookPayments.find((bp) => bp.savingsTransactionId === transactionId);
       if (tier2Bp) {
-        updateRow('book_payments', tier2Bp.id, {
+        const bpRes = await updateRow('book_payments', tier2Bp.id, {
           status: 'Disetujui',
           approvedByAdmin: true,
           approvedBySuperAdmin: true,
           approvedBySuperAdminName: currentUser.name,
         });
+        if (bpRes.success) {
+          setBookPayments((prev) =>
+            prev.map((bp) =>
+              bp.savingsTransactionId === transactionId
+                ? {
+                    ...bp,
+                    status: 'Disetujui',
+                    approvedByAdmin: true,
+                    approvedByAdminName: bp.approvedByAdminName || currentUser.name,
+                    approvedBySuperAdmin: true,
+                    approvedBySuperAdminName: currentUser.name,
+                  }
+                : bp
+            )
+          );
+        }
       }
 
       addAuditLog(
@@ -1115,7 +1204,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: false, error: 'Akses ditolak. Anda tidak memiliki wewenang untuk menyetujui transaksi.' };
   };
 
-  const rejectWithdrawal = (transactionId: string, rejectionReason?: string) => {
+  const rejectWithdrawal = async (transactionId: string, rejectionReason?: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -1128,13 +1217,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Transaksi tidak ditemukan.' };
     }
 
+    const reason = rejectionReason || 'Ditolak';
+    const txRes = await updateRow('transactions', transactionId, { status: 'Ditolak', rejectionReason: reason });
+    if (!txRes.success) {
+      return { success: false, error: `Gagal menyimpan penolakan ke database: ${txRes.error}` };
+    }
+
     setTransactions((prev) =>
       prev.map((t) =>
         t.id === transactionId
           ? {
               ...t,
               status: 'Ditolak',
-              rejectionReason: rejectionReason || 'Ditolak',
+              rejectionReason: reason,
               approvedById: currentUser.id,
               approvedByName: currentUser.name,
               approvedByRole: currentUser.role,
@@ -1142,29 +1237,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : t
       )
     );
-    updateRow('transactions', transactionId, { status: 'Ditolak', rejectionReason: rejectionReason || 'Ditolak' });
 
-    setBookPayments((prev) =>
-      prev.map((bp) =>
-        bp.savingsTransactionId === transactionId ? { ...bp, status: 'Ditolak', rejectionReason } : bp
-      )
-    );
     const rejectBp = bookPayments.find((bp) => bp.savingsTransactionId === transactionId);
     if (rejectBp) {
-      updateRow('book_payments', rejectBp.id, { status: 'Ditolak', rejectionReason: rejectionReason || 'Ditolak' });
+      const bpRes = await updateRow('book_payments', rejectBp.id, { status: 'Ditolak', rejectionReason: reason });
+      if (bpRes.success) {
+        setBookPayments((prev) =>
+          prev.map((bp) => (bp.savingsTransactionId === transactionId ? { ...bp, status: 'Ditolak', rejectionReason: reason } : bp))
+        );
+      }
     }
 
     addAuditLog(
       'Approval Penarikan Ditolak',
       `Status: ${tx.status}`,
       'Status: Ditolak',
-      `Pengajuan ${tx.transactionNumber} ditolak oleh ${currentUser.name} (${currentUser.role}). Alasan: ${rejectionReason || 'Ditolak'}`
+      `Pengajuan ${tx.transactionNumber} ditolak oleh ${currentUser.name} (${currentUser.role}). Alasan: ${reason}`
     );
 
     return { success: true };
   };
 
-  const requestEditTransaction = (transactionId: string, newAmount: number, newReason: string) => {
+  const requestEditTransaction = async (transactionId: string, newAmount: number, newReason: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -1202,10 +1296,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newReason: newReason.trim(),
     };
 
+    const res = await updateRow('transactions', transactionId, { has_pending_edit: true, edit_request: editRequest });
+    if (!res.success) {
+      return { success: false, error: `Gagal mengajukan perbaikan ke database: ${res.error}` };
+    }
     setTransactions((prev) =>
       prev.map((t) => (t.id === transactionId ? { ...t, hasPendingEdit: true, editRequest } : t))
     );
-    updateRow('transactions', transactionId, { has_pending_edit: true, edit_request: editRequest });
 
     addAuditLog(
       'Perbaikan Transaksi Diajukan',
@@ -1217,7 +1314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
-  const approveEditTransaction = (transactionId: string) => {
+  const approveEditTransaction = async (transactionId: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -1246,8 +1343,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
+    // Saldo baru dihitung, update balance dulu lalu transaksi — rollback jika gagal
+    const balRes = await updateRow('students', student.id, { balance: newBalance });
+    if (!balRes.success) {
+      return { success: false, error: `Saldo gagal diperbarui: ${balRes.error}` };
+    }
+    const txRes = await updateRow('transactions', transactionId, {
+      amount: newAmount,
+      reason: newReason,
+      has_pending_edit: false,
+      edit_request: null,
+    });
+    if (!txRes.success) {
+      await updateRow('students', student.id, { balance: student.balance });
+      return { success: false, error: `Transaksi gagal diperbarui (${txRes.error}). Saldo dikembalikan.` };
+    }
+
     setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: newBalance } : s)));
-    updateRow('students', student.id, { balance: newBalance });
 
     setTransactions((prev) =>
       prev.map((t) =>
@@ -1262,7 +1374,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : t
       )
     );
-    updateRow('transactions', transactionId, { amount: newAmount, reason: newReason, has_pending_edit: false, edit_request: null });
 
     addAuditLog(
       'Perbaikan Transaksi Disetujui',
@@ -1274,7 +1385,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
-  const rejectEditTransaction = (transactionId: string, rejectionReason?: string) => {
+  const rejectEditTransaction = async (transactionId: string, rejectionReason?: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -1289,10 +1400,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Tidak ada permintaan perbaikan untuk transaksi ini.' };
     }
 
+    const res = await updateRow('transactions', transactionId, { has_pending_edit: false, edit_request: null });
+    if (!res.success) {
+      return { success: false, error: `Gagal menyimpan penolakan ke database: ${res.error}` };
+    }
     setTransactions((prev) =>
       prev.map((t) => (t.id === transactionId ? { ...t, hasPendingEdit: false, editRequest: undefined } : t))
     );
-    updateRow('transactions', transactionId, { has_pending_edit: false, edit_request: null });
 
     addAuditLog(
       'Perbaikan Transaksi Ditolak',
@@ -1304,18 +1418,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
-  const executeCloseAccount = (student: Student) => {
+  const executeCloseAccount = async (student: Student) => {
     const finalAmount = student.balance;
-    deleteLinkedViewerUser(student.id, 'tutup tabungan');
+    const linked = findLinkedViewerUser(student.id);
+    if (linked) {
+      setUsers((prev) => prev.filter((u) => u.id !== linked.id));
+      await deleteRow('users', linked.id);
+    }
     setStudents((prev) => prev.filter((s) => s.id !== student.id));
     setBookDistributions((prev) => prev.filter((d) => d.studentId !== student.id));
     setBookPayments((prev) => prev.filter((p) => p.studentId !== student.id));
     setSppPayments((prev) => prev.filter((p) => p.studentId !== student.id));
 
-    deleteRow('students', student.id);
-    deleteRowsBy('book_distributions', 'student_id', student.id);
-    deleteRowsBy('book_payments', 'student_id', student.id);
-    deleteRowsBy('spp_payments', 'student_id', student.id);
+    await Promise.all([
+      deleteRow('students', student.id),
+      deleteRowsBy('book_distributions', 'student_id', student.id),
+      deleteRowsBy('book_payments', 'student_id', student.id),
+      deleteRowsBy('spp_payments', 'student_id', student.id),
+    ]);
 
     addAuditLog(
       'Tutup Tabungan',
@@ -1327,7 +1447,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return finalAmount;
   };
 
-  const requestCloseSavings = (studentIds: string[], reason: string) => {
+  const requestCloseSavings = async (studentIds: string[], reason: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, pendingCount: 0, closedCount: 0, totalWithdrawn: 0, errors: ['Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.'] };
     }
@@ -1404,18 +1524,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (pendingTxs.length > 0) {
-      setTransactions((prev) => [...pendingTxs, ...prev]);
-      pendingTxs.forEach((tx) => insertRow('transactions', tx));
+      const results = await Promise.all(pendingTxs.map((tx) => insertRow('transactions', tx)));
+      const failedCount = results.filter((r) => !r.success).length;
+      if (failedCount > 0) {
+        errors.push(`${failedCount} pengajuan tutup tabungan gagal tersimpan ke database.`);
+      } else {
+        setTransactions((prev) => [...pendingTxs, ...prev]);
+      }
     }
 
     let totalWithdrawn = 0;
-    immediateCloses.forEach(({ student, tx }) => {
-      const finalAmount = executeCloseAccount(student);
+    const closedTxs: Transaction[] = [];
+    for (const { student, tx } of immediateCloses) {
+      const finalAmount = await executeCloseAccount(student);
       totalWithdrawn += finalAmount;
       const finalTx = { ...tx, amount: finalAmount };
-      setTransactions((prev) => [finalTx, ...prev]);
-      insertRow('transactions', finalTx);
-    });
+      const txRes = await insertRow('transactions', finalTx);
+      if (!txRes.success) {
+        errors.push(`Transaksi tutup ${student.name} gagal tersimpan ke database.`);
+      } else {
+        closedTxs.push(finalTx);
+      }
+    }
+    if (closedTxs.length > 0) {
+      setTransactions((prev) => [...closedTxs, ...prev]);
+    }
 
     addAuditLog(
       'Pengajuan Tutup Tabungan',
@@ -1431,7 +1564,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateSchoolSettings({ monthlyDeductionEnabled: enabled });
   };
 
-  const runMonthlyDeduction = (): MonthlyDeductionSummary => {
+  const runMonthlyDeduction = async (): Promise<MonthlyDeductionSummary> => {
     if (!currentUser || currentUser.demoMode) {
       return { runDate: new Date().toISOString(), totalStudentsDeducted: 0, totalAmountDeducted: 0, deductedStudents: [], skippedStudents: [], pendingDebtStudents: [] };
     }
@@ -1561,27 +1694,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (Object.keys(updatedStudentsMap).length > 0 && Object.keys(updatedDebtMap).length > 0) {
-      setStudents((prev) =>
-        prev.map((s) => {
-          let updated = { ...s };
-          if (updatedStudentsMap[s.id] !== undefined) {
-            updated.balance = updatedStudentsMap[s.id];
-          }
-          if (updatedDebtMap[s.id] !== undefined) {
-            if (updatedDebtMap[s.id] > 0) {
-              updated.pendingDebt = updatedDebtMap[s.id];
-            } else {
-              delete updated.pendingDebt;
-            }
-          }
-          return updated;
-        })
+      const updateResults = await Promise.all(
+        Object.entries(updatedStudentsMap).map(([sid, bal]) =>
+          updateRow('students', sid, { balance: bal, pendingDebt: updatedDebtMap[sid] || 0 })
+        )
       );
-      Object.entries(updatedStudentsMap).forEach(([sid, bal]) => {
-        updateRow('students', sid, { balance: bal, pendingDebt: updatedDebtMap[sid] || 0 });
-      });
-      setTransactions((prev) => [...newTransactions, ...prev]);
-      Promise.all(newTransactions.map((t) => insertRow('transactions', t)));
+      const txResults = newTransactions.length > 0
+        ? await Promise.all(newTransactions.map((t) => insertRow('transactions', t)))
+        : [];
+      const failedUpdates = updateResults.filter((r) => !r.success).length;
+      const failedTxs = txResults.filter((r) => !r.success).length;
+      // Jika ada yang gagal: state tidak di-update, error muncul via sync banner
+      if (failedUpdates === 0 && failedTxs === 0) {
+        setStudents((prev) =>
+          prev.map((s) => {
+            let updated = { ...s };
+            if (updatedStudentsMap[s.id] !== undefined) {
+              updated.balance = updatedStudentsMap[s.id];
+            }
+            if (updatedDebtMap[s.id] !== undefined) {
+              if (updatedDebtMap[s.id] > 0) {
+                updated.pendingDebt = updatedDebtMap[s.id];
+              } else {
+                delete updated.pendingDebt;
+              }
+            }
+            return updated;
+          })
+        );
+        setTransactions((prev) => [...newTransactions, ...prev]);
+      }
     }
 
     const summary: MonthlyDeductionSummary = {
@@ -1654,7 +1796,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addBookPayment = (bookId: string, studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan') => {
+  const addBookPayment = async (bookId: string, studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan') => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -1689,8 +1831,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         academicYearId: currentAcademicYear.id,
       };
 
+      const bpRes = await insertRow('book_payments', newPayment);
+      if (!bpRes.success) {
+        return { success: false, error: `Gagal menyimpan pembayaran ke database: ${bpRes.error}` };
+      }
       setBookPayments((prev) => [newPayment, ...prev]);
-      insertRow('book_payments', newPayment);
 
       // Automatically mark distribution as received
       toggleBookDistribution(item.id, studentId);
@@ -1713,7 +1858,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 1. Generate savings withdrawal transaction with status based on role
-      const withdrawalRes = requestWithdrawal(
+      const withdrawalRes = await requestWithdrawal(
         studentId,
         item.price,
         `Pembayaran ${item.type} (${item.title}) via Potong Tabungan`
@@ -1752,8 +1897,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         academicYearId: currentAcademicYear.id,
       };
 
+      const bpRes = await insertRow('book_payments', newPayment);
+      if (!bpRes.success) {
+        return { success: false, error: `Potongan tabungan tercatat, tapi pembayaran gagal tersimpan (${bpRes.error}).` };
+      }
       setBookPayments((prev) => [newPayment, ...prev]);
-      insertRow('book_payments', newPayment);
 
       addAuditLog(
         `Pengajuan Pembayaran ${item.type} Potong Tabungan`,
@@ -1766,7 +1914,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addSppPayment = (studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan', period: string) => {
+  const addSppPayment = async (studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan', period: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -1803,12 +1951,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         academicYearId: currentAcademicYear.id,
         createdAt: new Date().toISOString(),
       };
+      const txRes = await insertRow('transactions', newTx);
+      const balanceAfter = student.balance - sppAmount;
+      const balRes = await updateRow('students', studentId, { balance: balanceAfter });
+      if (!txRes.success || !balRes.success) {
+        return { success: false, error: `Gagal menyimpan potongan tabungan ke database: ${txRes.error || balRes.error}` };
+      }
       setTransactions((prev) => [newTx, ...prev]);
-      insertRow('transactions', newTx);
       setStudents((prev) =>
-        prev.map((s) => (s.id === studentId ? { ...s, balance: s.balance - sppAmount } : s))
+        prev.map((s) => (s.id === studentId ? { ...s, balance: balanceAfter } : s))
       );
-      updateRow('students', studentId, { balance: student.balance - sppAmount });
     }
 
     const newPayment: SppPayment = {
@@ -1827,8 +1979,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       academicYearId: currentAcademicYear.id,
     };
 
+    const sppRes = await insertRow('spp_payments', newPayment);
+    if (!sppRes.success) {
+      return { success: false, error: `Gagal menyimpan pembayaran SPP ke database: ${sppRes.error}` };
+    }
     setSppPayments((prev) => [newPayment, ...prev]);
-    insertRow('spp_payments', newPayment);
 
     addAuditLog(
       'Pembayaran SPP',
@@ -1859,7 +2014,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return JSON.stringify(backupObj, null, 2);
   };
 
-  const restoreBackupData = (jsonString: string) => {
+  const restoreBackupData = async (jsonString: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -1873,17 +2028,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: 'Format file cadangan tidak valid!' };
       }
 
-      setSchoolSettings(data.schoolSettings);
-      setAcademicYears(data.academicYears || initialAcademicYears);
-      setStudents(data.students || []);
-      setTransactions(data.transactions || []);
-      setBooks(data.books || []);
-      setBookDistributions(data.bookDistributions || []);
-      setBookPayments(data.bookPayments || []);
-      setSppPayments(data.sppPayments || []);
-      setAuditLogs(data.auditLogs || []);
-
-      Promise.all([
+      const results = await Promise.all([
         upsertRow('school_settings', data.schoolSettings),
         ...(data.academicYears || []).map((y: any) => upsertRow('academic_years', y)),
         ...(data.students || []).map((s: any) => upsertRow('students', s)),
@@ -1894,6 +2039,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...(data.sppPayments || []).map((sp: any) => upsertRow('spp_payments', sp)),
         ...(data.auditLogs || []).map((al: any) => upsertRow('audit_logs', al)),
       ]);
+      const failedCount = results.filter((r) => !r.success).length;
+      if (failedCount > 0) {
+        return { success: false, error: `${failedCount} operasi restore gagal tersimpan ke database. Data lokal tidak diubah.` };
+      }
+
+      setSchoolSettings(data.schoolSettings);
+      setAcademicYears(data.academicYears || initialAcademicYears);
+      setStudents(data.students || []);
+      setTransactions(data.transactions || []);
+      setBooks(data.books || []);
+      setBookDistributions(data.bookDistributions || []);
+      setBookPayments(data.bookPayments || []);
+      setSppPayments(data.sppPayments || []);
+      setAuditLogs(data.auditLogs || []);
 
       addAuditLog(
         'Restore Database JSON',

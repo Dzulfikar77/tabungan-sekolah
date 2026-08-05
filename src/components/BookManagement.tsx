@@ -111,7 +111,7 @@ export const BookManagement: React.FC = () => {
     setItemPrice(25000);
   };
 
-  const handleProcessPayment = (e: React.FormEvent) => {
+  const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setPaymentError('');
     setPaymentSuccess('');
@@ -121,7 +121,7 @@ export const BookManagement: React.FC = () => {
       return;
     }
 
-    const res = addBookPayment(selectedItemId, selectedStudentId, paymentMethod);
+    const res = await addBookPayment(selectedItemId, selectedStudentId, paymentMethod);
 
     if (!res.success) {
       setPaymentError(res.error || 'Gagal memproses transaksi.');
@@ -516,7 +516,10 @@ export const BookManagement: React.FC = () => {
                             <div className="pt-1.5 flex gap-1">
                               {(currentUser.role === 'Wali Kelas' || currentUser.role === 'Admin') && !bp.approvedByAdmin && (
                                 <button
-                                  onClick={() => approveWithdrawal(bp.savingsTransactionId!)}
+                                  onClick={async () => {
+                                    const r = await approveWithdrawal(bp.savingsTransactionId!);
+                                    if (!r.success) alert(r.error);
+                                  }}
                                   className="w-full py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-[10px] cursor-pointer"
                                 >
                                   Approve Admin
@@ -525,7 +528,10 @@ export const BookManagement: React.FC = () => {
 
                               {(currentUser.role === 'Super Admin' || currentUser.role === 'Developer') && (
                                 <button
-                                  onClick={() => approveWithdrawal(bp.savingsTransactionId!)}
+                                  onClick={async () => {
+                                    const r = await approveWithdrawal(bp.savingsTransactionId!);
+                                    if (!r.success) alert(r.error);
+                                  }}
                                   className="w-full py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold text-[10px] cursor-pointer"
                                 >
                                   Approve Kepsek
@@ -533,7 +539,10 @@ export const BookManagement: React.FC = () => {
                               )}
 
                               <button
-                                onClick={() => rejectWithdrawal(bp.savingsTransactionId!, 'Ditolak dari menu Koperasi')}
+                                onClick={async () => {
+                                  const r = await rejectWithdrawal(bp.savingsTransactionId!, 'Ditolak dari menu Koperasi');
+                                  if (!r.success) alert(r.error);
+                                }}
                                 className="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-md font-bold text-[10px] cursor-pointer"
                               >
                                 Tolak

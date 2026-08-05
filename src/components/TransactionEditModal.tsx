@@ -27,7 +27,7 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({ tran
     setErrorMessage('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
@@ -42,7 +42,7 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({ tran
       return;
     }
 
-    const res = requestEditTransaction(transaction.id, numAmount, reason || transaction.reason);
+    const res = await requestEditTransaction(transaction.id, numAmount, reason || transaction.reason);
     if (!res.success) {
       setErrorMessage(res.error || 'Gagal mengajukan perbaikan.');
       return;
