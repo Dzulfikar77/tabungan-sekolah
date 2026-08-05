@@ -6,6 +6,11 @@ export interface SyncError {
   message: string;
 }
 
+export interface DbResult {
+  success: boolean;
+  error?: string;
+}
+
 const syncErrorListeners: ((err: SyncError) => void)[] = [];
 
 export function onSyncError(listener: (err: SyncError) => void): () => void {
@@ -18,7 +23,7 @@ export function onSyncError(listener: (err: SyncError) => void): () => void {
 
 function reportError(table: string, action: string, error: any) {
   console.error(`Error ${action} ${table}:`, error);
-  syncErrorListeners.forEach((l) => l({ table, action, message: error?.message || String(error) }));
+  syncErrorListeners.forEach((l) => { l({ table, action, message: error?.message || String(error) }); });
 }
 
 function toDbRow(obj: Record<string, any>): Record<string, any> {
@@ -51,29 +56,49 @@ async function fetchAll<T>(table: string): Promise<T[]> {
   return (data || []).map(row => fromDbRow<T>(row));
 }
 
-async function insertRow(table: string, row: Record<string, any>): Promise<void> {
+async function insertRow(table: string, row: Record<string, any>): Promise<DbResult> {
   const { error } = await supabase.from(table).insert(toDbRow(row));
-  if (error) reportError(table, 'inserting into', error);
+  if (error) {
+    reportError(table, 'inserting into', error);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
 }
 
-async function updateRow(table: string, id: string, data: Record<string, any>): Promise<void> {
+async function updateRow(table: string, id: string, data: Record<string, any>): Promise<DbResult> {
   const { error } = await supabase.from(table).update(toDbRow(data)).eq('id', id);
-  if (error) reportError(table, 'updating', error);
+  if (error) {
+    reportError(table, 'updating', error);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
 }
 
-async function deleteRow(table: string, id: string): Promise<void> {
+async function deleteRow(table: string, id: string): Promise<DbResult> {
   const { error } = await supabase.from(table).delete().eq('id', id);
-  if (error) reportError(table, 'deleting from', error);
+  if (error) {
+    reportError(table, 'deleting from', error);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
 }
 
-async function deleteRowsBy(table: string, column: string, value: string): Promise<void> {
+async function deleteRowsBy(table: string, column: string, value: string): Promise<DbResult> {
   const { error } = await supabase.from(table).delete().eq(column, value);
-  if (error) reportError(table, 'deleting from', error);
+  if (error) {
+    reportError(table, 'deleting from', error);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
 }
 
-async function upsertRow(table: string, row: Record<string, any>): Promise<void> {
+async function upsertRow(table: string, row: Record<string, any>): Promise<DbResult> {
   const { error } = await supabase.from(table).upsert(toDbRow(row), { onConflict: 'id' });
-  if (error) reportError(table, 'upserting into', error);
+  if (error) {
+    reportError(table, 'upserting into', error);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
 }
 
 export { toDbRow, fromDbRow, fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow };
