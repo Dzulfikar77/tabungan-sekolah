@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Database,
   Calendar,
+  History,
 } from 'lucide-react';
 
 const ROLE_RANK: Record<UserRole, number> = {
@@ -38,6 +39,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     updateSchoolSettings,
     exportBackupData,
     restoreBackupData,
+    lastSnapshotTime,
+    restoreLastSnapshot,
     currentUser,
     academicYears,
     addAcademicYear,
@@ -118,6 +121,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     } else {
       setRestoreMessage({ success: false, msg: res.error || 'Gagal memulihkan database.' });
     }
+  };
+
+  const handleRestoreLastSnapshot = async () => {
+    const res = await restoreLastSnapshot();
+    setRestoreMessage({
+      success: res.success,
+      msg: res.success ? 'Database berhasil dipulihkan dari snapshot terakhir!' : res.error || 'Gagal memulihkan dari snapshot.',
+    });
   };
 
   const handleAddYear = () => {
@@ -545,6 +556,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             >
               <Download className="w-3.5 h-3.5" /> Unduh Backup
             </button>
+          </div>
+
+          <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200 flex items-center justify-between gap-2">
+            <div>
+              <div className="font-bold text-indigo-900 flex items-center gap-1">
+                <History className="w-3.5 h-3.5 text-indigo-600" /> Snapshot Otomatis
+              </div>
+              <div className="text-[11px] text-indigo-700">
+                {lastSnapshotTime
+                  ? `Snapshot terakhir: ${new Date(lastSnapshotTime).toLocaleString('id-ID')}`
+                  : 'Belum ada snapshot otomatis.'}
+              </div>
+            </div>
+            {currentUser.role === 'Developer' && (
+              <button
+                onClick={handleRestoreLastSnapshot}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg cursor-pointer shrink-0"
+              >
+                Restore Snapshot
+              </button>
+            )}
           </div>
 
           {/* Restore Section - Developer Role Only */}

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   User,
   UserRole,
@@ -95,6 +95,8 @@ interface AppContextType {
 
   exportBackupData: () => string;
   restoreBackupData: (jsonString: string) => Promise<{ success: boolean; error?: string }>;
+  lastSnapshotTime: string | null;
+  restoreLastSnapshot: () => Promise<{ success: boolean; error?: string }>;
 
   syncErrors: SyncError[];
   clearSyncErrors: () => void;
@@ -115,6 +117,10 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'tabungan_sekolah_v3_data';
+
+const SNAPSHOT_KEY = `${LOCAL_STORAGE_KEY}_snapshots`;
+const MAX_SNAPSHOTS = 10;
+const SNAPSHOT_DEDUP_MS = 5 * 60 * 1000;
 
 const hasSupabase = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 
@@ -197,6 +203,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_spp_payments`, JSON.stringify(sppPayments));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
   }, [dbLoaded, schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments, users]);
+
+  const [lastSnapshotTime, setLastSnapshotTime] = useState<string | null>(() => {
+    try {
+      const existing = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]');
+      return existing.length > 0 ? existing[existing.length - 1].timestamp : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const buildBackupPayload = () => ({
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+    exportedBy: currentUser?.name,
+    schoolSettings,
+    academicYears,
+    students,
+    transactions,
+    books,
+    bookDistributions,
+    bookPayments,
+    sppPayments,
+    auditLogs,
+  });
+
+  const saveSnapshot = () => {
+    try {
+      const existing: { timestamp: string; data: unknown }[] = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]');
+      const last = existing[existing.length - 1];
+      if (last && Date.now() - new Date(last.timestamp).getTime() < SNAPSHOT_DEDUP_MS) return;
+      existing.push({ timestamp: new Date().toISOString(), data: buildBackupPayload() });
+      if (existing.length > MAX_SNAPSHOTS) existing.splice(0, existing.length - MAX_SNAPSHOTS);
+      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(existing));
+      setLastSnapshotTime(existing[existing.length - 1].timestamp);
+    } catch {
+      // snapshot non-kritis — gagal tidak memblokir operasi
+    }
+  };
+
+  const saveSnapshotRef = useRef(saveSnapshot);
+  saveSnapshotRef.current = saveSnapshot;
+  useEffect(() => {
+    const id = setInterval(() => saveSnapshotRef.current(), 60 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const fetchFromSupabase = useCallback(async () => {
     const [dbSchoolSettings, dbStudents, dbTransactions, dbBooks, dbDistributions, dbBookPayments, dbSppPayments, dbAcademicYears, dbAuditLogs, dbUsers] = await Promise.all([
@@ -582,6 +633,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: `Gagal menyimpan siswa ke database: ${studentRes.error}` };
     }
     setStudents((prev) => [newStudent, ...prev]);
+    saveSnapshot();
 
     // Auto-create viewer user (username = nama, password = tahun ajaran + seq)
     const ay = academicYears.find((y) => y.id === newStudent.academicYearId) || currentAcademicYear;
@@ -774,8 +826,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (addedTransactions.length > 0) {
         setTransactions((prev) => [...addedTransactions.filter((t) => !failedTxIds.has(t.id)), ...prev]);
       }
-
       if (keptStudents.length > 0) {
+        saveSnapshot();
         addAuditLog('Import Massal Siswa Excel', '-', `Total diimport: ${keptStudents.length}`, `Berhasil mengimport ${keptStudents.length} data siswa dari Excel.`);
       }
     }
@@ -828,6 +880,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, balance: balanceAfter } : s)));
     setTransactions((prev) => [newTx, ...prev]);
+    saveSnapshot();
 
     // Auto-deduct pending debt — best-effort, gagal tidak membatalkan setoran
     const existingDebt = student.pendingDebt || 0;
@@ -1119,6 +1172,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           'Saldo: 0 — data siswa dihapus',
           `Persetujuan final tutup tabungan ${student.name} (NIS: ${student.nis}). Seluruh saldo Rp ${finalAmount.toLocaleString('id-ID')} ditarik, data siswa dihapus permanen.`
         );
+        saveSnapshot();
 
         return { success: true };
       }
@@ -1203,6 +1257,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `Saldo ${student.name}: Rp ${balanceAfter.toLocaleString('id-ID')}`,
         `Persetujuan final disetujui oleh Kepala Sekolah (${currentUser.name}). Saldo Rp ${tx.amount.toLocaleString('id-ID')} (${tx.transactionNumber}) resmi dipotong.`
       );
+      saveSnapshot();
 
       return { success: true };
     }
@@ -1556,6 +1611,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (closedTxs.length > 0) {
       setTransactions((prev) => [...closedTxs, ...prev]);
     }
+    if (closedTxs.length > 0 || pendingTxs.length > 0) {
+      saveSnapshot();
+    }
 
     addAuditLog(
       'Pengajuan Tutup Tabungan',
@@ -1713,6 +1771,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const failedTxs = txResults.filter((r) => !r.success).length;
       // Jika ada yang gagal: state tidak di-update, error muncul via sync banner
       if (failedUpdates === 0 && failedTxs === 0) {
+        saveSnapshot();
         setStudents((prev) =>
           prev.map((s) => {
             let updated = { ...s };
@@ -1843,6 +1902,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: `Gagal menyimpan pembayaran ke database: ${bpRes.error}` };
       }
       setBookPayments((prev) => [newPayment, ...prev]);
+      saveSnapshot();
 
       // Automatically mark distribution as received
       toggleBookDistribution(item.id, studentId);
@@ -1917,6 +1977,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: `Pembayaran gagal tersimpan (${bpRes.error}). Potongan tabungan dibatalkan, saldo dikembalikan ke Rp ${balanceBefore.toLocaleString('id-ID')}.` };
       }
       setBookPayments((prev) => [newPayment, ...prev]);
+      saveSnapshot();
 
       addAuditLog(
         `Pengajuan Pembayaran ${item.type} Potong Tabungan`,
@@ -2011,6 +2072,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: `Gagal menyimpan pembayaran SPP ke database: ${sppRes.error}` };
     }
     setSppPayments((prev) => [newPayment, ...prev]);
+    saveSnapshot();
 
     addAuditLog(
       'Pembayaran SPP',
@@ -2023,22 +2085,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const exportBackupData = () => {
-    const backupObj = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      exportedBy: currentUser.name,
-      schoolSettings,
-      academicYears,
-      students,
-      transactions,
-      books,
-      bookDistributions,
-      bookPayments,
-      sppPayments,
-      auditLogs,
-    };
-    addAuditLog('Backup Database JSON', '-', `Versi 1.0`, `Ekspor cadangan data sistem oleh ${currentUser.name}`);
-    return JSON.stringify(backupObj, null, 2);
+    addAuditLog('Backup Database JSON', '-', `Versi 1.0`, `Ekspor cadangan data sistem oleh ${currentUser?.name}`);
+    return JSON.stringify(buildBackupPayload(), null, 2);
   };
 
   const restoreBackupData = async (jsonString: string) => {
@@ -2080,6 +2128,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setBookPayments(data.bookPayments || []);
       setSppPayments(data.sppPayments || []);
       setAuditLogs(data.auditLogs || []);
+      saveSnapshot();
 
       addAuditLog(
         'Restore Database JSON',
@@ -2091,6 +2140,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: true };
     } catch (err) {
       return { success: false, error: 'Gagal membaca file JSON cadangan.' };
+    }
+  };
+
+  const restoreLastSnapshot = async () => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    if (currentUser.role !== 'Developer') {
+      return { success: false, error: 'Fitur restore hanya dapat diakses oleh role Developer.' };
+    }
+    try {
+      const existing = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]');
+      if (existing.length === 0) {
+        return { success: false, error: 'Belum ada snapshot tersimpan.' };
+      }
+      return await restoreBackupData(JSON.stringify(existing[existing.length - 1].data));
+    } catch {
+      return { success: false, error: 'Gagal membaca snapshot.' };
     }
   };
 
@@ -2140,6 +2207,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addSppPayment,
         exportBackupData,
         restoreBackupData,
+        lastSnapshotTime,
+        restoreLastSnapshot,
         syncErrors,
         clearSyncErrors,
         users,
