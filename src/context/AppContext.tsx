@@ -1536,15 +1536,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let totalWithdrawn = 0;
     const closedTxs: Transaction[] = [];
     for (const { student, tx } of immediateCloses) {
-      const finalAmount = await executeCloseAccount(student);
-      totalWithdrawn += finalAmount;
-      const finalTx = { ...tx, amount: finalAmount };
+      const finalTx = { ...tx, amount: student.balance };
       const txRes = await insertRow('transactions', finalTx);
       if (!txRes.success) {
-        errors.push(`Transaksi tutup ${student.name} gagal tersimpan ke database.`);
-      } else {
-        closedTxs.push(finalTx);
+        errors.push(`Transaksi tutup ${student.name} gagal tersimpan — siswa tidak ditutup.`);
+        continue;
       }
+      // Transaksi tercatat dulu, baru data siswa dihapus
+      const finalAmount = await executeCloseAccount(student);
+      totalWithdrawn += finalAmount;
+      closedTxs.push(finalTx);
     }
     if (closedTxs.length > 0) {
       setTransactions((prev) => [...closedTxs, ...prev]);
@@ -1557,7 +1558,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       `Pengajuan tutup tabungan untuk ${studentIds.length} siswa. Alasan: ${reason}. ${pendingTxs.length > 0 ? `${pendingTxs.length} menunggu persetujuan Kepala Sekolah.` : ''}${immediateCloses.length > 0 ? ` ${immediateCloses.length} langsung ditutup, total ditarik Rp ${totalWithdrawn.toLocaleString('id-ID')}.` : ''}${errors.length > 0 ? ` Error: ${errors.join('; ')}` : ''}`
     );
 
-    return { success: true, pendingCount: pendingTxs.length, closedCount: immediateCloses.length, totalWithdrawn, errors };
+    return { success: true, pendingCount: pendingTxs.length, closedCount: closedTxs.length, totalWithdrawn, errors };
   };
 
   const toggleMonthlyDeduction = (enabled: boolean) => {
@@ -1858,6 +1859,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 1. Generate savings withdrawal transaction with status based on role
+      const balanceBefore = student.balance;
       const withdrawalRes = await requestWithdrawal(
         studentId,
         item.price,
@@ -1899,7 +1901,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const bpRes = await insertRow('book_payments', newPayment);
       if (!bpRes.success) {
-        return { success: false, error: `Potongan tabungan tercatat, tapi pembayaran gagal tersimpan (${bpRes.error}).` };
+        // Rollback: hapus transaksi penarikan + kembalikan saldo agar konsisten
+        await deleteRow('transactions', tx.id);
+        setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+        if (tx.status === 'Disetujui') {
+          await updateRow('students', studentId, { balance: balanceBefore });
+          setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, balance: balanceBefore } : s)));
+        }
+        return { success: false, error: `Pembayaran gagal tersimpan (${bpRes.error}). Potongan tabungan dibatalkan, saldo dikembalikan ke Rp ${balanceBefore.toLocaleString('id-ID')}.` };
       }
       setBookPayments((prev) => [newPayment, ...prev]);
 
@@ -1929,6 +1938,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const trNum = generateTransactionNumber('BK', currentAcademicYear.year, sppPayments.length);
 
+    let potongTxId: string | undefined;
+    let balanceBefore: number | undefined;
+
     if (paymentMethod === 'Potong Tabungan') {
       if (student.balance < sppAmount) {
         return { success: false, error: `Saldo tabungan siswa (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi pembayaran SPP (Rp ${sppAmount.toLocaleString('id-ID')}).` };
@@ -1957,6 +1969,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!txRes.success || !balRes.success) {
         return { success: false, error: `Gagal menyimpan potongan tabungan ke database: ${txRes.error || balRes.error}` };
       }
+      potongTxId = newTx.id;
+      balanceBefore = student.balance;
       setTransactions((prev) => [newTx, ...prev]);
       setStudents((prev) =>
         prev.map((s) => (s.id === studentId ? { ...s, balance: balanceAfter } : s))
@@ -1981,6 +1995,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const sppRes = await insertRow('spp_payments', newPayment);
     if (!sppRes.success) {
+      // Rollback potongan tabungan agar saldo tidak hilang tanpa catatan SPP
+      if (potongTxId && balanceBefore !== undefined) {
+        await deleteRow('transactions', potongTxId);
+        setTransactions((prev) => prev.filter((t) => t.id !== potongTxId));
+        await updateRow('students', studentId, { balance: balanceBefore });
+        setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, balance: balanceBefore } : s)));
+      }
       return { success: false, error: `Gagal menyimpan pembayaran SPP ke database: ${sppRes.error}` };
     }
     setSppPayments((prev) => [newPayment, ...prev]);
