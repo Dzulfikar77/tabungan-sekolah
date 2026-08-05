@@ -34,6 +34,7 @@ import {
 } from '../utils/initialData';
 import { generateTransactionNumber } from '../utils/format';
 import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
+import { mergeSchoolSettings } from '../utils/schoolSettings';
 import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError } from '../lib/db';
 import { supabase } from '../lib/supabase';
 
@@ -198,7 +199,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [dbLoaded, schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments, users]);
 
   const fetchFromSupabase = useCallback(async () => {
-    const [dbStudents, dbTransactions, dbBooks, dbDistributions, dbBookPayments, dbSppPayments, dbAcademicYears, dbAuditLogs, dbUsers] = await Promise.all([
+    const [dbSchoolSettings, dbStudents, dbTransactions, dbBooks, dbDistributions, dbBookPayments, dbSppPayments, dbAcademicYears, dbAuditLogs, dbUsers] = await Promise.all([
+      fetchAll<SchoolSettings>('school_settings'),
       fetchAll<Student>('students'),
       fetchAll<Transaction>('transactions'),
       fetchAll<Book>('books'),
@@ -209,6 +211,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchAll<AuditLogItem>('audit_logs'),
       fetchAll<User>('users'),
     ]);
+    if (dbSchoolSettings.length > 0) {
+      setSchoolSettings((prev) => mergeSchoolSettings(prev, dbSchoolSettings[0]));
+    }
     if (dbStudents.length > 0) setStudents((prev) => mergeById(dbStudents, prev));
     if (dbTransactions.length > 0) setTransactions((prev) => mergeById(dbTransactions, prev));
     if (dbBooks.length > 0) setBooks((prev) => mergeById(dbBooks, prev));
@@ -467,9 +472,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateSchoolSettings = (settings: Partial<SchoolSettings>) => {
     if (!currentUser || currentUser.demoMode) return;
     const before = JSON.stringify(schoolSettings);
-    setSchoolSettings((prev) => ({ ...prev, ...settings }));
-    updateRow('school_settings', 'singleton', settings);
-    addAuditLog('Update Pengaturan Sekolah', before, JSON.stringify({ ...schoolSettings, ...settings }), 'Mengubah nama, alamat, atau logo sekolah');
+    const nextSettings = { ...schoolSettings, ...settings };
+    setSchoolSettings(nextSettings);
+    upsertRow('school_settings', { id: 'singleton', ...nextSettings });
+    addAuditLog('Update Pengaturan Sekolah', before, JSON.stringify(nextSettings), 'Mengubah nama, alamat, atau logo sekolah');
   };
 
   const addAcademicYear = (yearStr: string) => {
