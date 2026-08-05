@@ -183,9 +183,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [dbLoaded, setDbLoaded] = useState(false);
 
-  // Save state to localStorage (offline mode only — cloud mode: Supabase is source of truth)
+  // Persist the latest state into localStorage as a safety net, while Supabase remains the cloud source of truth.
   useEffect(() => {
-    if (!dbLoaded || hasSupabase) return;
+    if (!dbLoaded) return;
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_school`, JSON.stringify(schoolSettings));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_years`, JSON.stringify(academicYears));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_students`, JSON.stringify(students));
@@ -213,6 +213,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ]);
     if (dbSchoolSettings.length > 0) {
       setSchoolSettings((prev) => mergeSchoolSettings(prev, dbSchoolSettings[0]));
+    } else {
+      upsertRow('school_settings', { id: 'singleton', ...schoolSettings });
     }
     if (dbStudents.length > 0) setStudents((prev) => mergeById(dbStudents, prev));
     if (dbTransactions.length > 0) setTransactions((prev) => mergeById(dbTransactions, prev));
