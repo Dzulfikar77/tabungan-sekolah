@@ -3,21 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { strictEqual, deepStrictEqual, ok } from 'node:assert';
+import { strictEqual, ok } from 'node:assert';
 import {
-  settleYearEndDebt,
   nextClassFrom,
   isGraduatingClass,
 } from './yearEnd';
-
-console.log('settleYearEndDebt:');
-deepStrictEqual(settleYearEndDebt(50000, undefined), { cashToParent: 50000, debtPaid: 0, debtRemaining: 0 }, 'tanpa utang -> semua ke wali');
-deepStrictEqual(settleYearEndDebt(50000, 15000), { cashToParent: 35000, debtPaid: 15000, debtRemaining: 0 }, 'utang lunas, sisa ke wali');
-deepStrictEqual(settleYearEndDebt(50000, 80000), { cashToParent: 0, debtPaid: 50000, debtRemaining: 30000 }, 'saldo tidak cukup -> utang sisa menempel');
-deepStrictEqual(settleYearEndDebt(0, 15000), { cashToParent: 0, debtPaid: 0, debtRemaining: 15000 }, 'saldo 0 + utang -> utang utuh');
-deepStrictEqual(settleYearEndDebt(50000, 50000), { cashToParent: 0, debtPaid: 50000, debtRemaining: 0 }, 'saldo = utang -> lunas, wali 0');
-deepStrictEqual(settleYearEndDebt(0, 0), { cashToParent: 0, debtPaid: 0, debtRemaining: 0 }, '0/0 -> semua 0');
-deepStrictEqual(settleYearEndDebt(0, undefined), { cashToParent: 0, debtPaid: 0, debtRemaining: 0 }, '0/undefined -> semua 0');
 
 console.log('nextClassFrom:');
 strictEqual(nextClassFrom('TK A.1'), 'TK B.1', 'TK A.1 -> TK B.1');

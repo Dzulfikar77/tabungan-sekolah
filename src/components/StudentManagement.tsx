@@ -8,7 +8,7 @@ import { useApp } from '../context/AppContext';
 import { Student, ClassGrade, StudentStatus } from '../types';
 import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
 import { downloadStudentImportTemplate, parseStudentsExcel } from '../utils/excelHandler';
-import { YearEndDecision, settleYearEndDebt, isGraduatingClass } from '../utils/yearEnd';
+import { YearEndDecision, isGraduatingClass } from '../utils/yearEnd';
 import {
   UserPlus,
   FileSpreadsheet,
@@ -349,6 +349,7 @@ export const StudentManagement: React.FC = () => {
                 <th className="py-3 px-4">Kelas</th>
                 <th className="py-3 px-4">Orang Tua / Wali</th>
                 <th className="py-3 px-4">Saldo Tabungan</th>
+                <th className="py-3 px-4">Tunggakan</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-center">Aksi</th>
               </tr>
@@ -356,7 +357,7 @@ export const StudentManagement: React.FC = () => {
             <tbody className="divide-y divide-slate-100 text-xs">
               {activeStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={9} className="py-8 text-center text-slate-400">
                     Tidak ada data siswa ditemukan.
                   </td>
                 </tr>
@@ -376,6 +377,15 @@ export const StudentManagement: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 font-extrabold text-emerald-700">
                       {formatRupiah(st.balance)}
+                    </td>
+                    <td className="py-3 px-4">
+                      {st.pendingDebt ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                          {formatRupiah(st.pendingDebt)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       <span
@@ -901,7 +911,6 @@ export const StudentManagement: React.FC = () => {
               ) : (
                 <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto">
                   {yearEndCandidates.map((s) => {
-                    const settlement = settleYearEndDebt(s.balance, s.pendingDebt);
                     const isTinggal = (yearEndDecisions[s.id] ?? 'naik') === 'tinggal';
                     return (
                       <div key={s.id} className="flex items-center justify-between gap-3 px-3 py-2">
@@ -909,11 +918,12 @@ export const StudentManagement: React.FC = () => {
                           <div className="font-semibold text-slate-800 truncate">{s.name} <span className="text-slate-400 font-normal">({s.nis})</span></div>
                           <div className="text-[11px] text-slate-500">
                             Kelas {s.classGrade} • Saldo {formatRupiah(s.balance)}
-                            {s.pendingDebt ? <> • Utang {formatRupiah(s.pendingDebt)}</> : null}
                           </div>
                           <div className="text-[11px] text-indigo-600">
-                            Kas ke wali: {formatRupiah(settlement.cashToParent)}
-                            {settlement.debtRemaining > 0 ? <> • Sisa utang: {formatRupiah(settlement.debtRemaining)}</> : null}
+                            Kas ke wali: {formatRupiah(s.balance)} (ditarik penuh)
+                          </div>
+                          <div className="text-[11px] text-amber-600">
+                            {s.pendingDebt ? <>Tunggakan: {formatRupiah(s.pendingDebt)} — tetap menempel (tidak dipotong)</> : 'Tanpa tunggakan'}
                           </div>
                         </div>
                         <label className="flex items-center gap-1.5 cursor-pointer shrink-0">

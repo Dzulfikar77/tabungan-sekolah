@@ -5,32 +5,9 @@
 
 import { ClassGrade } from '../types';
 
-export type PromotionVia = 'naik' | 'tinggal';
-
 export interface YearEndDecision {
   studentId: string;
   action: 'naik' | 'tinggal';
-}
-
-export interface YearEndSettlement {
-  cashToParent: number;
-  debtPaid: number;
-  debtRemaining: number;
-}
-
-/**
- * Settlement utang potongan bulanan saat penutupan tahun.
- * Utang dibersihkan dari saldo lebih dulu; saldo tidak pernah minus;
- * sisa utang tetap menempel di record siswa.
- */
-export function settleYearEndDebt(balance: number, pendingDebt: number | undefined): YearEndSettlement {
-  const debt = pendingDebt || 0;
-  const debtPaid = Math.min(balance, debt);
-  return {
-    cashToParent: balance - debtPaid,
-    debtPaid,
-    debtRemaining: debt - debtPaid,
-  };
 }
 
 const NEXT_CLASS: Partial<Record<ClassGrade, ClassGrade>> = {

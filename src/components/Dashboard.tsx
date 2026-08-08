@@ -61,6 +61,9 @@ export const Dashboard: React.FC = () => {
     .reduce((sum, s) => sum + s.balance, 0);
   const miCount = activeStudents.filter((s) => !TK_CLASSES.includes(s.classGrade)).length;
 
+  const debtStudents = activeStudents.filter((s) => (s.pendingDebt || 0) > 0);
+  const totalPendingDebt = debtStudents.reduce((sum, s) => sum + (s.pendingDebt || 0), 0);
+
   // Filter transactions in current academic year
   const yearTransactions = filterByUserLevel<Transaction>(transactions.filter(
     (t) => t.academicYearId === currentAcademicYear.id
@@ -185,6 +188,18 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
             <Users className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Total Tunggakan Potongan Bulanan */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-slate-500 mb-1">Total Tunggakan Potongan</p>
+            <h3 className="text-xl font-extrabold text-amber-600">{formatRupiah(totalPendingDebt)}</h3>
+            <p className="text-[11px] text-slate-400 mt-1">{debtStudents.length} Siswa berutang</p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+            <AlertCircle className="w-6 h-6" />
           </div>
         </div>
 
@@ -374,6 +389,44 @@ export const Dashboard: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* SPP Unpaid List */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2">
+          <span className="text-amber-500">●</span>
+          Siswa dengan Tunggakan Potongan Bulanan
+          <span className="text-[10px] text-slate-400 font-normal ml-auto">
+            {debtStudents.length} Siswa • Total {formatRupiah(totalPendingDebt)}
+          </span>
+        </h3>
+
+        {debtStudents.length === 0 ? (
+          <p className="text-xs text-slate-400">Tidak ada siswa dengan tunggakan potongan bulanan.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-2.5 px-3 text-left">NIS</th>
+                  <th className="py-2.5 px-3 text-left">Nama Siswa</th>
+                  <th className="py-2.5 px-3 text-left">Kelas</th>
+                  <th className="py-2.5 px-3 text-right">Tunggakan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {debtStudents.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50">
+                    <td className="py-2 px-3 font-bold text-slate-800">{s.nis}</td>
+                    <td className="py-2 px-3 font-semibold text-slate-900">{s.name}</td>
+                    <td className="py-2 px-3 text-slate-600">Kelas {s.classGrade}</td>
+                    <td className="py-2 px-3 text-right font-extrabold text-amber-600">{formatRupiah(s.pendingDebt || 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* SPP Unpaid List */}

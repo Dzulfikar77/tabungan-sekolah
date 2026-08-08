@@ -35,7 +35,7 @@ import {
 } from '../utils/initialData';
 import { generateTransactionNumber, isClassInUserLevel } from '../utils/format';
 import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
-import { YearEndDecision, nextClassFrom, settleYearEndDebt } from '../utils/yearEnd';
+import { YearEndDecision, nextClassFrom } from '../utils/yearEnd';
 import { mergeSchoolSettings } from '../utils/schoolSettings';
 import { inspectBackupPayload } from '../utils/backup';
 import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError, onSyncState, SyncState } from '../lib/db';
@@ -689,9 +689,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         newClass = student.classGrade;
       }
 
-      const settlement = settleYearEndDebt(student.balance, student.pendingDebt);
+      // Payout saldo PENUH ke wali; tunggakan pendingDebt TIDAK disentuh (tetap menempel, mekanisme penyelesaian dibahas terpisah).
+      const cashToParent = student.balance;
 
-      if (settlement.cashToParent > 0) {
+      if (cashToParent > 0) {
         const newTx: Transaction = {
           id: `tr-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           transactionNumber: generateTransactionNumber('PT', targetYear.year, transactions.length + decisions.length),
@@ -700,7 +701,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           studentNis: student.nis,
           classGrade: student.classGrade,
           type: 'Penarikan',
-          amount: settlement.cashToParent,
+          amount: cashToParent,
           status: 'Disetujui',
           reason: `Penarikan Tabungan Akhir Tahun ${targetYear.year}`,
           approvedByAdmin: true,
@@ -715,19 +716,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
         setTransactions((prev) => [newTx, ...prev]);
         insertRow('transactions', newTx);
-        totalWithdrawn += settlement.cashToParent;
+        totalWithdrawn += cashToParent;
       }
 
       setStudents((prev) =>
         prev.map((s) =>
           s.id === student.id
-            ? { ...s, balance: 0, pendingDebt: settlement.debtRemaining, classGrade: newClass, academicYearId: targetAcademicYearId }
+            ? { ...s, balance: 0, classGrade: newClass, academicYearId: targetAcademicYearId }
             : s
         )
       );
       updateRow('students', student.id, {
         balance: 0,
-        pending_debt: settlement.debtRemaining,
         class_grade: newClass,
         academic_year_id: targetAcademicYearId,
       });
