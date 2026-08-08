@@ -5,8 +5,8 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
-import { MonthlyDeductionSummary, ClassGrade } from '../types';
+import { formatRupiah, formatDate, filterByAccessLevel, filterByUserLevel, isPendingApprovalStatus } from '../utils/format';
+import { MonthlyDeductionSummary, ClassGrade, Transaction } from '../types';
 import { ALL_CLASSES } from '../utils/initialData';
 import {
   Wallet,
@@ -62,9 +62,9 @@ export const Dashboard: React.FC = () => {
   const miCount = activeStudents.filter((s) => !TK_CLASSES.includes(s.classGrade)).length;
 
   // Filter transactions in current academic year
-  const yearTransactions = transactions.filter(
+  const yearTransactions = filterByUserLevel<Transaction>(transactions.filter(
     (t) => t.academicYearId === currentAcademicYear.id
-  );
+  ), currentUser);
 
   const totalDeposits = yearTransactions
     .filter((t) => t.type === 'Setoran' && t.status === 'Disetujui')
@@ -75,7 +75,7 @@ export const Dashboard: React.FC = () => {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const pendingApprovals = yearTransactions.filter(
-    (t) => t.status === 'Menunggu Persetujuan'
+    (t) => isPendingApprovalStatus(t.status)
   );
 
   // Class Balance Breakdown
@@ -85,6 +85,8 @@ export const Dashboard: React.FC = () => {
     const sum = list.reduce((acc, s) => acc + s.balance, 0);
     return { classGrade: cls, count: list.length, balance: sum };
   });
+
+  const canRunDeduction = currentUser.role === 'Super Admin' || currentUser.role === 'Developer';
 
   const handleRunDeductionNow = async () => {
     const amount = schoolSettings.monthlyDeductionAmount || 2000;
@@ -122,7 +124,7 @@ export const Dashboard: React.FC = () => {
             Selamat Datang, {currentUser.name}
           </h2>
           <p className="text-xs text-slate-300 mt-1">
-            Hak Akses: <strong className="text-emerald-400">{currentUser.role}</strong> | Sistem Manajemen Keuangan & Tabungan Siswa
+            Hak Akses: <strong className="text-emerald-400">{currentUser.role}{currentUser.accessLevel ? ` (${currentUser.accessLevel})` : ''}</strong> | Sistem Manajemen Keuangan & Tabungan Siswa
           </p>
         </div>
 
@@ -305,7 +307,8 @@ export const Dashboard: React.FC = () => {
               </h3>
               <button
                 onClick={() => toggleMonthlyDeduction(!schoolSettings.monthlyDeductionEnabled)}
-                className="cursor-pointer transition-transform hover:scale-105"
+                disabled={!canRunDeduction}
+                className="cursor-pointer transition-transform hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Toggle Otomatis Rutin Awal Bulan"
               >
                 {schoolSettings.monthlyDeductionEnabled ? (
@@ -342,7 +345,8 @@ export const Dashboard: React.FC = () => {
 
           <button
             onClick={handleRunDeductionNow}
-            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
+            disabled={!canRunDeduction}
+            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
           >
             <Play className="w-4 h-4 text-emerald-400" />
             Jalankan Potongan Sekarang

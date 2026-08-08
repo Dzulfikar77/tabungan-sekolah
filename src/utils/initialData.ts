@@ -40,6 +40,8 @@ export const ALL_CLASSES: ClassGrade[] = [
 export const initialUsers: User[] = [
   { id: 'u-dev', username: 'masdev', name: 'Mas Dev (Developer)', role: 'Developer', password: '@mimu123' },
   { id: 'u-demo-super', username: 'demo', name: 'Demo Super Admin (Read-Only)', role: 'Super Admin', password: 'demo123', demoMode: true },
+  { id: 'u-admin-tk', username: 'admtk', name: 'Admin TK', role: 'Admin', password: 'admintk123', accessLevel: 'TK' },
+  { id: 'u-admin-mi', username: 'admmi', name: 'Admin MI', role: 'Admin', password: 'adminmi123', accessLevel: 'MI' },
 ];
 
 const sampleStudentNames = [

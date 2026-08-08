@@ -1,0 +1,163 @@
+- generic [ref=f8e637]:
+  - banner [ref=f8e638]:
+    - generic [ref=f8e639]:
+      - generic [ref=f8e640]:
+        - img "Logo Sekolah" [ref=f8e641]
+        - generic [ref=f8e642]:
+          - heading "YPIS Mambaul Ulum Surabaya" [level=1] [ref=f8e643]
+          - paragraph [ref=f8e644]:
+            - generic [ref=f8e645]: Sistem Tabungan Digital
+            - generic [ref=f8e647]: Jl. Wonokusumo Kidul no 44 Surabaya
+      - generic [ref=f8e648]:
+        - generic [ref=f8e649]:
+          - generic [ref=f8e650]: 07.32.28
+          - generic [ref=f8e651]: Sabtu, 8 Agustus 2026
+        - generic [ref=f8e652]:
+          - generic [ref=f8e655]: "Tahun Ajaran:"
+          - generic [ref=f8e656]: 2026/2027
+        - generic [ref=f8e657]: Tersimpan 07.31
+        - generic [ref=f8e662]: Super Admin
+        - generic [ref=f8e666]:
+          - button "Pengaturan Sekolah & Backup" [ref=f8e667] [cursor=pointer]
+          - button "Keluar" [ref=f8e671] [cursor=pointer]
+    - navigation [ref=f8e677]:
+      - button "Dashboard" [ref=f8e678] [cursor=pointer]
+      - button "Siswa" [ref=f8e685] [cursor=pointer]
+      - button "SPP" [ref=f8e692] [cursor=pointer]
+      - button "Setoran" [ref=f8e697] [cursor=pointer]
+      - button "Penarikan / Approval" [ref=f8e702] [cursor=pointer]
+      - button "Koperasi & Kegiatan" [ref=f8e707] [cursor=pointer]
+      - button "Laporan" [ref=f8e713] [cursor=pointer]
+      - button "Audit Log" [ref=f8e718] [cursor=pointer]
+  - main [ref=f8e724]:
+    - generic [ref=f8e725]:
+      - generic [ref=f8e726]:
+        - generic [ref=f8e727]:
+          - generic [ref=f8e728]: Tahun Ajaran 2026/2027
+          - heading "Selamat Datang, Super Admin Uji" [level=2] [ref=f8e729]
+          - paragraph [ref=f8e730]:
+            - text: "Hak Akses:"
+            - strong [ref=f8e731]: Super Admin
+            - text: "| Sistem Manajemen Keuangan & Tabungan Siswa"
+        - generic [ref=f8e736]:
+          - generic [ref=f8e737]: Akurasi & Pertanggungjawaban
+          - generic [ref=f8e738]: 100% Audit Trail Realtime
+      - generic [ref=f8e739]:
+        - generic [ref=f8e741]:
+          - paragraph [ref=f8e742]: Total Saldo Tabungan
+          - heading "Rp 0" [level=3] [ref=f8e743]
+          - paragraph [ref=f8e744]: 0 Siswa Aktif
+        - generic [ref=f8e750]:
+          - paragraph [ref=f8e751]: Tabungan TK
+          - heading "Rp 0" [level=3] [ref=f8e752]
+          - paragraph [ref=f8e753]: 0 Siswa TK
+        - generic [ref=f8e759]:
+          - paragraph [ref=f8e760]: Tabungan MI
+          - heading "Rp 0" [level=3] [ref=f8e761]
+          - paragraph [ref=f8e762]: 0 Siswa MI
+        - generic [ref=f8e768]:
+          - paragraph [ref=f8e769]: Siswa Terdaftar
+          - heading "0 Siswa" [level=3] [ref=f8e770]
+          - paragraph [ref=f8e771]: Aktif di Tahun Ajaran ini
+        - generic [ref=f8e779]:
+          - paragraph [ref=f8e780]: Total Setoran Disetujui
+          - heading "Rp 30.000" [level=3] [ref=f8e781]
+          - paragraph [ref=f8e782]: Akumulasi tahun ini
+        - generic [ref=f8e788]:
+          - paragraph [ref=f8e789]: Total Penarikan Disetujui
+          - heading "Rp 5.000" [level=3] [ref=f8e790]
+          - paragraph [ref=f8e791]: Selesai disetujui
+      - generic [ref=f8e796]:
+        - generic [ref=f8e797]:
+          - generic [ref=f8e798]:
+            - heading "Pengajuan Penarikan Menunggu Persetujuan" [level=3] [ref=f8e803]
+            - generic [ref=f8e804]: 0 Pengajuan
+          - generic [ref=f8e808]:
+            - strong [ref=f8e809]: "Aturan Keamanan Saldo:"
+            - text: Selama status pengajuan masih "Menunggu Persetujuan", saldo tabungan siswa
+            - strong [ref=f8e810]: TIDAK BERUBAH SAMA SEKALI
+            - text: . Saldo baru akan berkurang otomatis setelah disetujui oleh Super Admin / Developer.
+          - generic [ref=f8e811]: Tidak ada pengajuan penarikan yang menggantung. Semua transaksi telah diproses.
+        - generic [ref=f8e815]:
+          - generic [ref=f8e816]:
+            - generic [ref=f8e817]:
+              - heading "Potongan Bulanan Otomatis" [level=3] [ref=f8e818]
+              - button "Toggle Otomatis Rutin Awal Bulan" [ref=f8e822] [cursor=pointer]
+            - generic [ref=f8e826]:
+              - generic [ref=f8e827]:
+                - generic [ref=f8e828]: "Status Fitur:"
+                - generic [ref=f8e829]: AKTIF (Setiap Tgl 28)
+              - generic [ref=f8e830]:
+                - generic [ref=f8e831]: "Nominal Potongan:"
+                - generic [ref=f8e832]: Rp 2.000 / siswa
+            - paragraph [ref=f8e833]:
+              - strong [ref=f8e834]: "Aturan Eksekusi:"
+              - text: Semua siswa aktif dipotong Rp Rp 2.000 setiap tanggal 28. Jika saldo tidak mencukupi, akan tercatat sebagai tunggakan dan dipotong otomatis saat saldo terisi.
+          - button "Jalankan Potongan Sekarang" [ref=f8e835] [cursor=pointer]
+      - generic [ref=f8e838]:
+        - heading "Rincian Saldo Tabungan Per Kelas" [level=3] [ref=f8e839]
+        - generic [ref=f8e843]:
+          - generic [ref=f8e844]:
+            - generic [ref=f8e845]: Kelas TK A
+            - generic [ref=f8e846]: Rp 0
+            - generic [ref=f8e847]: 0 Siswa
+          - generic [ref=f8e848]:
+            - generic [ref=f8e849]: Kelas TK B
+            - generic [ref=f8e850]: Rp 0
+            - generic [ref=f8e851]: 0 Siswa
+          - generic [ref=f8e852]:
+            - generic [ref=f8e853]: Kelas Kelas 1A
+            - generic [ref=f8e854]: Rp 0
+            - generic [ref=f8e855]: 0 Siswa
+          - generic [ref=f8e856]:
+            - generic [ref=f8e857]: Kelas Kelas 1 B
+            - generic [ref=f8e858]: Rp 0
+            - generic [ref=f8e859]: 0 Siswa
+          - generic [ref=f8e860]:
+            - generic [ref=f8e861]: Kelas Kelas 2A
+            - generic [ref=f8e862]: Rp 0
+            - generic [ref=f8e863]: 0 Siswa
+          - generic [ref=f8e864]:
+            - generic [ref=f8e865]: Kelas Kelas 2B
+            - generic [ref=f8e866]: Rp 0
+            - generic [ref=f8e867]: 0 Siswa
+          - generic [ref=f8e868]:
+            - generic [ref=f8e869]: Kelas Kelas 3A
+            - generic [ref=f8e870]: Rp 0
+            - generic [ref=f8e871]: 0 Siswa
+          - generic [ref=f8e872]:
+            - generic [ref=f8e873]: Kelas Kelas 3B
+            - generic [ref=f8e874]: Rp 0
+            - generic [ref=f8e875]: 0 Siswa
+          - generic [ref=f8e876]:
+            - generic [ref=f8e877]: Kelas Kelas 4A
+            - generic [ref=f8e878]: Rp 0
+            - generic [ref=f8e879]: 0 Siswa
+          - generic [ref=f8e880]:
+            - generic [ref=f8e881]: Kelas Kelas 4B
+            - generic [ref=f8e882]: Rp 0
+            - generic [ref=f8e883]: 0 Siswa
+          - generic [ref=f8e884]:
+            - generic [ref=f8e885]: Kelas Kelas 5A
+            - generic [ref=f8e886]: Rp 0
+            - generic [ref=f8e887]: 0 Siswa
+          - generic [ref=f8e888]:
+            - generic [ref=f8e889]: Kelas Kelas 5B
+            - generic [ref=f8e890]: Rp 0
+            - generic [ref=f8e891]: 0 Siswa
+          - generic [ref=f8e892]:
+            - generic [ref=f8e893]: Kelas Kelas 6A
+            - generic [ref=f8e894]: Rp 0
+            - generic [ref=f8e895]: 0 Siswa
+          - generic [ref=f8e896]:
+            - generic [ref=f8e897]: Kelas Kelas 6B
+            - generic [ref=f8e898]: Rp 0
+            - generic [ref=f8e899]: 0 Siswa
+      - generic [ref=f8e900]:
+        - 'heading "● Siswa Belum Bayar SPP Periode: Agustus 2026" [level=3] [ref=f8e901]':
+          - generic [ref=f8e902]: ●
+          - text: Siswa Belum Bayar SPP
+          - generic [ref=f8e903]: "Periode: Agustus 2026"
+        - generic [ref=f8e904]: Semua siswa sudah membayar SPP periode ini!
+  - contentinfo [ref=f8e905]:
+    - generic [ref=f8e906]: Sistem Informasi Sekolah • Powered by Dzulfikar Dev

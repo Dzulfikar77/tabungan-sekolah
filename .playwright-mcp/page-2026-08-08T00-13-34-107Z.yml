@@ -1,0 +1,105 @@
+- generic [ref=f5e86]:
+  - banner [ref=f5e87]:
+    - generic [ref=f5e88]:
+      - generic [ref=f5e89]:
+        - img "Logo Sekolah" [ref=f5e90]
+        - generic [ref=f5e91]:
+          - heading "YPIS Mambaul Ulum Surabaya" [level=1] [ref=f5e92]
+          - paragraph [ref=f5e93]:
+            - generic [ref=f5e94]: Sistem Tabungan Digital
+            - generic [ref=f5e96]: Jl. Wonokusumo Kidul no 44 Surabaya
+      - generic [ref=f5e97]:
+        - generic [ref=f5e98]:
+          - generic [ref=f5e99]: 07.13.33
+          - generic [ref=f5e100]: Sabtu, 8 Agustus 2026
+        - generic [ref=f5e101]:
+          - generic [ref=f5e104]: "Tahun Ajaran:"
+          - generic [ref=f5e105]: 2026/2027
+        - generic [ref=f5e106]: Tersimpan 07.13
+        - generic [ref=f5e112]: Developer
+        - generic [ref=f5e116]:
+          - button "Pengaturan Sekolah & Backup" [ref=f5e117] [cursor=pointer]
+          - button "Keluar" [ref=f5e121] [cursor=pointer]
+    - navigation [ref=f5e127]:
+      - button "Dashboard" [ref=f5e128] [cursor=pointer]
+      - button "Siswa" [ref=f5e135] [cursor=pointer]
+      - button "SPP" [ref=f5e142] [cursor=pointer]
+      - button "Setoran" [ref=f5e147] [cursor=pointer]
+      - button "Penarikan / Approval" [ref=f5e152] [cursor=pointer]
+      - button "Koperasi & Kegiatan" [ref=f5e157] [cursor=pointer]
+      - button "Laporan" [ref=f5e163] [cursor=pointer]
+      - button "Audit Log" [ref=f5e168] [cursor=pointer]
+  - main [ref=f5e174]:
+    - generic [ref=f5e357]:
+      - generic [ref=f5e358]:
+        - generic [ref=f5e359]:
+          - heading "Manajemen Data Master Siswa" [level=2] [ref=f5e360]
+          - paragraph [ref=f5e361]: "Tahun Ajaran 2026/2027 • Total: 2 Siswa"
+        - generic [ref=f5e362]:
+          - button "Tambah Siswa" [ref=f5e363] [cursor=pointer]
+          - button "Import Excel" [ref=f5e367] [cursor=pointer]
+          - button "Backfill Kredensial" [ref=f5e371] [cursor=pointer]
+          - button "Pindah Kelas Massal" [ref=f5e375] [cursor=pointer]
+      - generic [ref=f5e379]:
+        - textbox "Cari NIS atau Nama Siswa..." [ref=f5e384]
+        - generic [ref=f5e385]:
+          - combobox [ref=f5e386] [cursor=pointer]:
+            - option "Semua Kelas" [selected]
+            - option "Kelas TK A"
+            - option "Kelas TK B"
+            - option "Kelas Kelas 1A"
+            - option "Kelas Kelas 1 B"
+            - option "Kelas Kelas 2A"
+            - option "Kelas Kelas 2B"
+            - option "Kelas Kelas 3A"
+            - option "Kelas Kelas 3B"
+            - option "Kelas Kelas 4A"
+            - option "Kelas Kelas 4B"
+            - option "Kelas Kelas 5A"
+            - option "Kelas Kelas 5B"
+            - option "Kelas Kelas 6A"
+            - option "Kelas Kelas 6B"
+          - combobox [ref=f5e387] [cursor=pointer]:
+            - option "Semua Status"
+            - option "Aktif" [selected]
+            - option "Lulus"
+            - option "Pindah"
+            - option "Keluar"
+      - table [ref=f5e390]:
+        - rowgroup [ref=f5e391]:
+          - row [ref=f5e392]:
+            - columnheader "No" [ref=f5e393]
+            - columnheader "NIS" [ref=f5e394]
+            - columnheader "Nama Lengkap" [ref=f5e395]
+            - columnheader "Kelas" [ref=f5e396]
+            - columnheader "Orang Tua / Wali" [ref=f5e397]
+            - columnheader "Saldo Tabungan" [ref=f5e398]
+            - columnheader "Status" [ref=f5e399]
+            - columnheader "Aksi" [ref=f5e400]
+        - rowgroup [ref=f5e401]:
+          - row [ref=f5e495]:
+            - cell "1" [ref=f5e496]
+            - cell "2001" [ref=f5e497]
+            - cell "Uji MI" [ref=f5e498]
+            - cell "Kelas Kelas 1A" [ref=f5e499]
+            - cell "-" [ref=f5e501]
+            - cell "Rp 20.000" [ref=f5e502]
+            - cell "Aktif" [ref=f5e503]
+            - cell [ref=f5e504]:
+              - generic [ref=f5e505]:
+                - button "Edit Data Siswa" [ref=f5e506] [cursor=pointer]
+                - button "Hapus Siswa (Soft Delete)" [ref=f5e509] [cursor=pointer]
+          - row [ref=f5e513]:
+            - cell "2" [ref=f5e514]
+            - cell "1001" [ref=f5e442]
+            - cell "Uji TK" [ref=f5e443]
+            - cell "Kelas TK A" [ref=f5e444]
+            - cell "-" [ref=f5e446]
+            - cell "Rp 10.000" [ref=f5e447]
+            - cell "Aktif" [ref=f5e448]
+            - cell [ref=f5e449]:
+              - generic [ref=f5e450]:
+                - button "Edit Data Siswa" [ref=f5e451] [cursor=pointer]
+                - button "Hapus Siswa (Soft Delete)" [ref=f5e454] [cursor=pointer]
+  - contentinfo [ref=f5e355]:
+    - generic [ref=f5e356]: Sistem Informasi Sekolah • Powered by Dzulfikar Dev

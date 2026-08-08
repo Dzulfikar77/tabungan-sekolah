@@ -50,6 +50,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     users,
     addUser,
     updateUserRole,
+    updateUserAccessLevel,
     changeUserPassword,
     resetStaffPassword,
     deleteUser,
@@ -75,6 +76,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [newUsername, setNewUsername] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserRole, setNewUserRole] = useState<string>('Admin');
+  const [newUserAccessLevel, setNewUserAccessLevel] = useState<string>('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [userMsg, setUserMsg] = useState<{ success?: boolean; msg?: string } | null>(null);
 
@@ -190,6 +192,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       username: newUsername.trim(),
       name: newUserName.trim(),
       role: newUserRole as UserRole,
+      accessLevel: (newUserAccessLevel || undefined) as 'TK' | 'MI' | undefined,
       password: newUserPassword,
     });
     if (res.success) {
@@ -197,6 +200,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       setNewUsername('');
       setNewUserName('');
       setNewUserRole('Admin');
+      setNewUserAccessLevel('');
       setNewUserPassword('');
     } else {
       setUserMsg({ success: false, msg: res.error || 'Gagal menambah user.' });
@@ -479,6 +483,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
+                    <select
+                      value={u.accessLevel || ''}
+                      disabled={u.demoMode || u.id === currentUser.id}
+                      onChange={(e) => updateUserAccessLevel(u.id, (e.target.value || undefined) as 'TK' | 'MI' | undefined)}
+                      className="px-2 py-1 border border-slate-200 rounded-lg text-[11px] font-semibold bg-white focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                      title="Jenjang akses data (TK/MI)"
+                    >
+                      <option value="">Semua Jenjang</option>
+                      <option value="TK">TK</option>
+                      <option value="MI">MI</option>
+                    </select>
                     <button
                       type="button"
                       onClick={() => handleChangePassword(u.id, u.name)}
@@ -501,7 +516,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <button
                       type="button"
                       onClick={() => handleDeleteUser(u.id, u.name, u.username)}
-                      disabled={u.demoMode || u.id === currentUser.id}
+                      disabled={u.id === currentUser.id || (currentUser.role !== 'Developer' && u.role === 'Developer' && !u.demoMode)}
                       className="px-2 py-1 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white rounded-lg font-semibold text-[11px] cursor-pointer disabled:cursor-not-allowed"
                     >
                       Hapus
@@ -536,6 +551,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Viewer'] as UserRole[]).map((r) => (
                     <option key={r} value={r}>{r}</option>
                   ))}
+                </select>
+                <select
+                  value={newUserAccessLevel}
+                  onChange={(e) => setNewUserAccessLevel(e.target.value)}
+                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                >
+                  <option value="">Semua Jenjang</option>
+                  <option value="TK">Khusus TK</option>
+                  <option value="MI">Khusus MI</option>
                 </select>
                 <input
                   type="text"

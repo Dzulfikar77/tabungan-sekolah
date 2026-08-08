@@ -6,7 +6,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ClassGrade } from '../types';
-import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
+import type { SppPayment as SppPaymentRecord } from '../types';
+import { formatRupiah, formatDate, filterByAccessLevel, filterByUserLevel } from '../utils/format';
 import {
   GraduationCap,
   Banknote,
@@ -48,6 +49,8 @@ export const SppPayment: React.FC = () => {
   const [studentSearchTKA, setStudentSearchTKA] = useState('');
   const [studentSearchTKB, setStudentSearchTKB] = useState('');
   const [studentSearchMI, setStudentSearchMI] = useState('');
+
+  const visibleSppPayments = filterByUserLevel<SppPaymentRecord>(sppPayments, currentUser);
 
   const activeStudents = filterByAccessLevel(students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
@@ -141,7 +144,7 @@ export const SppPayment: React.FC = () => {
           </span>
         </div>
         <div className="text-xs text-slate-500">
-          Total SPP dibayarkan: <span className="font-bold text-emerald-700">{sppPayments.length} transaksi</span>
+          Total SPP dibayarkan: <span className="font-bold text-emerald-700">{visibleSppPayments.length} transaksi</span>
         </div>
       </div>
 
@@ -473,17 +476,17 @@ export const SppPayment: React.FC = () => {
           <CreditCard className="w-4 h-4 text-emerald-600" />
           Riwayat Pembayaran SPP
           <span className="text-[10px] text-slate-400 font-normal ml-auto">
-            {sppPayments.length} transaksi
+            {visibleSppPayments.length} transaksi
           </span>
         </h3>
 
-        {sppPayments.length === 0 ? (
+        {visibleSppPayments.length === 0 ? (
           <div className="text-center py-8 text-xs text-slate-400">
             Belum ada pembayaran SPP.
           </div>
         ) : (
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {sppPayments.map((sp) => (
+            {visibleSppPayments.map((sp) => (
               <div
                 key={sp.id}
                 className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs"

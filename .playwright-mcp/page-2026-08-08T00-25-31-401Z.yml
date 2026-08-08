@@ -1,0 +1,344 @@
+- generic [ref=f6e81]:
+  - banner [ref=f6e82]:
+    - generic [ref=f6e83]:
+      - generic [ref=f6e84]:
+        - img "Logo Sekolah" [ref=f6e85]
+        - generic [ref=f6e86]:
+          - heading "YPIS Mambaul Ulum Surabaya" [level=1] [ref=f6e87]
+          - paragraph [ref=f6e88]:
+            - generic [ref=f6e89]: Sistem Tabungan Digital
+            - generic [ref=f6e91]: Jl. Wonokusumo Kidul no 44 Surabaya
+      - generic [ref=f6e92]:
+        - generic [ref=f6e93]:
+          - generic [ref=f6e94]: 07.25.30
+          - generic [ref=f6e95]: Sabtu, 8 Agustus 2026
+        - generic [ref=f6e96]:
+          - generic [ref=f6e99]: "Tahun Ajaran:"
+          - generic [ref=f6e100]: 2026/2027
+        - generic [ref=f6e101]: Tersimpan 07.25
+        - generic [ref=f6e107]: Developer
+        - generic [ref=f6e111]:
+          - button "Pengaturan Sekolah & Backup" [active] [ref=f6e112] [cursor=pointer]
+          - button "Keluar" [ref=f6e116] [cursor=pointer]
+    - navigation [ref=f6e122]:
+      - button "Dashboard" [ref=f6e123] [cursor=pointer]
+      - button "Siswa" [ref=f6e130] [cursor=pointer]
+      - button "SPP" [ref=f6e137] [cursor=pointer]
+      - button "Setoran" [ref=f6e142] [cursor=pointer]
+      - button "Penarikan / Approval" [ref=f6e387] [cursor=pointer]
+      - button "Koperasi & Kegiatan" [ref=f6e153] [cursor=pointer]
+      - button "Laporan" [ref=f6e159] [cursor=pointer]
+      - button "Audit Log" [ref=f6e164] [cursor=pointer]
+  - main [ref=f6e170]:
+    - generic [ref=f6e394]:
+      - generic [ref=f6e395]:
+        - generic [ref=f6e396]:
+          - heading "Manajemen Data Master Siswa" [level=2] [ref=f6e397]
+          - paragraph [ref=f6e398]: "Tahun Ajaran 2026/2027 • Total: 0 Siswa"
+        - generic [ref=f6e399]:
+          - button "Tambah Siswa" [ref=f6e400] [cursor=pointer]
+          - button "Import Excel" [ref=f6e404] [cursor=pointer]
+          - button "Backfill Kredensial" [ref=f6e408] [cursor=pointer]
+          - button "Pindah Kelas Massal" [ref=f6e412] [cursor=pointer]
+      - generic [ref=f6e416]:
+        - textbox "Cari NIS atau Nama Siswa..." [ref=f6e421]
+        - generic [ref=f6e422]:
+          - combobox [ref=f6e423] [cursor=pointer]:
+            - option "Semua Kelas" [selected]
+            - option "Kelas TK A"
+            - option "Kelas TK B"
+            - option "Kelas Kelas 1A"
+            - option "Kelas Kelas 1 B"
+            - option "Kelas Kelas 2A"
+            - option "Kelas Kelas 2B"
+            - option "Kelas Kelas 3A"
+            - option "Kelas Kelas 3B"
+            - option "Kelas Kelas 4A"
+            - option "Kelas Kelas 4B"
+            - option "Kelas Kelas 5A"
+            - option "Kelas Kelas 5B"
+            - option "Kelas Kelas 6A"
+            - option "Kelas Kelas 6B"
+          - combobox [ref=f6e424] [cursor=pointer]:
+            - option "Semua Status"
+            - option "Aktif" [selected]
+            - option "Lulus"
+            - option "Pindah"
+            - option "Keluar"
+      - table [ref=f6e427]:
+        - rowgroup [ref=f6e428]:
+          - row [ref=f6e429]:
+            - columnheader "No" [ref=f6e430]
+            - columnheader "NIS" [ref=f6e431]
+            - columnheader "Nama Lengkap" [ref=f6e432]
+            - columnheader "Kelas" [ref=f6e433]
+            - columnheader "Orang Tua / Wali" [ref=f6e434]
+            - columnheader "Saldo Tabungan" [ref=f6e435]
+            - columnheader "Status" [ref=f6e436]
+            - columnheader "Aksi" [ref=f6e437]
+        - rowgroup [ref=f6e438]:
+          - row [ref=f6e499]:
+            - cell "Tidak ada data siswa ditemukan." [ref=f6e500]
+  - contentinfo [ref=f6e382]:
+    - generic [ref=f6e383]: Sistem Informasi Sekolah • Powered by Dzulfikar Dev
+  - generic [ref=f6e502]:
+    - generic [ref=f6e503]:
+      - generic [ref=f6e504]: Pengaturan Sekolah & Backup Database
+      - button [ref=f6e509]
+    - generic [ref=f6e513]:
+      - heading "Identitas Sekolah (Header Laporan PDF)" [level=4] [ref=f6e514]
+      - generic [ref=f6e515]:
+        - generic [ref=f6e516]: Nama Sekolah / Lembaga *
+        - textbox [ref=f6e517]: YPIS Mambaul Ulum Surabaya
+      - generic [ref=f6e518]:
+        - generic [ref=f6e519]: Alamat Lengkap *
+        - textbox [ref=f6e520]: Jl. Wonokusumo Kidul no 44 Surabaya
+      - generic [ref=f6e521]:
+        - generic [ref=f6e522]: No. Telepon / HP Sekolah
+        - textbox [ref=f6e523]: (021) 789-0123
+      - generic [ref=f6e524]:
+        - generic [ref=f6e525]: Upload Logo Sekolah
+        - generic [ref=f6e526]:
+          - img "Logo" [ref=f6e527]
+          - button "Choose File" [ref=f6e528]
+      - separator [ref=f6e529]
+      - heading "Manajemen Tahun Ajaran (Developer)" [level=4] [ref=f6e530]
+      - generic [ref=f6e535]:
+        - generic [ref=f6e536]: 2026/2027
+        - generic [ref=f6e537]: AKTIF
+      - generic [ref=f6e538]:
+        - 'textbox "Contoh: 2026/2027" [ref=f6e539]'
+        - button "Tambah & Aktifkan" [ref=f6e540] [cursor=pointer]
+      - paragraph [ref=f6e541]: Tahun ajaran aktif dipakai otomatis di seluruh section (Dashboard, SPP, Setoran, Penarikan, Koperasi, Laporan). Data tahun sebelumnya tetap tersimpan dan aman.
+      - separator [ref=f6e542]
+      - heading "Aturan Potongan Bulanan Otomatis" [level=4] [ref=f6e543]
+      - generic [ref=f6e545]:
+        - generic [ref=f6e546]: Nominal Potongan (Rp) per Bulan
+        - spinbutton [ref=f6e547]: "2000"
+        - paragraph [ref=f6e548]: "Default: Rp 2.000. Pemotongan dilakukan setiap tanggal 28. Saldo kurang akan dicatat sebagai tunggakan."
+      - button "Simpan Pengaturan" [ref=f6e549] [cursor=pointer]
+      - separator [ref=f6e550]
+      - heading "Tarif SPP (Pembayaran Sekolah)" [level=4] [ref=f6e551]
+      - generic [ref=f6e552]:
+        - generic [ref=f6e553]:
+          - generic [ref=f6e554]: SPP TK (A & B)
+          - spinbutton [ref=f6e555]: "50000"
+          - paragraph [ref=f6e556]: "Default: Rp 50.000"
+        - generic [ref=f6e557]:
+          - generic [ref=f6e558]: SPP MI (Kelas 1 - 6)
+          - spinbutton [ref=f6e559]: "0"
+          - paragraph [ref=f6e560]: 0 = Gratis (tidak wajib bayar)
+    - generic [ref=f6e561]:
+      - separator [ref=f6e562]
+      - heading "Manajemen User" [level=4] [ref=f6e563]
+      - generic [ref=f6e567]:
+        - generic [ref=f6e568]:
+          - generic [ref=f6e569]:
+            - generic [ref=f6e570]:
+              - generic [ref=f6e571]: Mas Dev (Developer)(Anda)
+              - generic [ref=f6e572]: "@masdev"
+            - generic [ref=f6e573]: Developer
+          - generic [ref=f6e574]:
+            - combobox [disabled] [ref=f6e575]:
+              - option "Developer" [selected]
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f6e576]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [ref=f6e577] [cursor=pointer]
+            - button "Hapus" [disabled] [ref=f6e578]
+        - generic [ref=f6e579]:
+          - generic [ref=f6e580]:
+            - generic [ref=f6e581]:
+              - generic [ref=f6e582]: Akun Demo (Read-Only)DEMO
+              - generic [ref=f6e583]: "@demo"
+            - generic [ref=f6e584]: Developer
+          - generic [ref=f6e585]:
+            - combobox [disabled] [ref=f6e586]:
+              - option "Developer" [selected]
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f6e587]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [disabled] [ref=f6e588]
+            - button "Hapus" [disabled] [ref=f6e589]
+        - generic [ref=f6e590]:
+          - generic [ref=f6e591]:
+            - generic [ref=f6e592]:
+              - generic [ref=f6e593]: Demo TK (Read-Only)DEMO
+              - generic [ref=f6e594]: "@demo-tk"
+            - generic [ref=f6e595]: Developer
+          - generic [ref=f6e596]:
+            - combobox [disabled] [ref=f6e597]:
+              - option "Developer" [selected]
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f6e598]:
+              - option "Semua Jenjang"
+              - option "TK" [selected]
+              - option "MI"
+            - button "Ganti Password" [disabled] [ref=f6e599]
+            - button "Hapus" [disabled] [ref=f6e600]
+        - generic [ref=f6e601]:
+          - generic [ref=f6e602]:
+            - generic [ref=f6e603]:
+              - generic [ref=f6e604]: Demo MI (Read-Only)DEMO
+              - generic [ref=f6e605]: "@demo-mi"
+            - generic [ref=f6e606]: Developer
+          - generic [ref=f6e607]:
+            - combobox [disabled] [ref=f6e608]:
+              - option "Developer" [selected]
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f6e609]:
+              - option "Semua Jenjang"
+              - option "TK"
+              - option "MI" [selected]
+            - button "Ganti Password" [disabled] [ref=f6e610]
+            - button "Hapus" [disabled] [ref=f6e611]
+        - generic [ref=f6e612]:
+          - generic [ref=f6e613]:
+            - generic [ref=f6e614]:
+              - generic [ref=f6e615]: Admin Uji TK
+              - generic [ref=f6e616]: "@admtk2"
+            - generic [ref=f6e617]: Admin
+          - generic [ref=f6e618]:
+            - combobox [ref=f6e619]:
+              - option "Developer"
+              - option "Super Admin"
+              - option "Admin" [selected]
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [ref=f6e620]:
+              - option "Semua Jenjang"
+              - option "TK" [selected]
+              - option "MI"
+            - button "Ganti Password" [ref=f6e621] [cursor=pointer]
+            - button "Reset Password" [ref=f6e622] [cursor=pointer]
+            - button "Hapus" [ref=f6e626] [cursor=pointer]
+        - generic [ref=f6e627]:
+          - generic [ref=f6e628]:
+            - generic [ref=f6e629]:
+              - generic [ref=f6e630]: Uji MI
+              - generic [ref=f6e631]: "@ujimi"
+            - generic [ref=f6e632]: Viewer
+          - generic [ref=f6e633]:
+            - combobox [ref=f6e634]:
+              - option "Developer"
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer" [selected]
+            - combobox "Jenjang akses data (TK/MI)" [ref=f6e635]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [ref=f6e636] [cursor=pointer]
+            - button "Hapus" [ref=f6e637] [cursor=pointer]
+        - generic [ref=f6e638]:
+          - generic [ref=f6e639]:
+            - generic [ref=f6e640]:
+              - generic [ref=f6e641]: Demo Super Admin (Read-Only)DEMO
+              - generic [ref=f6e642]: "@demo"
+            - generic [ref=f6e643]: Super Admin
+          - generic [ref=f6e644]:
+            - combobox [disabled] [ref=f6e645]:
+              - option "Developer"
+              - option "Super Admin" [selected]
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f6e646]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [disabled] [ref=f6e647]
+            - button "Reset Password" [disabled] [ref=f6e648]
+            - button "Hapus" [disabled] [ref=f6e652]
+        - generic [ref=f6e653]:
+          - generic [ref=f6e654]:
+            - generic [ref=f6e655]:
+              - generic [ref=f6e656]: Admin TK
+              - generic [ref=f6e657]: "@admtk"
+            - generic [ref=f6e658]: Admin
+          - generic [ref=f6e659]:
+            - combobox [ref=f6e660]:
+              - option "Developer"
+              - option "Super Admin"
+              - option "Admin" [selected]
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [ref=f6e661]:
+              - option "Semua Jenjang"
+              - option "TK" [selected]
+              - option "MI"
+            - button "Ganti Password" [ref=f6e662] [cursor=pointer]
+            - button "Reset Password" [ref=f6e663] [cursor=pointer]
+            - button "Hapus" [ref=f6e667] [cursor=pointer]
+        - generic [ref=f6e668]:
+          - generic [ref=f6e669]:
+            - generic [ref=f6e670]:
+              - generic [ref=f6e671]: Admin MI
+              - generic [ref=f6e672]: "@admmi"
+            - generic [ref=f6e673]: Admin
+          - generic [ref=f6e674]:
+            - combobox [ref=f6e675]:
+              - option "Developer"
+              - option "Super Admin"
+              - option "Admin" [selected]
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [ref=f6e676]:
+              - option "Semua Jenjang"
+              - option "TK"
+              - option "MI" [selected]
+            - button "Ganti Password" [ref=f6e677] [cursor=pointer]
+            - button "Reset Password" [ref=f6e678] [cursor=pointer]
+            - button "Hapus" [ref=f6e682] [cursor=pointer]
+      - generic [ref=f6e683]:
+        - generic [ref=f6e684]: Tambah User Baru
+        - generic [ref=f6e685]:
+          - textbox "Username" [ref=f6e686]
+          - textbox "Nama Lengkap" [ref=f6e687]
+          - combobox [ref=f6e688]:
+            - option "Developer"
+            - option "Super Admin"
+            - option "Admin" [selected]
+            - option "Wali Kelas"
+            - option "Viewer"
+          - combobox [ref=f6e689]:
+            - option "Semua Jenjang" [selected]
+            - option "Khusus TK"
+            - option "Khusus MI"
+          - textbox "Password" [ref=f6e690]
+        - button "Tambah User" [ref=f6e691] [cursor=pointer]
+    - separator [ref=f6e692]
+    - generic [ref=f6e693]:
+      - heading "Backup & Restore Database" [level=4] [ref=f6e694]
+      - generic [ref=f6e699]:
+        - generic [ref=f6e700]:
+          - generic [ref=f6e701]: Ekspor Cadangan JSON
+          - generic [ref=f6e702]: Unduh seluruh file keadaan sistem
+        - button "Unduh Backup" [ref=f6e703] [cursor=pointer]
+      - generic [ref=f6e707]:
+        - generic [ref=f6e708]:
+          - generic [ref=f6e709]: Snapshot Otomatis
+          - generic [ref=f6e714]: "Snapshot terakhir: 8/8/2026, 07.24.11"
+        - button "Restore Snapshot" [ref=f6e715] [cursor=pointer]
+      - generic [ref=f6e716]:
+        - generic [ref=f6e717]: Restore Database (Khusus Developer)
+        - textbox "Tempelkan isi file JSON backup disini..." [ref=f6e721]
+        - button "Periksa & Preview Cadangan" [disabled] [ref=f6e722] [cursor=pointer]
+        - button "Proses Restore System State" [disabled] [ref=f6e723] [cursor=pointer]

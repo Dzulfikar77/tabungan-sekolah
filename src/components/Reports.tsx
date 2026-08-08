@@ -5,11 +5,10 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
+import { formatRupiah, formatDate, filterByAccessLevel, levelVisibleClasses, isClassInUserLevel } from '../utils/format';
 import { generateReportPDF } from '../utils/pdfGenerator';
 import { exportReportToExcel } from '../utils/excelHandler';
 import { ClassGrade } from '../types';
-import { ALL_CLASSES } from '../utils/initialData';
 import {
   FileSpreadsheet,
   Download,
@@ -29,13 +28,14 @@ export const Reports: React.FC = () => {
   const [studentFilter, setStudentFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('Disetujui');
 
-  const classes = ALL_CLASSES;
+  const classes = levelVisibleClasses(currentUser);
 
   const activeStudents = filterByAccessLevel(students.filter((s) => !s.isDeleted), currentUser);
 
   // Filter transactions
   const now = new Date();
   const filteredTransactions = transactions.filter((t) => {
+    if (!isClassInUserLevel(t.classGrade, currentUser)) return false;
     if (t.academicYearId !== currentAcademicYear.id) return false;
     if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
     if (classFilter !== 'ALL' && t.classGrade !== classFilter) return false;
@@ -200,7 +200,7 @@ export const Reports: React.FC = () => {
           className="px-3 py-1.5 border border-slate-200 rounded-xl font-medium focus:outline-none cursor-pointer"
         >
           <option value="Disetujui">Hanya Status Disetujui</option>
-          <option value="Menunggu Persetujuan">Pending Approval</option>
+          <option value="Menunggu Approval Super Admin">Pending Approval</option>
           <option value="Ditolak">Ditolak</option>
           <option value="ALL">Semua Status</option>
         </select>
@@ -254,7 +254,7 @@ export const Reports: React.FC = () => {
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           t.status === 'Disetujui'
                             ? 'bg-emerald-100 text-emerald-800'
-                            : t.status === 'Menunggu Persetujuan'
+                            : t.status === 'Menunggu Approval Super Admin'
                             ? 'bg-amber-100 text-amber-800'
                             : 'bg-rose-100 text-rose-800'
                         }`}

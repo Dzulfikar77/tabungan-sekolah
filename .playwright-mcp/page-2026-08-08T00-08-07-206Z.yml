@@ -1,0 +1,23 @@
+- generic [ref=f2e2]:
+  - generic [ref=f2e5]:
+    - generic [ref=f2e6]: "Peringatan: Gagal menyimpan data ke cloud (school_settings — TypeError: Failed to fetch, 07.08). Data hanya tersimpan sementara di perangkat Anda. Periksa koneksi internet; jika masalah berlanjut, hubungi segera developer. (+4 operasi gagal lainnya)"
+    - button "Tutup" [ref=f2e7] [cursor=pointer]
+  - generic [ref=f2e9]:
+    - generic [ref=f2e10]:
+      - heading "Portal Orang Tua & Siswa" [level=1] [ref=f2e15]
+      - paragraph [ref=f2e16]: YPIS Mambaul Ulum Surabaya
+      - paragraph [ref=f2e17]: Lihat saldo tabungan, riwayat transaksi, dan status pembayaran
+    - generic [ref=f2e18]:
+      - generic [ref=f2e19]:
+        - generic [ref=f2e20]:
+          - generic [ref=f2e21]: Nama Anak
+          - combobox "Ketik nama anak..." [active] [ref=f2e26]
+          - paragraph [ref=f2e27]: Ketik nama anak — saran muncul otomatis. Pilih anak Anda, lalu isi password.
+        - generic [ref=f2e28]:
+          - generic [ref=f2e29]: Password
+          - generic [ref=f2e30]:
+            - textbox "••••••••" [ref=f2e34]
+            - button [ref=f2e35] [cursor=pointer]
+        - button "Masuk" [ref=f2e39] [cursor=pointer]
+        - button "Lupa Password?" [ref=f2e44] [cursor=pointer]
+      - button "Kembali ke Login Admin" [ref=f2e46] [cursor=pointer]

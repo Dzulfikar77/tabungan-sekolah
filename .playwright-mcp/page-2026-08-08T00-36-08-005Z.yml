@@ -1,0 +1,444 @@
+- generic [ref=f8e1387]:
+  - banner [ref=f8e1388]:
+    - generic [ref=f8e1389]:
+      - generic [ref=f8e1390]:
+        - img "Logo Sekolah" [ref=f8e1391]
+        - generic [ref=f8e1392]:
+          - heading "YPIS Mambaul Ulum Surabaya" [level=1] [ref=f8e1393]
+          - paragraph [ref=f8e1394]:
+            - generic [ref=f8e1395]: Sistem Tabungan Digital
+            - generic [ref=f8e1397]: Jl. Wonokusumo Kidul no 44 Surabaya
+      - generic [ref=f8e1398]:
+        - generic [ref=f8e1399]:
+          - generic [ref=f8e1400]: 07.36.07
+          - generic [ref=f8e1401]: Sabtu, 8 Agustus 2026
+        - generic [ref=f8e1402]:
+          - generic [ref=f8e1405]: "Tahun Ajaran:"
+          - generic [ref=f8e1406]: 2026/2027
+        - generic [ref=f8e1407]: Tersimpan 07.34
+        - generic [ref=f8e1412]: Developer
+        - generic [ref=f8e1416]:
+          - button "Pengaturan Sekolah & Backup" [active] [ref=f8e1417] [cursor=pointer]
+          - button "Keluar" [ref=f8e1421] [cursor=pointer]
+    - navigation [ref=f8e1427]:
+      - button "Dashboard" [ref=f8e1428] [cursor=pointer]
+      - button "Siswa" [ref=f8e1435] [cursor=pointer]
+      - button "SPP" [ref=f8e1442] [cursor=pointer]
+      - button "Setoran" [ref=f8e1447] [cursor=pointer]
+      - button "Penarikan / Approval" [ref=f8e1452] [cursor=pointer]
+      - button "Koperasi & Kegiatan" [ref=f8e1457] [cursor=pointer]
+      - button "Laporan" [ref=f8e1463] [cursor=pointer]
+      - button "Audit Log" [ref=f8e1468] [cursor=pointer]
+  - main [ref=f8e1474]:
+    - generic [ref=f8e1475]:
+      - generic [ref=f8e1476]:
+        - generic [ref=f8e1477]:
+          - generic [ref=f8e1478]: Tahun Ajaran 2026/2027
+          - heading "Selamat Datang, Mas Dev (Developer)" [level=2] [ref=f8e1479]
+          - paragraph [ref=f8e1480]:
+            - text: "Hak Akses:"
+            - strong [ref=f8e1481]: Developer
+            - text: "| Sistem Manajemen Keuangan & Tabungan Siswa"
+        - generic [ref=f8e1486]:
+          - generic [ref=f8e1487]: Akurasi & Pertanggungjawaban
+          - generic [ref=f8e1488]: 100% Audit Trail Realtime
+      - generic [ref=f8e1489]:
+        - generic [ref=f8e1491]:
+          - paragraph [ref=f8e1492]: Total Saldo Tabungan
+          - heading "Rp 0" [level=3] [ref=f8e1493]
+          - paragraph [ref=f8e1494]: 0 Siswa Aktif
+        - generic [ref=f8e1500]:
+          - paragraph [ref=f8e1501]: Tabungan TK
+          - heading "Rp 0" [level=3] [ref=f8e1502]
+          - paragraph [ref=f8e1503]: 0 Siswa TK
+        - generic [ref=f8e1509]:
+          - paragraph [ref=f8e1510]: Tabungan MI
+          - heading "Rp 0" [level=3] [ref=f8e1511]
+          - paragraph [ref=f8e1512]: 0 Siswa MI
+        - generic [ref=f8e1518]:
+          - paragraph [ref=f8e1519]: Siswa Terdaftar
+          - heading "0 Siswa" [level=3] [ref=f8e1520]
+          - paragraph [ref=f8e1521]: Aktif di Tahun Ajaran ini
+        - generic [ref=f8e1529]:
+          - paragraph [ref=f8e1530]: Total Setoran Disetujui
+          - heading "Rp 30.000" [level=3] [ref=f8e1531]
+          - paragraph [ref=f8e1532]: Akumulasi tahun ini
+        - generic [ref=f8e1538]:
+          - paragraph [ref=f8e1539]: Total Penarikan Disetujui
+          - heading "Rp 5.000" [level=3] [ref=f8e1540]
+          - paragraph [ref=f8e1541]: Selesai disetujui
+      - generic [ref=f8e1546]:
+        - generic [ref=f8e1547]:
+          - generic [ref=f8e1548]:
+            - heading "Pengajuan Penarikan Menunggu Persetujuan" [level=3] [ref=f8e1553]
+            - generic [ref=f8e1554]: 0 Pengajuan
+          - generic [ref=f8e1558]:
+            - strong [ref=f8e1559]: "Aturan Keamanan Saldo:"
+            - text: Selama status pengajuan masih "Menunggu Persetujuan", saldo tabungan siswa
+            - strong [ref=f8e1560]: TIDAK BERUBAH SAMA SEKALI
+            - text: . Saldo baru akan berkurang otomatis setelah disetujui oleh Super Admin / Developer.
+          - generic [ref=f8e1561]: Tidak ada pengajuan penarikan yang menggantung. Semua transaksi telah diproses.
+        - generic [ref=f8e1565]:
+          - generic [ref=f8e1566]:
+            - generic [ref=f8e1567]:
+              - heading "Potongan Bulanan Otomatis" [level=3] [ref=f8e1568]
+              - button "Toggle Otomatis Rutin Awal Bulan" [ref=f8e1572] [cursor=pointer]
+            - generic [ref=f8e1576]:
+              - generic [ref=f8e1577]:
+                - generic [ref=f8e1578]: "Status Fitur:"
+                - generic [ref=f8e1579]: AKTIF (Setiap Tgl 28)
+              - generic [ref=f8e1580]:
+                - generic [ref=f8e1581]: "Nominal Potongan:"
+                - generic [ref=f8e1582]: Rp 2.000 / siswa
+            - paragraph [ref=f8e1583]:
+              - strong [ref=f8e1584]: "Aturan Eksekusi:"
+              - text: Semua siswa aktif dipotong Rp Rp 2.000 setiap tanggal 28. Jika saldo tidak mencukupi, akan tercatat sebagai tunggakan dan dipotong otomatis saat saldo terisi.
+          - button "Jalankan Potongan Sekarang" [ref=f8e1585] [cursor=pointer]
+      - generic [ref=f8e1588]:
+        - heading "Rincian Saldo Tabungan Per Kelas" [level=3] [ref=f8e1589]
+        - generic [ref=f8e1593]:
+          - generic [ref=f8e1594]:
+            - generic [ref=f8e1595]: Kelas TK A
+            - generic [ref=f8e1596]: Rp 0
+            - generic [ref=f8e1597]: 0 Siswa
+          - generic [ref=f8e1598]:
+            - generic [ref=f8e1599]: Kelas TK B
+            - generic [ref=f8e1600]: Rp 0
+            - generic [ref=f8e1601]: 0 Siswa
+          - generic [ref=f8e1602]:
+            - generic [ref=f8e1603]: Kelas Kelas 1A
+            - generic [ref=f8e1604]: Rp 0
+            - generic [ref=f8e1605]: 0 Siswa
+          - generic [ref=f8e1606]:
+            - generic [ref=f8e1607]: Kelas Kelas 1 B
+            - generic [ref=f8e1608]: Rp 0
+            - generic [ref=f8e1609]: 0 Siswa
+          - generic [ref=f8e1610]:
+            - generic [ref=f8e1611]: Kelas Kelas 2A
+            - generic [ref=f8e1612]: Rp 0
+            - generic [ref=f8e1613]: 0 Siswa
+          - generic [ref=f8e1614]:
+            - generic [ref=f8e1615]: Kelas Kelas 2B
+            - generic [ref=f8e1616]: Rp 0
+            - generic [ref=f8e1617]: 0 Siswa
+          - generic [ref=f8e1618]:
+            - generic [ref=f8e1619]: Kelas Kelas 3A
+            - generic [ref=f8e1620]: Rp 0
+            - generic [ref=f8e1621]: 0 Siswa
+          - generic [ref=f8e1622]:
+            - generic [ref=f8e1623]: Kelas Kelas 3B
+            - generic [ref=f8e1624]: Rp 0
+            - generic [ref=f8e1625]: 0 Siswa
+          - generic [ref=f8e1626]:
+            - generic [ref=f8e1627]: Kelas Kelas 4A
+            - generic [ref=f8e1628]: Rp 0
+            - generic [ref=f8e1629]: 0 Siswa
+          - generic [ref=f8e1630]:
+            - generic [ref=f8e1631]: Kelas Kelas 4B
+            - generic [ref=f8e1632]: Rp 0
+            - generic [ref=f8e1633]: 0 Siswa
+          - generic [ref=f8e1634]:
+            - generic [ref=f8e1635]: Kelas Kelas 5A
+            - generic [ref=f8e1636]: Rp 0
+            - generic [ref=f8e1637]: 0 Siswa
+          - generic [ref=f8e1638]:
+            - generic [ref=f8e1639]: Kelas Kelas 5B
+            - generic [ref=f8e1640]: Rp 0
+            - generic [ref=f8e1641]: 0 Siswa
+          - generic [ref=f8e1642]:
+            - generic [ref=f8e1643]: Kelas Kelas 6A
+            - generic [ref=f8e1644]: Rp 0
+            - generic [ref=f8e1645]: 0 Siswa
+          - generic [ref=f8e1646]:
+            - generic [ref=f8e1647]: Kelas Kelas 6B
+            - generic [ref=f8e1648]: Rp 0
+            - generic [ref=f8e1649]: 0 Siswa
+      - generic [ref=f8e1650]:
+        - 'heading "● Siswa Belum Bayar SPP Periode: Agustus 2026" [level=3] [ref=f8e1651]':
+          - generic [ref=f8e1652]: ●
+          - text: Siswa Belum Bayar SPP
+          - generic [ref=f8e1653]: "Periode: Agustus 2026"
+        - generic [ref=f8e1654]: Semua siswa sudah membayar SPP periode ini!
+  - contentinfo [ref=f8e1655]:
+    - generic [ref=f8e1656]: Sistem Informasi Sekolah • Powered by Dzulfikar Dev
+  - generic [ref=f8e1658]:
+    - generic [ref=f8e1659]:
+      - generic [ref=f8e1660]: Pengaturan Sekolah & Backup Database
+      - button [ref=f8e1665]
+    - generic [ref=f8e1669]:
+      - heading "Identitas Sekolah (Header Laporan PDF)" [level=4] [ref=f8e1670]
+      - generic [ref=f8e1671]:
+        - generic [ref=f8e1672]: Nama Sekolah / Lembaga *
+        - textbox [ref=f8e1673]: YPIS Mambaul Ulum Surabaya
+      - generic [ref=f8e1674]:
+        - generic [ref=f8e1675]: Alamat Lengkap *
+        - textbox [ref=f8e1676]: Jl. Wonokusumo Kidul no 44 Surabaya
+      - generic [ref=f8e1677]:
+        - generic [ref=f8e1678]: No. Telepon / HP Sekolah
+        - textbox [ref=f8e1679]: (021) 789-0123
+      - generic [ref=f8e1680]:
+        - generic [ref=f8e1681]: Upload Logo Sekolah
+        - generic [ref=f8e1682]:
+          - img "Logo" [ref=f8e1683]
+          - button "Choose File" [ref=f8e1684]
+      - separator [ref=f8e1685]
+      - heading "Manajemen Tahun Ajaran (Developer)" [level=4] [ref=f8e1686]
+      - generic [ref=f8e1691]:
+        - generic [ref=f8e1692]: 2026/2027
+        - generic [ref=f8e1693]: AKTIF
+      - generic [ref=f8e1694]:
+        - 'textbox "Contoh: 2026/2027" [ref=f8e1695]'
+        - button "Tambah & Aktifkan" [ref=f8e1696] [cursor=pointer]
+      - paragraph [ref=f8e1697]: Tahun ajaran aktif dipakai otomatis di seluruh section (Dashboard, SPP, Setoran, Penarikan, Koperasi, Laporan). Data tahun sebelumnya tetap tersimpan dan aman.
+      - separator [ref=f8e1698]
+      - heading "Aturan Potongan Bulanan Otomatis" [level=4] [ref=f8e1699]
+      - generic [ref=f8e1701]:
+        - generic [ref=f8e1702]: Nominal Potongan (Rp) per Bulan
+        - spinbutton [ref=f8e1703]: "2000"
+        - paragraph [ref=f8e1704]: "Default: Rp 2.000. Pemotongan dilakukan setiap tanggal 28. Saldo kurang akan dicatat sebagai tunggakan."
+      - button "Simpan Pengaturan" [ref=f8e1705] [cursor=pointer]
+      - separator [ref=f8e1706]
+      - heading "Tarif SPP (Pembayaran Sekolah)" [level=4] [ref=f8e1707]
+      - generic [ref=f8e1708]:
+        - generic [ref=f8e1709]:
+          - generic [ref=f8e1710]: SPP TK (A & B)
+          - spinbutton [ref=f8e1711]: "50000"
+          - paragraph [ref=f8e1712]: "Default: Rp 50.000"
+        - generic [ref=f8e1713]:
+          - generic [ref=f8e1714]: SPP MI (Kelas 1 - 6)
+          - spinbutton [ref=f8e1715]: "0"
+          - paragraph [ref=f8e1716]: 0 = Gratis (tidak wajib bayar)
+    - generic [ref=f8e1717]:
+      - separator [ref=f8e1718]
+      - heading "Manajemen User" [level=4] [ref=f8e1719]
+      - generic [ref=f8e1723]:
+        - generic [ref=f8e1724]:
+          - generic [ref=f8e1725]:
+            - generic [ref=f8e1726]:
+              - generic [ref=f8e1727]: Mas Dev (Developer)(Anda)
+              - generic [ref=f8e1728]: "@masdev"
+            - generic [ref=f8e1729]: Developer
+          - generic [ref=f8e1730]:
+            - combobox [disabled] [ref=f8e1731]:
+              - option "Developer" [selected]
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f8e1732]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [ref=f8e1733] [cursor=pointer]
+            - button "Hapus" [disabled] [ref=f8e1734]
+        - generic [ref=f8e1735]:
+          - generic [ref=f8e1736]:
+            - generic [ref=f8e1737]:
+              - generic [ref=f8e1738]: Akun Demo (Read-Only)DEMO
+              - generic [ref=f8e1739]: "@demo"
+            - generic [ref=f8e1740]: Developer
+          - generic [ref=f8e1741]:
+            - combobox [disabled] [ref=f8e1742]:
+              - option "Developer" [selected]
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f8e1743]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [disabled] [ref=f8e1744]
+            - button "Hapus" [ref=f8e1745] [cursor=pointer]
+        - generic [ref=f8e1746]:
+          - generic [ref=f8e1747]:
+            - generic [ref=f8e1748]:
+              - generic [ref=f8e1749]: Demo TK (Read-Only)DEMO
+              - generic [ref=f8e1750]: "@demo-tk"
+            - generic [ref=f8e1751]: Developer
+          - generic [ref=f8e1752]:
+            - combobox [disabled] [ref=f8e1753]:
+              - option "Developer" [selected]
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f8e1754]:
+              - option "Semua Jenjang"
+              - option "TK" [selected]
+              - option "MI"
+            - button "Ganti Password" [disabled] [ref=f8e1755]
+            - button "Hapus" [ref=f8e1756] [cursor=pointer]
+        - generic [ref=f8e1757]:
+          - generic [ref=f8e1758]:
+            - generic [ref=f8e1759]:
+              - generic [ref=f8e1760]: Demo MI (Read-Only)DEMO
+              - generic [ref=f8e1761]: "@demo-mi"
+            - generic [ref=f8e1762]: Developer
+          - generic [ref=f8e1763]:
+            - combobox [disabled] [ref=f8e1764]:
+              - option "Developer" [selected]
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f8e1765]:
+              - option "Semua Jenjang"
+              - option "TK"
+              - option "MI" [selected]
+            - button "Ganti Password" [disabled] [ref=f8e1766]
+            - button "Hapus" [ref=f8e1767] [cursor=pointer]
+        - generic [ref=f8e1768]:
+          - generic [ref=f8e1769]:
+            - generic [ref=f8e1770]:
+              - generic [ref=f8e1771]: Super Admin Uji
+              - generic [ref=f8e1772]: "@sauji"
+            - generic [ref=f8e1773]: Super Admin
+          - generic [ref=f8e1774]:
+            - combobox [ref=f8e1775]:
+              - option "Developer"
+              - option "Super Admin" [selected]
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [ref=f8e1776]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [ref=f8e1777] [cursor=pointer]
+            - button "Reset Password" [ref=f8e1778] [cursor=pointer]
+            - button "Hapus" [ref=f8e1782] [cursor=pointer]
+        - generic [ref=f8e1783]:
+          - generic [ref=f8e1784]:
+            - generic [ref=f8e1785]:
+              - generic [ref=f8e1786]: Korban Dua
+              - generic [ref=f8e1787]: "@korban2"
+            - generic [ref=f8e1788]: Admin
+          - generic [ref=f8e1789]:
+            - combobox [ref=f8e1790]:
+              - option "Developer"
+              - option "Super Admin"
+              - option "Admin" [selected]
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [ref=f8e1791]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [ref=f8e1792] [cursor=pointer]
+            - button "Reset Password" [ref=f8e1793] [cursor=pointer]
+            - button "Hapus" [ref=f8e1797] [cursor=pointer]
+        - generic [ref=f8e1798]:
+          - generic [ref=f8e1799]:
+            - generic [ref=f8e1800]:
+              - generic [ref=f8e1801]: Uji MI
+              - generic [ref=f8e1802]: "@ujimi"
+            - generic [ref=f8e1803]: Viewer
+          - generic [ref=f8e1804]:
+            - combobox [ref=f8e1805]:
+              - option "Developer"
+              - option "Super Admin"
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer" [selected]
+            - combobox "Jenjang akses data (TK/MI)" [ref=f8e1806]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [ref=f8e1807] [cursor=pointer]
+            - button "Hapus" [ref=f8e1808] [cursor=pointer]
+        - generic [ref=f8e1809]:
+          - generic [ref=f8e1810]:
+            - generic [ref=f8e1811]:
+              - generic [ref=f8e1812]: Demo Super Admin (Read-Only)DEMO
+              - generic [ref=f8e1813]: "@demo"
+            - generic [ref=f8e1814]: Super Admin
+          - generic [ref=f8e1815]:
+            - combobox [disabled] [ref=f8e1816]:
+              - option "Developer"
+              - option "Super Admin" [selected]
+              - option "Admin"
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [disabled] [ref=f8e1817]:
+              - option "Semua Jenjang" [selected]
+              - option "TK"
+              - option "MI"
+            - button "Ganti Password" [disabled] [ref=f8e1818]
+            - button "Reset Password" [disabled] [ref=f8e1819]
+            - button "Hapus" [ref=f8e1823] [cursor=pointer]
+        - generic [ref=f8e1824]:
+          - generic [ref=f8e1825]:
+            - generic [ref=f8e1826]:
+              - generic [ref=f8e1827]: Admin TK
+              - generic [ref=f8e1828]: "@admtk"
+            - generic [ref=f8e1829]: Admin
+          - generic [ref=f8e1830]:
+            - combobox [ref=f8e1831]:
+              - option "Developer"
+              - option "Super Admin"
+              - option "Admin" [selected]
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [ref=f8e1832]:
+              - option "Semua Jenjang"
+              - option "TK" [selected]
+              - option "MI"
+            - button "Ganti Password" [ref=f8e1833] [cursor=pointer]
+            - button "Reset Password" [ref=f8e1834] [cursor=pointer]
+            - button "Hapus" [ref=f8e1838] [cursor=pointer]
+        - generic [ref=f8e1839]:
+          - generic [ref=f8e1840]:
+            - generic [ref=f8e1841]:
+              - generic [ref=f8e1842]: Admin MI
+              - generic [ref=f8e1843]: "@admmi"
+            - generic [ref=f8e1844]: Admin
+          - generic [ref=f8e1845]:
+            - combobox [ref=f8e1846]:
+              - option "Developer"
+              - option "Super Admin"
+              - option "Admin" [selected]
+              - option "Wali Kelas"
+              - option "Viewer"
+            - combobox "Jenjang akses data (TK/MI)" [ref=f8e1847]:
+              - option "Semua Jenjang"
+              - option "TK"
+              - option "MI" [selected]
+            - button "Ganti Password" [ref=f8e1848] [cursor=pointer]
+            - button "Reset Password" [ref=f8e1849] [cursor=pointer]
+            - button "Hapus" [ref=f8e1853] [cursor=pointer]
+      - generic [ref=f8e1854]:
+        - generic [ref=f8e1855]: Tambah User Baru
+        - generic [ref=f8e1856]:
+          - textbox "Username" [ref=f8e1857]
+          - textbox "Nama Lengkap" [ref=f8e1858]
+          - combobox [ref=f8e1859]:
+            - option "Developer"
+            - option "Super Admin"
+            - option "Admin" [selected]
+            - option "Wali Kelas"
+            - option "Viewer"
+          - combobox [ref=f8e1860]:
+            - option "Semua Jenjang" [selected]
+            - option "Khusus TK"
+            - option "Khusus MI"
+          - textbox "Password" [ref=f8e1861]
+        - button "Tambah User" [ref=f8e1862] [cursor=pointer]
+    - separator [ref=f8e1863]
+    - generic [ref=f8e1864]:
+      - heading "Backup & Restore Database" [level=4] [ref=f8e1865]
+      - generic [ref=f8e1870]:
+        - generic [ref=f8e1871]:
+          - generic [ref=f8e1872]: Ekspor Cadangan JSON
+          - generic [ref=f8e1873]: Unduh seluruh file keadaan sistem
+        - button "Unduh Backup" [ref=f8e1874] [cursor=pointer]
+      - generic [ref=f8e1878]:
+        - generic [ref=f8e1879]:
+          - generic [ref=f8e1880]: Snapshot Otomatis
+          - generic [ref=f8e1885]: "Snapshot terakhir: 8/8/2026, 07.24.11"
+        - button "Restore Snapshot" [ref=f8e1886] [cursor=pointer]
+      - generic [ref=f8e1887]:
+        - generic [ref=f8e1888]: Restore Database (Khusus Developer)
+        - textbox "Tempelkan isi file JSON backup disini..." [ref=f8e1892]
+        - button "Periksa & Preview Cadangan" [disabled] [ref=f8e1893] [cursor=pointer]
+        - button "Proses Restore System State" [disabled] [ref=f8e1894] [cursor=pointer]

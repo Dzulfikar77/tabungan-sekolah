@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { normalizeName } from '../utils/viewerCredentials';
-import { formatRupiah, formatDate } from '../utils/format';
+import { formatRupiah, formatDate, isPendingApprovalStatus } from '../utils/format';
 import { generateStudentCertificatePDF } from '../utils/pdfGenerator';
 import {
   Wallet,
@@ -376,7 +376,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
                           className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             t.status === 'Disetujui'
                               ? 'bg-emerald-100 text-emerald-800'
-                              : t.status === 'Menunggu Persetujuan'
+                              : isPendingApprovalStatus(t.status)
                               ? 'bg-amber-100 text-amber-800'
                               : 'bg-rose-100 text-rose-800'
                           }`}

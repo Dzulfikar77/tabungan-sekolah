@@ -1,0 +1,153 @@
+- generic [ref=f5e2222]:
+  - banner [ref=f5e2223]:
+    - generic [ref=f5e2224]:
+      - generic [ref=f5e2225]:
+        - img "Logo Sekolah" [ref=f5e2226]
+        - generic [ref=f5e2227]:
+          - heading "YPIS Mambaul Ulum Surabaya" [level=1] [ref=f5e2228]
+          - paragraph [ref=f5e2229]:
+            - generic [ref=f5e2230]: Sistem Tabungan Digital
+            - generic [ref=f5e2232]: Jl. Wonokusumo Kidul no 44 Surabaya
+      - generic [ref=f5e2233]:
+        - generic [ref=f5e2234]:
+          - generic [ref=f5e2235]: 07.19.54
+          - generic [ref=f5e2236]: Sabtu, 8 Agustus 2026
+        - generic [ref=f5e2237]:
+          - generic [ref=f5e2240]: "Tahun Ajaran:"
+          - generic [ref=f5e2241]: 2026/2027
+        - generic [ref=f5e2242]: Tersimpan 07.18
+        - generic [ref=f5e2247]: Developer
+        - generic [ref=f5e2251]:
+          - button "Pengaturan Sekolah & Backup" [ref=f5e2252] [cursor=pointer]
+          - button "Keluar" [ref=f5e2256] [cursor=pointer]
+    - navigation [ref=f5e2262]:
+      - button "Dashboard" [ref=f5e2263] [cursor=pointer]
+      - button "Siswa" [ref=f5e2270] [cursor=pointer]
+      - button "SPP" [ref=f5e2277] [cursor=pointer]
+      - button "Setoran" [ref=f5e2282] [cursor=pointer]
+      - button "Penarikan / Approval" [ref=f5e2287] [cursor=pointer]
+      - button "Koperasi & Kegiatan" [ref=f5e2292] [cursor=pointer]
+      - button "Laporan" [ref=f5e2298] [cursor=pointer]
+      - button "Audit Log" [ref=f5e2303] [cursor=pointer]
+  - main [ref=f5e2309]:
+    - generic [ref=f5e2310]:
+      - generic [ref=f5e2314]:
+        - heading "Mekanisme Approval Penarikan 2 Lapis (Dua Tingkat)" [level=4] [ref=f5e2315]
+        - paragraph [ref=f5e2316]:
+          - text: "1."
+          - strong [ref=f5e2317]: "Pengajuan:"
+          - text: Admin atau Super Admin mengajukan potongan/penarikan saldo siswa. Status transaksi langsung menjadi Menunggu Persetujuan dan SALDO SISWA SAMA SEKALI BELUM BERKURANG.2.
+          - strong [ref=f5e2318]: "Persetujuan (Approval):"
+          - text: Hanya
+          - strong [ref=f5e2319]: Super Admin (Kepala Sekolah)
+          - text: "&"
+          - strong [ref=f5e2320]: Developer
+          - text: yang memiliki wewenang untuk menyetujui atau menolak. Setelah disetujui, saldo siswa baru akan terpotong secara otomatis.
+      - generic [ref=f5e2321]:
+        - generic [ref=f5e2322]:
+          - 'button "Model 1: Penarikan Reguler" [ref=f5e2323] [cursor=pointer]'
+          - 'button "Model 2: Tutup Tabungan" [ref=f5e2327] [cursor=pointer]'
+        - paragraph [ref=f5e2331]: "Model 1: penarikan biasa (bayar buku/kegiatan/SPP) — data siswa tetap. Model 2: tutup tabungan (lulus/pindah sekolah) — saldo ditarik penuh & data siswa dihapus setelah disetujui."
+      - generic [ref=f5e2332]:
+        - generic [ref=f5e2333]:
+          - generic [ref=f5e2339]:
+            - heading "Form Pengajuan Penarikan / Potongan Tabungan" [level=2] [ref=f5e2340]
+            - paragraph [ref=f5e2341]: Memerlukan persetujuan Super Admin sebelum saldo terpotong
+          - generic [ref=f5e2342]:
+            - generic [ref=f5e2343]:
+              - generic [ref=f5e2344]: 1. Pilih Kelas *
+              - generic [ref=f5e2347]:
+                - button "Semua (2)" [ref=f5e2348] [cursor=pointer]
+                - button "TK A (1)" [ref=f5e2349] [cursor=pointer]
+                - button "TK B (0)" [ref=f5e2350] [cursor=pointer]
+                - button "Kelas 1A (1)" [ref=f5e2351] [cursor=pointer]
+                - button "Kelas 1 B (0)" [ref=f5e2352] [cursor=pointer]
+                - button "Kelas 2A (0)" [ref=f5e2353] [cursor=pointer]
+                - button "Kelas 2B (0)" [ref=f5e2354] [cursor=pointer]
+                - button "Kelas 3A (0)" [ref=f5e2355] [cursor=pointer]
+                - button "Kelas 3B (0)" [ref=f5e2356] [cursor=pointer]
+                - button "Kelas 4A (0)" [ref=f5e2357] [cursor=pointer]
+                - button "Kelas 4B (0)" [ref=f5e2358] [cursor=pointer]
+                - button "Kelas 5A (0)" [ref=f5e2359] [cursor=pointer]
+                - button "Kelas 5B (0)" [ref=f5e2360] [cursor=pointer]
+                - button "Kelas 6A (0)" [ref=f5e2361] [cursor=pointer]
+                - button "Kelas 6B (0)" [ref=f5e2362] [cursor=pointer]
+            - generic [ref=f5e2363]:
+              - generic [ref=f5e2364]: 2. Cari & Pilih Nama Siswa *
+              - textbox "Ketik NIS atau Nama Siswa..." [ref=f5e2372]
+              - generic [ref=f5e2373]:
+                - button "Uji TK (1001) — TK A Rp 10.000" [ref=f5e2374] [cursor=pointer]:
+                  - generic [ref=f5e2375]:
+                    - text: Uji TK
+                    - generic [ref=f5e2376]: (1001) — TK A
+                  - generic [ref=f5e2377]: Rp 10.000
+                - button "Uji MI (2001) — Kelas 1A Rp 20.000" [ref=f5e2378] [cursor=pointer]:
+                  - generic [ref=f5e2379]:
+                    - text: Uji MI
+                    - generic [ref=f5e2380]: (2001) — Kelas 1A
+                  - generic [ref=f5e2381]: Rp 20.000
+              - paragraph [ref=f5e2382]: Klik nama siswa di daftar untuk memilih.
+            - generic [ref=f5e2383]:
+              - generic [ref=f5e2384]: 3. Nominal Penarikan *
+              - generic [ref=f5e2385]:
+                - generic [ref=f5e2386]: "Pilih Nominal Cepat:"
+                - generic [ref=f5e2387]:
+                  - button "2.000" [ref=f5e2388] [cursor=pointer]
+                  - button "5.000" [ref=f5e2389] [cursor=pointer]
+                  - button "10.000" [ref=f5e2390] [cursor=pointer]
+                  - button "15.000" [ref=f5e2391] [cursor=pointer]
+                  - button "20.000" [ref=f5e2392] [cursor=pointer]
+                  - button "25.000" [ref=f5e2393] [cursor=pointer]
+              - generic [ref=f5e2394]:
+                - generic [ref=f5e2395]: Rp
+                - textbox "5.000" [ref=f5e2396]
+              - paragraph [ref=f5e2397]: Format otomatis pemisah ribuan. Default nominal penarikan adalah Rp 5.000
+            - generic [ref=f5e2398]:
+              - generic [ref=f5e2399]: Alasan Penarikan *
+              - 'textbox "Contoh: Pembelian LKS / Pengambilan Saldo oleh Orang Tua" [ref=f5e2400]': Pengambilan Tabungan
+            - button "Kirim Pengajuan Penarikan" [ref=f5e2401] [cursor=pointer]
+        - generic [ref=f5e2405]:
+          - generic [ref=f5e2406]:
+            - generic [ref=f5e2407]:
+              - heading "Antrean Approval Pending" [level=3] [ref=f5e2408]
+              - generic [ref=f5e2412]: "0"
+            - generic [ref=f5e2413]: Semua pengajuan penarikan sudah diproses. Tidak ada antrean pending.
+          - generic [ref=f5e2417]: Akses persetujuan hanya dimiliki oleh Kepala Sekolah & Developer.
+      - generic [ref=f5e2418]:
+        - generic [ref=f5e2419]:
+          - generic [ref=f5e2420]:
+            - heading "Antrean Perbaikan Transaksi" [level=3] [ref=f5e2421]
+            - generic [ref=f5e2425]: "0"
+          - generic [ref=f5e2426]: Tidak ada permintaan perbaikan transaksi.
+        - generic [ref=f5e2430]: Persetujuan perbaikan hanya dimiliki oleh Kepala Sekolah & Developer.
+      - generic [ref=f5e2434]:
+        - heading "Riwayat Penarikan Tabungan (1 Transaksi)" [level=3] [ref=f5e2435]
+        - table [ref=f5e2441]:
+          - rowgroup [ref=f5e2442]:
+            - row [ref=f5e2443]:
+              - columnheader "No" [ref=f5e2444]
+              - columnheader "No. Transaksi" [ref=f5e2445]
+              - columnheader "Siswa" [ref=f5e2446]
+              - columnheader "Kelas" [ref=f5e2447]
+              - columnheader "Nominal" [ref=f5e2448]
+              - columnheader "Status" [ref=f5e2449]
+              - columnheader "Pengaju" [ref=f5e2450]
+              - columnheader "Disetujui Oleh" [ref=f5e2451]
+              - columnheader "Tanggal" [ref=f5e2452]
+              - columnheader "Aksi" [ref=f5e2453]
+          - rowgroup [ref=f5e2454]:
+            - row [ref=f5e2455]:
+              - cell "1" [ref=f5e2456]
+              - cell "PT/2026/00003" [ref=f5e2457]
+              - cell "Uji TK (1001)" [ref=f5e2458]:
+                - text: Uji TK
+                - generic [ref=f5e2459]: (1001)
+              - cell "TK A" [ref=f5e2460]
+              - cell "-Rp 5.000" [ref=f5e2461]
+              - cell "Menunggu Approval Super Admin" [ref=f5e2462]
+              - cell "Admin Uji TK" [ref=f5e2463]
+              - cell "-" [ref=f5e2464]
+              - cell "8 Agustus 2026 pukul 07.18.47" [ref=f5e2465]
+              - cell [ref=f5e2466]
+  - contentinfo [ref=f5e2467]:
+    - generic [ref=f5e2468]: Sistem Informasi Sekolah • Powered by Dzulfikar Dev

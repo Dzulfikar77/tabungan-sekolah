@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ClassGrade, Transaction } from '../types';
-import { formatRupiah, formatNumberInput, parseFormattedNumber, formatDate, filterByAccessLevel } from '../utils/format';
+import { formatRupiah, formatNumberInput, parseFormattedNumber, formatDate, filterByAccessLevel, filterByUserLevel, isPendingApprovalStatus } from '../utils/format';
 import { generateTransactionReceiptPDF } from '../utils/pdfGenerator';
 import { ALL_CLASSES } from '../utils/initialData';
 import { TransactionEditModal } from './TransactionEditModal';
@@ -210,12 +210,12 @@ export const WithdrawalForm: React.FC = () => {
     }
   };
 
-  const withdrawalTransactions = transactions.filter(
+  const withdrawalTransactions = filterByUserLevel<Transaction>(transactions.filter(
     (t) => t.type === 'Penarikan' && t.academicYearId === currentAcademicYear.id
-  );
+  ), currentUser);
 
   const pendingWithdrawals = withdrawalTransactions.filter(
-    (t) => t.status === 'Menunggu Persetujuan'
+    (t) => isPendingApprovalStatus(t.status)
   );
 
   const closeSavingsSelectedStudents = activeStudents.filter((s) => closeSavingsIds.has(s.id));

@@ -32,7 +32,7 @@ import {
   initialSppPayments,
   initialAuditLogs,
 } from '../utils/initialData';
-import { generateTransactionNumber } from '../utils/format';
+import { generateTransactionNumber, isClassInUserLevel } from '../utils/format';
 import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
 import { mergeSchoolSettings } from '../utils/schoolSettings';
 import { inspectBackupPayload } from '../utils/backup';
@@ -106,6 +106,7 @@ interface AppContextType {
   users: User[];
   addUser: (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => { success: boolean; error?: string };
   updateUserRole: (id: string, role: UserRole) => void;
+  updateUserAccessLevel: (id: string, accessLevel: 'TK' | 'MI' | undefined) => void;
   changeUserPassword: (id: string, newPassword: string) => void;
   changeViewerPassword: (newPassword: string) => { success: boolean; error?: string };
   resetViewerPassword: (studentId: string, newPassword: string) => { success: boolean; error?: string };
@@ -341,8 +342,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addUser = (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => {
-    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') {
-      return { success: false, error: 'Hanya Developer yang dapat menambah user.' };
+    if (!currentUser || currentUser.demoMode || (currentUser.role !== 'Developer' && currentUser.role !== 'Super Admin')) {
+      return { success: false, error: 'Hanya Developer / Super Admin yang dapat menambah user.' };
     }
     if (users.some((u) => u.username.toLowerCase() === data.username.trim().toLowerCase())) {
       return { success: false, error: `Username "${data.username}" sudah dipakai.` };
@@ -370,6 +371,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog('Ubah Role User', `User: ${target.username} (${target.role})`, `User: ${target.username} (${role})`, `Mengubah role user ${target.name} menjadi ${role}`);
   };
 
+  const updateUserAccessLevel = (id: string, accessLevel: 'TK' | 'MI' | undefined) => {
+    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
+    const target = users.find((u) => u.id === id);
+    if (!target || target.accessLevel === accessLevel) return;
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, accessLevel } : u)));
+    updateRow('users', id, { accessLevel: accessLevel ?? null });
+    addAuditLog('Ubah Akses Level User', `User: ${target.username} (${target.accessLevel || 'Semua'})`, `User: ${target.username} (${accessLevel || 'Semua'})`, `Mengubah akses level user ${target.name} ke ${accessLevel || 'Semua'}`);
+  };
+
+  const canAccessStudent = (student?: Student): boolean => {
+    if (!currentUser?.accessLevel) return true;
+    return !!student && isClassInUserLevel(student.classGrade, currentUser);
+  };
+
   const changeUserPassword = (id: string, newPassword: string) => {
     if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
     const target = users.find((u) => u.id === id);
@@ -380,10 +395,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteUser = (id: string) => {
-    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
+    if (!currentUser || currentUser.demoMode || (currentUser.role !== 'Developer' && currentUser.role !== 'Super Admin')) return;
     if (id === currentUser.id) return;
     const target = users.find((u) => u.id === id);
     if (!target) return;
+    if (target.role === 'Developer' && !target.demoMode && currentUser.role !== 'Developer') {
+      addAuditLog('Hapus User Ditolak', `User: ${target.username}`, '-', `Super Admin tidak memiliki wewenang menghapus user Developer.`);
+      return;
+    }
     const developerCount = users.filter((u) => u.role === 'Developer' && !u.demoMode).length;
     if (target.role === 'Developer' && !target.demoMode && developerCount <= 1) {
       addAuditLog('Hapus User Ditolak', `User: ${target.username}`, '-', `Percobaan menghapus Developer terakhir ditolak.`);
@@ -619,6 +638,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
+    if (currentUser.accessLevel && !isClassInUserLevel(studentData.classGrade, currentUser)) {
+      return { success: false, error: 'Akses ditolak: kelas siswa berada di luar level Anda.' };
+    }
     // Validate NIS uniqueness
     const exists = students.find((s) => s.nis === studentData.nis && !s.isDeleted);
     if (exists) {
@@ -696,6 +718,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser || currentUser.demoMode) return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     const student = students.find((s) => s.id === id);
     if (!student) return { success: false, error: 'Siswa tidak ditemukan.' };
+    if (!canAccessStudent(student)) return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
+    if (data.classGrade && currentUser.accessLevel && !isClassInUserLevel(data.classGrade, currentUser)) {
+      return { success: false, error: 'Akses ditolak: kelas tujuan berada di luar level Anda.' };
+    }
 
     const res = await updateRow('students', id, data);
     if (!res.success) {
@@ -710,6 +736,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser || currentUser.demoMode) return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     const student = students.find((s) => s.id === id);
     if (!student) return { success: false, error: 'Siswa tidak ditemukan.' };
+    if (!canAccessStudent(student)) return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
 
     const res = await updateRow('students', id, { isDeleted: true });
     if (!res.success) {
@@ -850,6 +877,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!student) {
       return { success: false, error: 'Siswa tidak ditemukan.' };
     }
+    if (!canAccessStudent(student)) {
+      return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
+    }
     if (amount <= 0) {
       return { success: false, error: 'Nominal setoran harus lebih besar dari 0.' };
     }
@@ -981,6 +1011,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const student = students.find((s) => s.id === studentId && !s.isDeleted);
     if (!student) {
       return { success: false, error: 'Siswa tidak ditemukan.' };
+    }
+    if (!canAccessStudent(student)) {
+      return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
     }
     if (amount <= 0) {
       return { success: false, error: 'Nominal potongan harus lebih besar dari 0.' };
@@ -1633,11 +1666,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleMonthlyDeduction = (enabled: boolean) => {
+    if (!currentUser || currentUser.demoMode || (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer')) return;
     updateSchoolSettings({ monthlyDeductionEnabled: enabled });
   };
 
   const runMonthlyDeduction = async (): Promise<MonthlyDeductionSummary> => {
     if (!currentUser || currentUser.demoMode) {
+      return { runDate: new Date().toISOString(), totalStudentsDeducted: 0, totalAmountDeducted: 0, deductedStudents: [], skippedStudents: [], pendingDebtStudents: [] };
+    }
+    if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer') {
       return { runDate: new Date().toISOString(), totalStudentsDeducted: 0, totalAmountDeducted: 0, deductedStudents: [], skippedStudents: [], pendingDebtStudents: [] };
     }
     const activeStudents = students.filter(
@@ -1879,6 +1916,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!item || !student) {
       return { success: false, error: 'Data item (Koperasi/Kegiatan) atau siswa tidak ditemukan.' };
     }
+    if (!canAccessStudent(student)) {
+      return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
+    }
 
     const trNum = generateTransactionNumber('BK', currentAcademicYear.year, bookPayments.length);
 
@@ -2004,6 +2044,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const student = students.find((s) => s.id === studentId && !s.isDeleted);
     if (!student) {
       return { success: false, error: 'Siswa tidak ditemukan.' };
+    }
+    if (!canAccessStudent(student)) {
+      return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
     }
 
     const sppAmount = student.classGrade.startsWith('TK') ? (schoolSettings.sppTKAmount || 50000) : (schoolSettings.sppSDAmount || 0);
@@ -2224,8 +2267,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearSyncErrors,
         syncState,
         users,
-        addUser,
-        updateUserRole,
+    addUser,
+    updateUserRole,
+    updateUserAccessLevel,
+
         changeUserPassword,
         changeViewerPassword,
         resetViewerPassword,

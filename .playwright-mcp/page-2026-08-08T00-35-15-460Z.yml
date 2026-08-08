@@ -1,0 +1,19 @@
+- generic [ref=f8e1348]:
+  - generic [ref=f8e1349]:
+    - img "Logo" [ref=f8e1351]
+    - heading "Sistem Informasi Sekolah" [level=1] [ref=f8e1352]
+    - paragraph [ref=f8e1353]: YPIS Mambaul Ulum Surabaya
+  - generic [ref=f8e1354]:
+    - generic [ref=f8e1355]:
+      - generic [ref=f8e1356]:
+        - generic [ref=f8e1357]: Username
+        - textbox "Masukkan username" [active] [ref=f8e1362]
+      - generic [ref=f8e1363]:
+        - generic [ref=f8e1364]: Kata Sandi
+        - generic [ref=f8e1365]:
+          - textbox "••••••••" [ref=f8e1369]
+          - button [ref=f8e1370] [cursor=pointer]
+      - button "Masuk" [ref=f8e1374] [cursor=pointer]
+    - button "Lupa Password?" [ref=f8e1379] [cursor=pointer]
+    - generic [ref=f8e1380]: Atau
+    - button "Login sebagai Orang Tua / Siswa" [ref=f8e1383] [cursor=pointer]

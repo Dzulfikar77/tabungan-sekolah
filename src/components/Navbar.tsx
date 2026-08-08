@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
+import { isClassInUserLevel, isPendingApprovalStatus } from '../utils/format';
 import {
   Building2,
   Calendar,
@@ -50,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isSyncing = syncState.pending > 0;
 
   const pendingApprovalsCount = transactions.filter(
-    (t) => t.status === 'Menunggu Persetujuan'
+    (t) => isPendingApprovalStatus(t.status) && isClassInUserLevel(t.classGrade, currentUser)
   ).length;
 
   const [now, setNow] = useState(new Date());
@@ -139,7 +140,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Role Badge */}
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${roleColors[currentUser.role].bg} ${roleColors[currentUser.role].text} ${roleColors[currentUser.role].border}`}>
             <Shield className="w-3.5 h-3.5" />
-            <span>{currentUser.role}</span>
+            <span>{currentUser.role}{currentUser.accessLevel ? ` (${currentUser.accessLevel})` : ''}</span>
             {currentUser.demoMode && (
               <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">DEMO</span>
             )}

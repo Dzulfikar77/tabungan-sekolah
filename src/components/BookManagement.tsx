@@ -10,9 +10,9 @@ import {
   KoperasiKegiatanType,
   ClassGrade,
   PaymentMethod,
+  BookPayment,
 } from '../types';
-import { ALL_CLASSES } from '../utils/initialData';
-import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
+import { formatRupiah, formatDate, filterByAccessLevel, filterByUserLevel, levelVisibleClasses, isBookVisible } from '../utils/format';
 import {
   Plus,
   CheckCircle2,
@@ -60,7 +60,9 @@ export const BookManagement: React.FC = () => {
   const [itemPrice, setItemPrice] = useState<number>(25000);
 
   // Distribution Filter
-  const [distClassFilter, setDistClassFilter] = useState<ClassGrade>('Kelas 1A');
+  const [distClassFilter, setDistClassFilter] = useState<ClassGrade>(() =>
+    currentUser.accessLevel === 'TK' ? 'TK A' : 'Kelas 1A'
+  );
 
   // Transaction Input Form State
   const [transType, setTransType] = useState<KoperasiKegiatanType>('Koperasi');
@@ -84,11 +86,15 @@ export const BookManagement: React.FC = () => {
     return matchesClass && matchesSearch;
   });
 
-  // Filter items available for selected transaction type
-  const availableItems = books.filter((b) => (b.type || 'Koperasi') === transType);
+  const visibleBooks = books.filter((b) => isBookVisible(b, currentUser));
 
-  const selectedItem = books.find((b) => b.id === selectedItemId);
+  // Filter items available for selected transaction type
+  const availableItems = visibleBooks.filter((b) => (b.type || 'Koperasi') === transType);
+
+  const selectedItem = visibleBooks.find((b) => b.id === selectedItemId);
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
+
+  const visibleBookPayments = filterByUserLevel<BookPayment>(bookPayments, currentUser);
 
   const handleSaveItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -287,7 +293,7 @@ export const BookManagement: React.FC = () => {
                     3a. Pilih Kelas Siswa *
                   </label>
                   <div className="flex flex-wrap gap-1.5 max-h-[200px] overflow-y-auto p-0.5">
-                    {ALL_CLASSES.map((cls) => {
+                    {levelVisibleClasses(currentUser).map((cls) => {
                       const count = activeStudents.filter((s) => s.classGrade === cls).length;
                       return (
                         <button
@@ -446,17 +452,17 @@ export const BookManagement: React.FC = () => {
             <h3 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-2 flex items-center justify-between">
               <span>Riwayat Transaksi</span>
               <span className="text-[10px] text-slate-400 font-normal">
-                ({bookPayments.length} item)
+                ({visibleBookPayments.length} item)
               </span>
             </h3>
 
             <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1 text-xs">
-              {bookPayments.length === 0 ? (
+              {visibleBookPayments.length === 0 ? (
                 <div className="text-center py-8 text-slate-400">
                   Belum ada transaksi Koperasi & Kegiatan.
                 </div>
               ) : (
-                bookPayments.map((bp) => (
+                visibleBookPayments.map((bp) => (
                   <div
                     key={bp.id}
                     className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2"
@@ -592,14 +598,14 @@ export const BookManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {books.length === 0 ? (
+                {visibleBooks.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-slate-400">
                       Belum ada data item tersimpan.
                     </td>
                   </tr>
                 ) : (
-                  books.map((b, idx) => (
+                  visibleBooks.map((b, idx) => (
                     <tr key={b.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3 px-4 text-slate-400 font-semibold">{idx + 1}</td>
                       <td className="py-3 px-4 font-bold text-slate-900">{b.title}</td>
@@ -655,7 +661,7 @@ export const BookManagement: React.FC = () => {
                 onChange={(e) => setDistClassFilter(e.target.value as ClassGrade)}
                 className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
               >
-                {ALL_CLASSES.map((cls) => (
+                {levelVisibleClasses(currentUser).map((cls) => (
                   <option key={cls} value={cls}>
                     Kelas {cls}
                   </option>
@@ -669,7 +675,7 @@ export const BookManagement: React.FC = () => {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <th className="py-3 px-4">Nama Siswa (NIS)</th>
-                  {books
+                  {visibleBooks
                     .filter((b) => b.classGrade === distClassFilter || b.classGrade === 'Semua Kelas')
                     .map((b) => (
                       <th key={b.id} className="py-3 px-4 text-center">
@@ -852,7 +858,7 @@ export const BookManagement: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
                   >
                     <option value="Semua Kelas">Semua Kelas</option>
-                    {ALL_CLASSES.map((cls) => (
+                    {levelVisibleClasses(currentUser).map((cls) => (
                       <option key={cls} value={cls}>
                         Kelas {cls}
                       </option>

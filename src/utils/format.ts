@@ -21,10 +21,32 @@ export function isMIClass(classGrade: ClassGrade): boolean {
 }
 
 export function filterByAccessLevel(students: Student[], user: User | null): Student[] {
-  if (!user || !user.accessLevel) return students;
-  if (user.accessLevel === 'TK') return students.filter((s) => TK_CLASSES.includes(s.classGrade));
-  if (user.accessLevel === 'MI') return students.filter((s) => MI_CLASSES.includes(s.classGrade));
-  return students;
+  return filterByUserLevel(students, user);
+}
+
+export function levelVisibleClasses(user: User | null): ClassGrade[] {
+  if (!user?.accessLevel) return [...TK_CLASSES, ...MI_CLASSES];
+  return user.accessLevel === 'TK' ? TK_CLASSES : MI_CLASSES;
+}
+
+export function isClassInUserLevel(classGrade: ClassGrade, user: User | null): boolean {
+  if (!user?.accessLevel) return true;
+  return user.accessLevel === 'TK' ? isTKClass(classGrade) : isMIClass(classGrade);
+}
+
+export function filterByUserLevel<T extends { classGrade: ClassGrade }>(items: T[], user: User | null): T[] {
+  if (!user?.accessLevel) return items;
+  return items.filter((i) => isClassInUserLevel(i.classGrade, user));
+}
+
+export function isBookVisible(item: { classGrade: ClassGrade | 'Semua Kelas' }, user: User | null): boolean {
+  if (!user?.accessLevel) return true;
+  if (item.classGrade === 'Semua Kelas') return true;
+  return user.accessLevel === 'TK' ? isTKClass(item.classGrade) : isMIClass(item.classGrade);
+}
+
+export function isPendingApprovalStatus(status: string): boolean {
+  return status === 'Menunggu Persetujuan' || status === 'Menunggu Approval Admin' || status === 'Menunggu Approval Super Admin';
 }
 
 // Format currency to Indonesian Rupiah

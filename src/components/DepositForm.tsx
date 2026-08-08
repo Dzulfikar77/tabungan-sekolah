@@ -5,10 +5,9 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRupiah, formatNumberInput, parseFormattedNumber, formatDate, filterByAccessLevel } from '../utils/format';
+import { formatRupiah, formatNumberInput, parseFormattedNumber, formatDate, filterByAccessLevel, filterByUserLevel, levelVisibleClasses } from '../utils/format';
 import { generateTransactionReceiptPDF } from '../utils/pdfGenerator';
 import { Transaction, ClassGrade } from '../types';
-import { ALL_CLASSES } from '../utils/initialData';
 import { TransactionEditModal } from './TransactionEditModal';
 import { PendingEditApprovals } from './PendingEditApprovals';
 import {
@@ -119,9 +118,9 @@ export const DepositForm: React.FC = () => {
     }
   };
 
-  const depositTransactions = transactions.filter(
+  const depositTransactions = filterByUserLevel<Transaction>(transactions.filter(
     (t) => t.type === 'Setoran' && t.academicYearId === currentAcademicYear.id
-  );
+  ), currentUser);
 
   return (
     <div className="space-y-6">
@@ -161,7 +160,7 @@ export const DepositForm: React.FC = () => {
                 >
                   Semua ({activeStudents.length})
                 </button>
-                {ALL_CLASSES.map((cls) => {
+                {levelVisibleClasses(currentUser).map((cls) => {
                   const count = activeStudents.filter((s) => s.classGrade === cls).length;
                   return (
                     <button
