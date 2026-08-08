@@ -8,6 +8,7 @@ import { useApp } from '../context/AppContext';
 import { Student, ClassGrade, StudentStatus } from '../types';
 import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
 import { downloadStudentImportTemplate, parseStudentsExcel } from '../utils/excelHandler';
+import { YearEndDecision, settleYearEndDebt, isGraduatingClass } from '../utils/yearEnd';
 import {
   UserPlus,
   FileSpreadsheet,
@@ -17,6 +18,7 @@ import {
   Edit2,
   Trash2,
   ArrowRightLeft,
+  CalendarCheck,
   X,
   AlertCircle,
   CheckCircle,
@@ -33,8 +35,10 @@ export const StudentManagement: React.FC = () => {
     softDeleteStudent,
     importStudentsBulk,
     bulkPromoteStudents,
+    runYearEndClosure,
     currentAcademicYear,
     currentUser,
+    academicYears,
     backfillViewerCredentials,
   } = useApp();
 
@@ -57,6 +61,13 @@ export const StudentManagement: React.FC = () => {
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
   const [fromClass, setFromClass] = useState<ClassGrade>(ALL_CLASSES[0]);
   const [toClass, setToClass] = useState<string>(ALL_CLASSES[0]);
+
+  const [isYearEndModalOpen, setIsYearEndModalOpen] = useState(false);
+  const [yearEndClassFilter, setYearEndClassFilter] = useState<string>('ALL');
+  const [yearEndTargetYearId, setYearEndTargetYearId] = useState<string>(currentAcademicYear.id);
+  const [yearEndDecisions, setYearEndDecisions] = useState<Record<string, 'naik' | 'tinggal'>>({});
+  const [yearEndRunning, setYearEndRunning] = useState(false);
+  const [yearEndResult, setYearEndResult] = useState<{ success: boolean; moved: number; repeated: number; skipped: number; totalWithdrawn: number; errors: string[] } | null>(null);
 
   // Form State for Add
   const [nis, setNis] = useState('');
@@ -170,6 +181,35 @@ export const StudentManagement: React.FC = () => {
     }
   };
 
+  const yearEndCandidates = students.filter((s) =>
+    !s.isDeleted &&
+    s.status === 'Aktif' &&
+    s.academicYearId === currentAcademicYear.id &&
+    !isGraduatingClass(s.classGrade) &&
+    (yearEndClassFilter === 'ALL' || s.classGrade === yearEndClassFilter)
+  );
+
+  const handleOpenYearEndModal = () => {
+    setYearEndClassFilter('ALL');
+    setYearEndTargetYearId(currentAcademicYear.id);
+    setYearEndDecisions({});
+    setYearEndResult(null);
+    setIsYearEndModalOpen(true);
+  };
+
+  const handleProcessYearEnd = async () => {
+    if (yearEndCandidates.length === 0) return;
+    const decisions: YearEndDecision[] = yearEndCandidates.map((s) => ({
+      studentId: s.id,
+      action: yearEndDecisions[s.id] ?? 'naik',
+    }));
+    if (!confirm(`Proses Penutupan Tahun Ajaran untuk ${decisions.length} siswa?\n\nTabungan ditarik penuh (setelah dipotong utang), siswa naik atau tetap di kelas, lalu pindah ke tahun ajaran tujuan.`)) return;
+    setYearEndRunning(true);
+    const res = await runYearEndClosure(decisions, yearEndTargetYearId);
+    setYearEndResult(res);
+    setYearEndRunning(false);
+  };
+
   const handleProcessBackfill = async () => {
     setBackfillResult(await backfillViewerCredentials());
   };
@@ -241,6 +281,16 @@ export const StudentManagement: React.FC = () => {
             <ArrowRightLeft className="w-4 h-4" />
             Pindah Kelas Massal
           </button>
+
+          {currentUser && (currentUser.role === 'Developer' || currentUser.role === 'Super Admin' || currentUser.role === 'Admin' || currentUser.role === 'Wali Kelas') && (
+            <button
+              onClick={handleOpenYearEndModal}
+              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+            >
+              <CalendarCheck className="w-4 h-4" />
+              Penutupan Tahun
+            </button>
+          )}
         </div>
       </div>
 
@@ -784,6 +834,141 @@ export const StudentManagement: React.FC = () => {
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg cursor-pointer shadow-xs"
                 >
                   Eksekusi Pindah Kelas
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Penutupan Tahun Modal */}
+      {isYearEndModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full border border-slate-100 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base">Penutupan Tahun Ajaran {currentAcademicYear.year}</h3>
+              <button
+                onClick={() => setIsYearEndModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <p className="text-slate-600 leading-relaxed">
+                Tabungan seluruh siswa <strong>ditarik penuh</strong> di akhir tahun (utang potongan bulanan
+                dipotong dulu dari saldo — saldo tidak pernah minus, sisa utang tetap menempel).
+                Siswa <strong>Naik</strong> ke kelas berikutnya, atau <strong>tidak naik</strong> dan tetap di kelas yang sama.
+                Kelas lulus (TK B / Kelas 6) tidak termasuk — gunakan <strong>Tutup Tabungan</strong>.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Filter Kelas</label>
+                  <select
+                    value={yearEndClassFilter}
+                    onChange={(e) => setYearEndClassFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
+                  >
+                    <option value="ALL">Semua Kelas</option>
+                    {ALL_CLASSES.filter((c) => !isGraduatingClass(c)).map((cls) => (
+                      <option key={cls} value={cls}>
+                        Kelas {cls}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tahun Ajaran Tujuan</label>
+                  <select
+                    value={yearEndTargetYearId}
+                    onChange={(e) => setYearEndTargetYearId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
+                  >
+                    {academicYears.map((y) => (
+                      <option key={y.id} value={y.id}>
+                        {y.year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {yearEndCandidates.length === 0 ? (
+                <div className="p-4 text-center text-slate-400">Tidak ada siswa aktif (non-lulus) pada kelas terpilih.</div>
+              ) : (
+                <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                  {yearEndCandidates.map((s) => {
+                    const settlement = settleYearEndDebt(s.balance, s.pendingDebt);
+                    const isTinggal = (yearEndDecisions[s.id] ?? 'naik') === 'tinggal';
+                    return (
+                      <div key={s.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-800 truncate">{s.name} <span className="text-slate-400 font-normal">({s.nis})</span></div>
+                          <div className="text-[11px] text-slate-500">
+                            Kelas {s.classGrade} • Saldo {formatRupiah(s.balance)}
+                            {s.pendingDebt ? <> • Utang {formatRupiah(s.pendingDebt)}</> : null}
+                          </div>
+                          <div className="text-[11px] text-indigo-600">
+                            Kas ke wali: {formatRupiah(settlement.cashToParent)}
+                            {settlement.debtRemaining > 0 ? <> • Sisa utang: {formatRupiah(settlement.debtRemaining)}</> : null}
+                          </div>
+                        </div>
+                        <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={isTinggal}
+                            onChange={(e) =>
+                              setYearEndDecisions((prev) => ({ ...prev, [s.id]: e.target.checked ? 'tinggal' : 'naik' }))
+                            }
+                            className="w-4 h-4 accent-indigo-600"
+                          />
+                          <span className="text-[11px] text-slate-600">Tdk Naik</span>
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {yearEndResult && (
+                <div className="p-3 rounded-xl border text-xs bg-slate-50 border-slate-200">
+                  {yearEndResult.success ? (
+                    <div className="font-bold text-emerald-700 flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4" />
+                      Penutupan tahun selesai: {yearEndResult.moved} naik, {yearEndResult.repeated} tinggal, {yearEndResult.skipped} dilewati, total ditarik {formatRupiah(yearEndResult.totalWithdrawn)}
+                    </div>
+                  ) : (
+                    <div className="font-bold text-amber-700 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      Selesai dengan sebagian error
+                    </div>
+                  )}
+                  {yearEndResult.errors.length > 0 && (
+                    <div className="mt-2 text-rose-600 space-y-0.5">
+                      {yearEndResult.errors.map((err, i) => (
+                        <div key={i}>• {err}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  onClick={() => setIsYearEndModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg cursor-pointer"
+                >
+                  Tutup
+                </button>
+                <button
+                  onClick={handleProcessYearEnd}
+                  disabled={yearEndCandidates.length === 0 || yearEndRunning}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {yearEndRunning ? 'Memproses...' : `Proses ${yearEndCandidates.length} Siswa`}
                 </button>
               </div>
             </div>

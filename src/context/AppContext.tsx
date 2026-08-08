@@ -8,6 +8,7 @@ import {
   User,
   UserRole,
   Student,
+  ClassGrade,
   Transaction,
   TransactionEditRequest,
   TransactionStatus,
@@ -34,6 +35,7 @@ import {
 } from '../utils/initialData';
 import { generateTransactionNumber, isClassInUserLevel } from '../utils/format';
 import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
+import { YearEndDecision, nextClassFrom, settleYearEndDebt } from '../utils/yearEnd';
 import { mergeSchoolSettings } from '../utils/schoolSettings';
 import { inspectBackupPayload } from '../utils/backup';
 import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError, onSyncState, SyncState } from '../lib/db';
@@ -65,6 +67,7 @@ interface AppContextType {
   deleteAcademicYear: (id: string) => { success: boolean; error?: string };
   setCurrentAcademicYearId: (id: string) => void;
   bulkPromoteStudents: (fromClass: string, toClass: string) => void;
+  runYearEndClosure: (decisions: YearEndDecision[], targetAcademicYearId: string) => Promise<{ success: boolean; moved: number; repeated: number; skipped: number; totalWithdrawn: number; errors: string[] }>;
 
   students: Student[];
   addStudent: (studentData: Omit<Student, 'id' | 'createdAt' | 'balance'> & { initialBalance?: number }) => Promise<{ success: boolean; error?: string }>;
@@ -640,6 +643,107 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (toClass === 'Lulus') deleteLinkedViewerUser(s.id, 'naik ke Lulus');
     });
     addAuditLog('Pindah Kelas Massal', `Kelas asal: ${fromClass}`, `Kelas tujuan: ${toClass}`, `Memindahkan ${affected.length} siswa dari kelas ${fromClass} ke ${toClass}`);
+  };
+
+  const runYearEndClosure = async (
+    decisions: YearEndDecision[],
+    targetAcademicYearId: string
+  ): Promise<{ success: boolean; moved: number; repeated: number; skipped: number; totalWithdrawn: number; errors: string[] }> => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, moved: 0, repeated: 0, skipped: 0, totalWithdrawn: 0, errors: ['Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.'] };
+    }
+    if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer' && currentUser.role !== 'Admin' && currentUser.role !== 'Wali Kelas') {
+      return { success: false, moved: 0, repeated: 0, skipped: 0, totalWithdrawn: 0, errors: ['Anda tidak memiliki hak untuk menjalankan penutupan tahun.'] };
+    }
+    const targetYear = academicYears.find((y) => y.id === targetAcademicYearId);
+    if (!targetYear) {
+      return { success: false, moved: 0, repeated: 0, skipped: 0, totalWithdrawn: 0, errors: ['Tahun ajaran tujuan tidak ditemukan.'] };
+    }
+
+    const errors: string[] = [];
+    let moved = 0;
+    let repeated = 0;
+    let skipped = 0;
+    let totalWithdrawn = 0;
+
+    decisions.forEach((d) => {
+      const student = students.find((s) => s.id === d.studentId && !s.isDeleted);
+      if (!student) {
+        errors.push(`Siswa tidak ditemukan (ID: ${d.studentId}).`);
+        return;
+      }
+      if (student.status !== 'Aktif' || student.academicYearId === targetAcademicYearId) {
+        skipped++;
+        return;
+      }
+
+      let newClass: ClassGrade;
+      if (d.action === 'naik') {
+        const next = nextClassFrom(student.classGrade);
+        if (!next) {
+          errors.push(`${student.name}: kelas ${student.classGrade} adalah kelas lulus, gunakan Tutup Tabungan.`);
+          return;
+        }
+        newClass = next;
+      } else {
+        newClass = student.classGrade;
+      }
+
+      const settlement = settleYearEndDebt(student.balance, student.pendingDebt);
+
+      if (settlement.cashToParent > 0) {
+        const newTx: Transaction = {
+          id: `tr-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          transactionNumber: generateTransactionNumber('PT', targetYear.year, transactions.length + decisions.length),
+          studentId: student.id,
+          studentName: student.name,
+          studentNis: student.nis,
+          classGrade: student.classGrade,
+          type: 'Penarikan',
+          amount: settlement.cashToParent,
+          status: 'Disetujui',
+          reason: `Penarikan Tabungan Akhir Tahun ${targetYear.year}`,
+          approvedByAdmin: true,
+          approvedByAdminName: currentUser.name,
+          approvedBySuperAdmin: true,
+          approvedBySuperAdminName: currentUser.name,
+          createdById: currentUser.id,
+          createdByName: currentUser.name,
+          createdByRole: currentUser.role,
+          academicYearId: targetAcademicYearId,
+          createdAt: new Date().toISOString(),
+        };
+        setTransactions((prev) => [newTx, ...prev]);
+        insertRow('transactions', newTx);
+        totalWithdrawn += settlement.cashToParent;
+      }
+
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === student.id
+            ? { ...s, balance: 0, pendingDebt: settlement.debtRemaining, classGrade: newClass, academicYearId: targetAcademicYearId }
+            : s
+        )
+      );
+      updateRow('students', student.id, {
+        balance: 0,
+        pending_debt: settlement.debtRemaining,
+        class_grade: newClass,
+        academic_year_id: targetAcademicYearId,
+      });
+
+      if (d.action === 'naik') moved++;
+      else repeated++;
+    });
+
+    addAuditLog(
+      'Penutupan Tahun Ajaran',
+      `Tahun: ${currentAcademicYear.year}`,
+      `Tahun: ${targetYear.year}`,
+      `${moved} siswa naik, ${repeated} tinggal kelas, ${skipped} dilewati, ${errors.length} error. Penarikan akhir tahun total Rp ${totalWithdrawn.toLocaleString('id-ID')}.`
+    );
+
+    return { success: errors.length === 0, moved, repeated, skipped, totalWithdrawn, errors };
   };
 
   const addStudent = async (studentData: Omit<Student, 'id' | 'createdAt' | 'balance'> & { initialBalance?: number }) => {
@@ -2239,6 +2343,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteAcademicYear,
         setCurrentAcademicYearId,
         bulkPromoteStudents,
+  runYearEndClosure,
         students,
         addStudent,
         updateStudent,
