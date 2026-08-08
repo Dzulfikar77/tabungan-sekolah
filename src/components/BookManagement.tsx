@@ -61,7 +61,7 @@ export const BookManagement: React.FC = () => {
 
   // Distribution Filter
   const [distClassFilter, setDistClassFilter] = useState<ClassGrade>(() =>
-    currentUser.accessLevel === 'TK' ? 'TK A' : 'Kelas 1A'
+    currentUser.accessLevel === 'TK' ? 'TK A.1' : 'Kelas 1A'
   );
 
   // Transaction Input Form State

@@ -5,7 +5,7 @@
 
 import { Student, User, ClassGrade } from '../types';
 
-const TK_CLASSES: ClassGrade[] = ['TK A', 'TK B'];
+const TK_CLASSES: ClassGrade[] = ['TK A.1', 'TK A.2', 'TK B.1', 'TK B.2'];
 const MI_CLASSES: ClassGrade[] = [
   'Kelas 1A', 'Kelas 1 B', 'Kelas 2A', 'Kelas 2B',
   'Kelas 3A', 'Kelas 3B', 'Kelas 4A', 'Kelas 4B',

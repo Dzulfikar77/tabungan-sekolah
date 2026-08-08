@@ -14,7 +14,7 @@ export function downloadStudentImportTemplate() {
     {
       NIS: '2025010',
       'Nama Lengkap': 'Ahmad Zaky',
-      Kelas: 'TK A',
+      Kelas: 'TK A.1',
       Status: 'Aktif',
       'Nama Orang Tua': 'Budi Santoso',
       'No. Telepon': '08123456789',
@@ -23,7 +23,7 @@ export function downloadStudentImportTemplate() {
     {
       NIS: '2025011',
       'Nama Lengkap': 'Citra Kirana',
-      Kelas: 'TK B',
+      Kelas: 'TK B.1',
       Status: 'Aktif',
       'Nama Orang Tua': 'Hendra Kirana',
       'No. Telepon': '08139988776',

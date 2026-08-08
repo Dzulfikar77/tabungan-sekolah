@@ -46,7 +46,7 @@ Login lewat tombol "Login sebagai Orang Tua / Siswa" di halaman login.
 
 | Username | Password | Untuk |
 |----------|----------|-------|
-| `ortu1` | `ortu2345` | Orang Tua Ahmad Fauzi (TK A) |
+| `ortu1` | `ortu2345` | Orang Tua Ahmad Fauzi (TK A.1) |
 
 ## Tech Stack
 
@@ -179,7 +179,7 @@ Mutation  → update state + localStorage + sync ke Supabase (fire-and-forget)
 - **SQL fallback (jaring terakhir):** di Supabase SQL Editor: `UPDATE users SET password = 'password_baru' WHERE username = 'username';`
 
 ### Pembayaran SPP
-- Pemisahan jenjang **TK** (TK A, TK B) dan **MI** (Kelas 1-6) dengan tarif berbeda
+- Pemisahan jenjang **TK** (TK A.1, TK A.2, TK B.1, TK B.2) dan **MI** (Kelas 1-6) dengan tarif berbeda
 - Default MI gratis (Rp 0), bisa diisi kapan saja di Pengaturan
 - Bayar via **Tunai** atau **Potong Tabungan**
 - Status Lunas otomatis jika sudah bayar periode tersebut

@@ -18,8 +18,10 @@ export interface User {
 }
 
 export type ClassGrade =
-  | 'TK A'
-  | 'TK B'
+  | 'TK A.1'
+  | 'TK A.2'
+  | 'TK B.1'
+  | 'TK B.2'
   | 'Kelas 1A'
   | 'Kelas 1 B'
   | 'Kelas 2A'

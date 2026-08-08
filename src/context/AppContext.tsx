@@ -41,6 +41,14 @@ import { supabase } from '../lib/supabase';
 
 const ROLE_RANK: Record<UserRole, number> = { Developer: 4, 'Super Admin': 3, Admin: 2, 'Wali Kelas': 1, Viewer: 0 };
 
+// Migrasi data lama: TK A -> TK A.1, TK B -> TK B.1 (kelas TK dipecah jadi 2 kelompok).
+type WithClassGrade = { classGrade?: string };
+const migrateClassGrades = <T extends WithClassGrade>(rows: T[]): T[] =>
+  rows.map((r) =>
+    r.classGrade === 'TK A' ? { ...r, classGrade: 'TK A.1' } :
+    r.classGrade === 'TK B' ? { ...r, classGrade: 'TK B.1' } : r
+  );
+
 interface AppContextType {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
@@ -119,7 +127,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = 'tabungan_sekolah_v3_data';
+const LOCAL_STORAGE_KEY = 'tabungan_sekolah_v4_data';
 
 const SNAPSHOT_KEY = `${LOCAL_STORAGE_KEY}_snapshots`;
 const MAX_SNAPSHOTS = 10;
@@ -270,12 +278,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       upsertRow('school_settings', { id: 'singleton', ...schoolSettings });
     }
-    if (dbStudents.length > 0) setStudents((prev) => mergeById(dbStudents, prev));
-    if (dbTransactions.length > 0) setTransactions((prev) => mergeById(dbTransactions, prev));
-    if (dbBooks.length > 0) setBooks((prev) => mergeById(dbBooks, prev));
+    if (dbStudents.length > 0) setStudents((prev) => mergeById(migrateClassGrades(dbStudents), prev));
+    if (dbTransactions.length > 0) setTransactions((prev) => mergeById(migrateClassGrades(dbTransactions), prev));
+    if (dbBooks.length > 0) setBooks((prev) => mergeById(migrateClassGrades(dbBooks), prev));
     if (dbDistributions.length > 0) setBookDistributions((prev) => mergeById(dbDistributions, prev));
-    if (dbBookPayments.length > 0) setBookPayments((prev) => mergeById(dbBookPayments, prev));
-    if (dbSppPayments.length > 0) setSppPayments((prev) => mergeById(dbSppPayments, prev));
+    if (dbBookPayments.length > 0) setBookPayments((prev) => mergeById(migrateClassGrades(dbBookPayments), prev));
+    if (dbSppPayments.length > 0) setSppPayments((prev) => mergeById(migrateClassGrades(dbSppPayments), prev));
     if (dbAcademicYears.length > 0) {
       setAcademicYears((prev) => mergeById(dbAcademicYears, prev));
       const dbCurrent = dbAcademicYears.find((y) => y.isCurrent);

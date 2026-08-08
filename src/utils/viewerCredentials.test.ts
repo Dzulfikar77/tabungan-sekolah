@@ -70,7 +70,7 @@ const mkViewer = (id: string, username: string, studentId: string, password: str
   ({ id, username, name: 'x', role: 'Viewer', studentId, password });
 
 const auras: Student[] = [
-  mkStudent('st-a1', 'Aura Kasih', 'TK B'),
+  mkStudent('st-a1', 'Aura Kasih', 'TK B.1'),
   mkStudent('st-a2', 'Aura Kasih', 'Kelas 4A'),
   mkStudent('st-a3', 'Aura Kasih', 'Kelas 5B'),
   mkStudent('st-a4', 'Aura Kasih', 'Kelas 6A'),
@@ -85,7 +85,7 @@ const auraUsers: User[] = [
 const login = (u: string, p: string) => resolveViewerLogin(auraUsers, auras, u, p);
 const userId = (r: ReturnType<typeof login>) => ('user' in r ? r.user.id : `ERR:${r.error}`);
 
-assert(userId(login('Aura Kasih', '20252026001')) === 'u-a1', 'nama polos + pw1 -> Aura#1 (TK B)');
+assert(userId(login('Aura Kasih', '20252026001')) === 'u-a1', 'nama polos + pw1 -> Aura#1 (TK B.1)');
 assert(userId(login('aura kasih', '20252026002')) === 'u-a2', 'huruf kecil + pw2 -> Aura#2 (4A)');
 assert(userId(login('  AURA KASIH  ', '20252026003')) === 'u-a3', 'caps+spasi + pw3 -> Aura#3 (5B)');
 assert(userId(login('aurakasih', '20252026004')) === 'u-a4', 'username dasar + pw4 -> Aura#4 (6A)');

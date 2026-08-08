@@ -601,7 +601,7 @@ export const StudentManagement: React.FC = () => {
                 <div>
                   <div className="font-bold text-blue-900">Unduh Format Template Excel</div>
                   <div className="text-[11px] text-blue-700">
-                    Isi kolom Kelas dengan nilai tepat: TK A, TK B, Kelas 1A, Kelas 1 B, ..., Kelas 6B.
+                    Isi kolom Kelas dengan nilai tepat: TK A.1, TK A.2, TK B.1, TK B.2, Kelas 1A, Kelas 1 B, ..., Kelas 6B.
                     Lihat sheet "Daftar Kelas Valid" di dalam template.
                   </div>
                 </div>

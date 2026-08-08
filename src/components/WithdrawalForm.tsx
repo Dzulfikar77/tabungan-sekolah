@@ -61,7 +61,7 @@ export const WithdrawalForm: React.FC = () => {
   const [closeSavingsSearch, setCloseSavingsSearch] = useState('');
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
-  const GRADUATING_CLASSES: ClassGrade[] = ['TK B', 'Kelas 6A', 'Kelas 6B'];
+  const GRADUATING_CLASSES: ClassGrade[] = ['TK B.1', 'TK B.2', 'Kelas 6A', 'Kelas 6B'];
 
   const NOMINAL_PRESETS = [2000, 5000, 10000, 15000, 20000, 25000];
 

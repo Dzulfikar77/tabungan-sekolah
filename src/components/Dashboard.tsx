@@ -51,7 +51,7 @@ export const Dashboard: React.FC = () => {
 
   const totalSavings = activeStudents.reduce((sum, s) => sum + s.balance, 0);
 
-  const TK_CLASSES: ClassGrade[] = ['TK A', 'TK B'];
+  const TK_CLASSES: ClassGrade[] = ['TK A.1', 'TK A.2', 'TK B.1', 'TK B.2'];
   const tkSavings = activeStudents
     .filter((s) => TK_CLASSES.includes(s.classGrade))
     .reduce((sum, s) => sum + s.balance, 0);
@@ -406,7 +406,7 @@ export const Dashboard: React.FC = () => {
             return true;
           });
 
-          const tkStudents = unpaidStudents.filter((s) => s.classGrade === 'TK A' || s.classGrade === 'TK B');
+          const tkStudents = unpaidStudents.filter((s) => TK_CLASSES.includes(s.classGrade));
           const miStudents = unpaidStudents.filter((s) =>
             ['Kelas 1A','Kelas 1 B','Kelas 2A','Kelas 2B','Kelas 3A','Kelas 3B','Kelas 4A','Kelas 4B','Kelas 5A','Kelas 5B','Kelas 6A','Kelas 6B'].includes(s.classGrade)
           );
