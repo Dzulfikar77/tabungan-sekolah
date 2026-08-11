@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Student, Book, Transaction, AcademicYear, AuditLogItem, SchoolSettings, User, BookPayment, BookDistribution, SppPayment, ClassGrade } from '../types';
+import { Student, Book, Transaction, AcademicYear, AuditLogItem, SchoolSettings, BookPayment, BookDistribution, SppPayment, ClassGrade } from '../types';
 
 export const initialSchoolSettings: SchoolSettings = {
   name: 'YPIS Mambaul Ulum Surabaya',
@@ -37,13 +37,6 @@ export const ALL_CLASSES: ClassGrade[] = [
   'Kelas 5B',
   'Kelas 6A',
   'Kelas 6B',
-];
-
-export const initialUsers: User[] = [
-  { id: 'u-dev', username: 'masdev', name: 'Mas Dev (Developer)', role: 'Developer' },
-  { id: 'u-demo-super', username: 'demo', name: 'Demo Super Admin (Read-Only)', role: 'Super Admin' },
-  { id: 'u-admin-tk', username: 'admtk', name: 'Admin TK', role: 'Admin' },
-  { id: 'u-admin-mi', username: 'admmi', name: 'Admin MI', role: 'Admin' },
 ];
 
 const sampleStudentNames = [

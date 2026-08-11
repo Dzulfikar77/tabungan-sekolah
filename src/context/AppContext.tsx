@@ -22,7 +22,6 @@ import {
   MonthlyDeductionSummary,
 } from '../types';
 import {
-  initialUsers,
   initialSchoolSettings,
   initialAcademicYears,
   initialStudents,
@@ -191,7 +190,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
-    return saved ? JSON.parse(saved) : initialUsers;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [sppPayments, setSppPayments] = useState<SppPayment[]>(() => {
@@ -381,6 +380,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = async () => {
     await supabase.auth.signOut();
+    // Clear cached business data so the next person to use this browser
+    // (logout on a shared kiosk, a different Viewer logging in next) doesn't
+    // briefly see the previous session's cached students/transactions/users
+    // while fetchFromSupabase re-runs.
+    setStudents([]);
+    setTransactions([]);
+    setBooks([]);
+    setBookDistributions([]);
+    setBookPayments([]);
+    setSppPayments([]);
+    setAuditLogs([]);
+    setUsers([]);
+    [
+      'students', 'transactions', 'books', 'distributions',
+      'book_payments', 'audit_logs', 'spp_payments', 'users',
+    ].forEach((key) => localStorage.removeItem(`${LOCAL_STORAGE_KEY}_${key}`));
   };
 
   const callAdminUsers = async (action: string, payload: Record<string, unknown> = {}) => {
@@ -601,14 +616,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateSchoolSettings = async (settings: Partial<SchoolSettings>) => {
     if (!currentUser || currentUser.demoMode || ROLE_RANK[currentUser.role] < 3) return;
-    const before = JSON.stringify(schoolSettings);
+    // logoUrl is a data: URI (tens of KB) — exclude it from the audit trail so
+    // every settings save doesn't duplicate the whole logo into audit_logs.
+    const { logoUrl: _beforeLogo, ...beforeForLog } = schoolSettings;
     const nextSettings = { ...schoolSettings, ...settings };
+    const { logoUrl: _afterLogo, ...afterForLog } = nextSettings;
     const res = await upsertRow('school_settings', { id: 'singleton', ...nextSettings });
     if (!res.success) {
       return;
     }
     setSchoolSettings(nextSettings);
-    await addAuditLog('Update Pengaturan Sekolah', before, JSON.stringify(nextSettings), 'Mengubah nama, alamat, atau logo sekolah');
+    await addAuditLog('Update Pengaturan Sekolah', JSON.stringify(beforeForLog), JSON.stringify(afterForLog), 'Mengubah nama, alamat, atau logo sekolah');
   };
 
   const addAcademicYear = async (yearStr: string): Promise<{ success: boolean; error?: string }> => {

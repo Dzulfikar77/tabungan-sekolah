@@ -20,6 +20,8 @@ import {
   Database,
   Calendar,
   History,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 const ROLE_RANK: Record<UserRole, number> = {
@@ -103,17 +105,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     onClose();
   };
 
+  const MAX_LOGO_BYTES = 200 * 1024;
+  const MAX_LOGO_DIMENSION = 256;
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (uploadEvt) => {
-        if (uploadEvt.target?.result) {
-          setLogoUrl(uploadEvt.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setSettingsError('Logo harus berupa file gambar.');
+      return;
     }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // Resize to a sane logo size before encoding — a raw phone photo
+        // otherwise lands unmodified in school_settings.logo_url (and gets
+        // duplicated into audit_logs' before/after snapshot on every save).
+        const scale = Math.min(1, MAX_LOGO_DIMENSION / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale) || 1;
+        canvas.height = Math.round(img.height * scale) || 1;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setSettingsError('Gagal memproses gambar.');
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        if (dataUrl.length > MAX_LOGO_BYTES * 1.4) {
+          setSettingsError('Logo terlalu besar bahkan setelah dikompres. Coba gambar lain.');
+          return;
+        }
+        setSettingsError('');
+        setLogoUrl(dataUrl);
+      };
+      img.onerror = () => setSettingsError('Gagal membaca file gambar.');
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleDownloadBackup = () => {
@@ -205,6 +235,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       setUserMsg({ success: false, msg: 'Username, nama, dan password wajib diisi.' });
       return;
     }
+    if (newUserPassword.length < 8) {
+      setUserMsg({ success: false, msg: 'Password minimal 8 karakter.' });
+      return;
+    }
     const res = await addUser({
       username: newUsername.trim(),
       name: newUserName.trim(),
@@ -224,18 +258,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     }
   };
 
-  const handleChangePassword = async (id: string, name: string) => {
-    const newPw = prompt(`Masukkan password baru untuk ${name}:`);
-    if (newPw === null) return;
-    if (!newPw.trim()) {
-      setUserMsg({ success: false, msg: 'Password tidak boleh kosong.' });
+  const [passwordDialog, setPasswordDialog] = useState<{ id: string; name: string; action: 'change' | 'reset' } | null>(null);
+  const [passwordDialogValue, setPasswordDialogValue] = useState('');
+  const [passwordDialogConfirm, setPasswordDialogConfirm] = useState('');
+  const [passwordDialogShow, setPasswordDialogShow] = useState(false);
+  const [passwordDialogError, setPasswordDialogError] = useState('');
+
+  const closePasswordDialog = () => {
+    setPasswordDialog(null);
+    setPasswordDialogValue('');
+    setPasswordDialogConfirm('');
+    setPasswordDialogShow(false);
+    setPasswordDialogError('');
+  };
+
+  const submitPasswordDialog = async () => {
+    if (!passwordDialog) return;
+    if (passwordDialogValue.length < 8) {
+      setPasswordDialogError('Password baru minimal 8 karakter.');
       return;
     }
-    const res = await changeUserPassword(id, newPw.trim());
+    if (passwordDialogValue !== passwordDialogConfirm) {
+      setPasswordDialogError('Konfirmasi password tidak cocok.');
+      return;
+    }
+    const { id, name, action } = passwordDialog;
+    const res = action === 'change'
+      ? await changeUserPassword(id, passwordDialogValue)
+      : await resetStaffPassword(id, passwordDialogValue);
     if (res.success) {
-      setUserMsg({ success: true, msg: `Password ${name} berhasil diganti.` });
+      setUserMsg({ success: true, msg: action === 'change' ? `Password ${name} berhasil diganti.` : `Password ${name} berhasil direset.` });
+      closePasswordDialog();
     } else {
-      setUserMsg({ success: false, msg: res.error || 'Gagal mengubah password.' });
+      setPasswordDialogError(res.error || 'Gagal mengubah password.');
     }
   };
 
@@ -257,24 +312,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     return true;
   };
 
-  const handleResetStaffPassword = async (id: string, name: string, targetRole: UserRole, studentId?: string) => {
-    if (!canResetStaffPassword(targetRole, studentId)) {
-      setUserMsg({ success: false, msg: 'Tidak memiliki wewenang untuk reset password user ini.' });
-      return;
-    }
-    const newPw = prompt(`Reset password untuk ${name}:\nMasukkan password baru (min 4 karakter):`);
-    if (newPw === null) return;
-    if (!newPw.trim() || newPw.trim().length < 4) {
-      setUserMsg({ success: false, msg: 'Password baru minimal 4 karakter.' });
-      return;
-    }
-    const res = await resetStaffPassword(id, newPw.trim());
-    if (res.success) {
-      setUserMsg({ success: true, msg: `Password ${name} berhasil direset.` });
-    } else {
-      setUserMsg({ success: false, msg: res.error || 'Gagal mereset password.' });
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
@@ -504,7 +541,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <select
                       value={u.role}
-                      disabled={u.demoMode || u.id === currentUser.id}
+                      disabled={u.demoMode || u.id === currentUser.id || currentUser.role !== 'Developer'}
+                      title={currentUser.role !== 'Developer' ? 'Hanya Developer yang dapat mengubah role' : undefined}
                       onChange={(e) => updateUserRole(u.id, e.target.value as UserRole)}
                       className="px-2 py-1 border border-slate-200 rounded-lg text-[11px] font-semibold bg-white focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
                     >
@@ -514,10 +552,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     </select>
                     <select
                       value={u.accessLevel || ''}
-                      disabled={u.demoMode || u.id === currentUser.id}
+                      disabled={u.demoMode || u.id === currentUser.id || currentUser.role !== 'Developer'}
+                      title={currentUser.role !== 'Developer' ? 'Hanya Developer yang dapat mengubah jenjang akses' : 'Jenjang akses data (TK/MI)'}
                       onChange={(e) => updateUserAccessLevel(u.id, (e.target.value || undefined) as 'TK' | 'MI' | undefined)}
                       className="px-2 py-1 border border-slate-200 rounded-lg text-[11px] font-semibold bg-white focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
-                      title="Jenjang akses data (TK/MI)"
                     >
                       <option value="">Semua Jenjang</option>
                       <option value="TK">TK</option>
@@ -525,7 +563,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     </select>
                     <button
                       type="button"
-                      onClick={() => handleChangePassword(u.id, u.name)}
+                      onClick={() => setPasswordDialog({ id: u.id, name: u.name, action: 'change' })}
                       disabled={u.demoMode || currentUser.role !== 'Developer'}
                       className="px-2 py-1 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-lg font-semibold text-[11px] cursor-pointer disabled:cursor-not-allowed"
                     >
@@ -535,7 +573,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     {canResetStaffPassword(u.role, u.studentId) && (
                       <button
                         type="button"
-                        onClick={() => handleResetStaffPassword(u.id, u.name, u.role, u.studentId)}
+                        onClick={() => setPasswordDialog({ id: u.id, name: u.name, action: 'reset' })}
                         disabled={u.demoMode}
                         className="px-2 py-1 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white rounded-lg font-semibold text-[11px] cursor-pointer disabled:cursor-not-allowed flex items-center gap-1"
                       >
@@ -577,9 +615,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   onChange={(e) => setNewUserRole(e.target.value)}
                   className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
                 >
-                  {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Viewer'] as UserRole[]).map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
+                  {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Viewer'] as UserRole[])
+                    .filter((r) => ROLE_RANK[r] < ROLE_RANK[currentUser.role])
+                    .map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
                 </select>
                 <select
                   value={newUserAccessLevel}
@@ -591,10 +631,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <option value="MI">Khusus MI</option>
                 </select>
                 <input
-                  type="text"
+                  type="password"
                   value={newUserPassword}
                   onChange={(e) => setNewUserPassword(e.target.value)}
-                  placeholder="Password"
+                  placeholder="Password (min. 8 karakter)"
                   className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
                 />
               </div>
@@ -722,6 +762,69 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           )}
         </div>
       </div>
+
+      {passwordDialog && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-slate-100 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+                <KeyRound className="w-4 h-4 text-emerald-600" />
+                {passwordDialog.action === 'change' ? 'Ganti' : 'Reset'} Password — {passwordDialog.name}
+              </div>
+              <button onClick={closePasswordDialog} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Password Baru</label>
+              <div className="relative">
+                <input
+                  type={passwordDialogShow ? 'text' : 'password'}
+                  autoFocus
+                  value={passwordDialogValue}
+                  onChange={(e) => setPasswordDialogValue(e.target.value)}
+                  className="w-full px-3 py-2 pr-9 border border-slate-200 rounded-lg text-sm focus:outline-none"
+                  placeholder="Minimal 8 karakter"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPasswordDialogShow(!passwordDialogShow)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  {passwordDialogShow ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Konfirmasi Password</label>
+              <input
+                type={passwordDialogShow ? 'text' : 'password'}
+                value={passwordDialogConfirm}
+                onChange={(e) => setPasswordDialogConfirm(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none"
+                placeholder="Ulangi password baru"
+              />
+            </div>
+            {passwordDialogError && (
+              <div className="p-2 rounded-lg text-xs font-semibold bg-rose-100 text-rose-800">{passwordDialogError}</div>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={submitPasswordDialog}
+                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg cursor-pointer"
+              >
+                Simpan
+              </button>
+              <button
+                onClick={closePasswordDialog}
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs rounded-lg cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

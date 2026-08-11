@@ -4,18 +4,18 @@
  * Requires service_role key (not anon key).
  *
  * Usage:
- *   VITE_SUPABASE_URL=https://flcswakrpxhsoxnvwdba.supabase.co \
+ *   VITE_SUPABASE_URL=https://your-project.supabase.co \
  *   SUPABASE_SERVICE_KEY=<your-service-role-key> \
  *   npx tsx scripts/setup.ts
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://flcswakrpxhsoxnvwdba.supabase.co';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
 
-if (!supabaseKey) {
-  console.error('ERROR: SUPABASE_SERVICE_KEY is required. Get it from:');
+if (!supabaseUrl || !supabaseKey) {
+  console.error('ERROR: VITE_SUPABASE_URL and SUPABASE_SERVICE_KEY are required. Get the key from:');
   console.error('  Supabase Dashboard → Project Settings → API → service_role key');
   process.exit(1);
 }
@@ -278,7 +278,6 @@ async function setup() {
       { name: 'transactions', data: ini.initialTransactions.map(toDbRow) },
       { name: 'spp_payments', data: ini.initialSppPayments.map(toDbRow) },
       { name: 'audit_logs', data: ini.initialAuditLogs.map(toDbRow) },
-      { name: 'users', data: ini.initialUsers.map(toDbRow) },
     ];
 
     for (const table of tables) {

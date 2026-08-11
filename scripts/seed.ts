@@ -8,7 +8,11 @@ import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'http://localhost:54321';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
+if (!supabaseKey) {
+  console.error('SUPABASE_SERVICE_ROLE_KEY environment variable is required (seeding must not run under the anon key).');
+  process.exit(1);
+}
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 function toDbRow(obj: Record<string, any>): Record<string, any> {
@@ -41,7 +45,6 @@ async function seed() {
     { name: 'transactions', data: ini.initialTransactions.map(toDbRow), constraint: 'id' },
     { name: 'spp_payments', data: ini.initialSppPayments.map(toDbRow), constraint: 'id' },
     { name: 'audit_logs', data: ini.initialAuditLogs.map(toDbRow), constraint: 'id' },
-    { name: 'users', data: ini.initialUsers.map(toDbRow), constraint: 'id' },
   ];
 
   for (const table of tables) {

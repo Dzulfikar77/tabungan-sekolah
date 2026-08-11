@@ -3,23 +3,28 @@
  * Drops wrong tables → Creates correct schema → Seeds data
  *
  * Usage:
- *   VITE_SUPABASE_URL=https://flcswakrpxhsoxnvwdba.supabase.co \
+ *   VITE_SUPABASE_URL=https://your-project.supabase.co \
  *   SUPABASE_SERVICE_KEY=eyJ... \
  *   npx tsx scripts/one-click-setup.ts
  *
  * Get SERVICE KEY from: Supabase Dashboard → Project Settings → API → service_role key
+ *
+ * This only PRINTS the SQL to run — the Supabase REST API can't execute DDL,
+ * so there is no automatic DROP TABLE here. Copy the printed statements into
+ * the SQL Editor yourself; that's also your chance to double check them
+ * before anything is actually dropped.
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.VITE_SUPABASE_URL || 'https://flcswakrpxhsoxnvwdba.supabase.co';
+const url = process.env.VITE_SUPABASE_URL || '';
 const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || '';
 
-if (!key) {
-  console.error('\n❌ Butuh SERVICE_ROLE key. Dapatkan dari:');
+if (!url || !key) {
+  console.error('\n❌ Butuh VITE_SUPABASE_URL dan SERVICE_ROLE key. Dapatkan key dari:');
   console.error('   Supabase Dashboard → Project Settings → API → service_role key');
   console.error('\n   Jalankan:');
-  console.error(`   SUPABASE_SERVICE_KEY=eyJ... npx tsx scripts/one-click-setup.ts\n`);
+  console.error(`   VITE_SUPABASE_URL=https://your-project.supabase.co SUPABASE_SERVICE_KEY=eyJ... npx tsx scripts/one-click-setup.ts\n`);
   process.exit(1);
 }
 
@@ -28,34 +33,6 @@ const sql = createClient(url, key, { db: { schema: 'public' } });
 async function main() {
   console.log('\n=== ONE-CLICK SUPABASE SETUP ===\n');
 
-  // Step 1: Drop all existing tables
-  console.log('⏳ Menghapus tabel existing...');
-  const dropSQL = `
-    DROP TABLE IF EXISTS spp_payments CASCADE;
-    DROP TABLE IF EXISTS book_payments CASCADE;
-    DROP TABLE IF EXISTS book_distributions CASCADE;
-    DROP TABLE IF EXISTS transactions CASCADE;
-    DROP TABLE IF EXISTS audit_logs CASCADE;
-    DROP TABLE IF EXISTS users CASCADE;
-    DROP TABLE IF EXISTS books CASCADE;
-    DROP TABLE IF EXISTS school_settings CASCADE;
-    DROP TABLE IF EXISTS academic_years CASCADE;
-    DROP TABLE IF EXISTS students CASCADE;
-  `;
-
-  // Use direct fetch to the Supabase SQL endpoint with service_role key
-  const dropRes = await fetch(`${url}/rest/v1/rpc/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-    },
-    body: JSON.stringify({}),
-  });
-
-  // Since RPC won't work, try via PostgREST directly
-  // The service_role key bypasses RLS and allows DDL through custom queries
   console.log('⚠️  REST API tidak bisa drop tabel. Jalankan SQL manual di Supabase SQL Editor.');
   console.log('   Copy SQL di bawah ini → SQL Editor → Run:\n');
 
@@ -64,7 +41,6 @@ DROP TABLE IF EXISTS book_payments CASCADE;
 DROP TABLE IF EXISTS book_distributions CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS books CASCADE;
 DROP TABLE IF EXISTS school_settings CASCADE;
 DROP TABLE IF EXISTS academic_years CASCADE;
