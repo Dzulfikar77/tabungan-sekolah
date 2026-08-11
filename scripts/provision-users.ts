@@ -51,10 +51,15 @@ async function provisionUser() {
   console.log(`Provisioning user: ${params.username} (${params.role})`);
 
   // Check if user already exists
-  const { data: existingUsers } = await supabase.auth.admin.listUsers();
-  const existingUser = existingUsers?.users?.find(
-    (u) => u.email === email
-  );
+  const listResult = await supabase.auth.admin.listUsers();
+  if (listResult.error) {
+    console.error('Failed to list existing users:', listResult.error.message);
+    process.exit(1);
+  }
+  // tsconfig has no strictNullChecks, so the `error: null` discriminant above
+  // can't narrow the union — assign through an explicit array type instead.
+  const users: { id: string; email?: string }[] = listResult.data.users;
+  const existingUser = users.find((u) => u.email === email);
 
   if (existingUser) {
     console.log(`User ${params.username} already exists (ID: ${existingUser.id}). Updating password...`);

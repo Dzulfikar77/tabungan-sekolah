@@ -2001,7 +2001,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
     }
 
-    const trNum = generateTransactionNumber('BK', currentAcademicYear.year, bookPayments.length);
+    const trNum = generateTransactionNumber('KP', currentAcademicYear.year, bookPayments.length);
 
     if (paymentMethod === 'Tunai') {
       const newPayment: BookPayment = {
@@ -2134,7 +2134,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sppAmount <= 0) {
       return { success: false, error: 'SPP untuk siswa ini gratis (Rp 0). Tidak perlu melakukan pembayaran.' };
     }
-    const trNum = generateTransactionNumber('BK', currentAcademicYear.year, sppPayments.length);
+    const trNum = generateTransactionNumber('SP', currentAcademicYear.year, sppPayments.length);
 
     let potongTxId: string | undefined;
     let balanceBefore: number | undefined;
