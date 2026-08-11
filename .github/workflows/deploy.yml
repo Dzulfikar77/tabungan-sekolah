@@ -20,10 +20,8 @@ jobs:
       - name: Build
         run: bun run build
         env:
-          # Fallback = nilai publik yang sudah ada di .env.example.
-          # Bisa di-override lewat GitHub Secrets (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://flcswakrpxhsoxnvwdba.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_FVtIAKqKkZQ67uqzPtD4TQ_MyUSs8Te' }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Deploy to Cloudflare
         run: bunx wrangler deploy

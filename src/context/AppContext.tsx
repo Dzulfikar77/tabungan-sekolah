@@ -56,7 +56,6 @@ interface AppContextType {
   setCurrentUser: (user: User | null) => void;
   login: (username: string, password: string) => { success: boolean; error?: string };
   logout: () => void;
-  switchRole: (role: UserRole) => void;
 
   schoolSettings: SchoolSettings;
   updateSchoolSettings: (settings: Partial<SchoolSettings>) => void;
@@ -327,15 +326,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0];
-
-  const switchRole = (role: UserRole) => {
-    if (!currentUser) return;
-    const found = initialUsers.find((u) => u.role === role);
-    if (found) {
-      setCurrentUser(found);
-      addAuditLog('Ganti Role Demo', `User: ${currentUser.name}`, `User: ${found.name}`, `Beralih tampilan ke role ${role}`);
-    }
-  };
 
   const login = async (username: string, password: string) => {
     const user = users.find(
@@ -2334,7 +2324,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentUser,
         login,
         logout,
-        switchRole,
         schoolSettings,
         updateSchoolSettings,
         academicYears,

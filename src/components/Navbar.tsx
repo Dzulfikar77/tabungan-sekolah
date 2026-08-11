@@ -3,79 +3,54 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { UserRole } from '../types';
-import { isClassInUserLevel, isPendingApprovalStatus } from '../utils/format';
 import {
   Building2,
   Calendar,
-  LogOut,
   LayoutDashboard,
   Users,
   Banknote,
   ArrowDownCircle,
+  Store,
   FileSpreadsheet,
   History,
   Settings,
   Eye,
-  GraduationCap,
-  Shield,
   Layers,
-  RefreshCw,
-  CheckCircle2,
-  CloudOff,
 } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onLogout: () => void;
   openSettingsModal: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
-  onLogout,
   openSettingsModal,
 }) => {
   const {
     currentUser,
     schoolSettings,
+    academicYears,
     currentAcademicYear,
+    setCurrentAcademicYearId,
     transactions,
-    syncState,
   } = useApp();
 
-  const isSyncing = syncState.pending > 0;
-
   const pendingApprovalsCount = transactions.filter(
-    (t) => isPendingApprovalStatus(t.status) && isClassInUserLevel(t.classGrade, currentUser)
+    (t) => t.status === 'Menunggu Persetujuan'
   ).length;
 
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const roleColors: Record<UserRole, { bg: string; text: string; border: string }> = {
-    Developer: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' },
-    'Super Admin': { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-300' },
-    Admin: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
-    'Wali Kelas': { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
-    Viewer: { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-300' },
-  };
-
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
-    { id: 'students', label: 'Siswa', icon: Users, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
-    { id: 'spp', label: 'SPP', icon: GraduationCap, roles: ['Developer', 'Super Admin', 'Admin'] },
-    { id: 'deposit', label: 'Setoran', icon: Banknote, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
-    { id: 'withdrawal', label: 'Penarikan / Approval', icon: ArrowDownCircle, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'], badge: pendingApprovalsCount },
-    { id: 'books', label: 'Koperasi & Kegiatan', icon: Layers, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
-    { id: 'reports', label: 'Laporan', icon: FileSpreadsheet, roles: ['Developer', 'Super Admin', 'Admin', 'Wali Kelas'] },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Developer', 'Super Admin', 'Admin'] },
+    { id: 'students', label: 'Siswa', icon: Users, roles: ['Developer', 'Super Admin', 'Admin'] },
+    { id: 'deposit', label: 'Setoran', icon: Banknote, roles: ['Developer', 'Super Admin', 'Admin'] },
+    { id: 'withdrawal', label: 'Penarikan / Approval', icon: ArrowDownCircle, roles: ['Developer', 'Super Admin', 'Admin'], badge: pendingApprovalsCount },
+    { id: 'koprasi', label: 'Koprasi & Kegiatan', icon: Store, roles: ['Developer', 'Super Admin', 'Admin'] },
+    { id: 'reports', label: 'Laporan', icon: FileSpreadsheet, roles: ['Developer', 'Super Admin', 'Admin'] },
     { id: 'audit', label: 'Audit Log', icon: History, roles: ['Developer', 'Super Admin'] },
     { id: 'viewer', label: 'Tabungan Saya', icon: Eye, roles: ['Viewer'] },
   ];
@@ -109,41 +84,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right Section: Live Clock & Academic Year */}
+        {/* Right Section: Academic Year & Role Switcher */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Live Clock */}
-          <div className="flex flex-col items-end gap-0.5 text-xs">
-            <span className="font-bold text-slate-800 tabular-nums">
-              {now.toLocaleTimeString('id-ID')}
-            </span>
-            <span className="text-slate-500">
-              {now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
-          </div>
-
-          {/* Academic Year (auto: follows current year) */}
+          {/* Academic Year Selector */}
           <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
             <Calendar className="w-4 h-4 text-emerald-600" />
             <span className="font-medium text-slate-600">Tahun Ajaran:</span>
-            <span className="font-semibold text-slate-800">{currentAcademicYear.year}</span>
-          </div>
-
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold ${isSyncing ? 'bg-amber-50 text-amber-700 border-amber-200' : syncState.lastSyncAt ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-            {isSyncing ? (
-              <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Menyimpan…</span></>
-            ) : syncState.lastSyncAt ? (
-              <><CheckCircle2 className="w-3.5 h-3.5" /><span>Tersimpan {new Date(syncState.lastSyncAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span></>
-            ) : (
-              <><CloudOff className="w-3.5 h-3.5" /><span>Belum sync</span></>
-            )}
-          </div>
-          {/* Role Badge */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${roleColors[currentUser.role].bg} ${roleColors[currentUser.role].text} ${roleColors[currentUser.role].border}`}>
-            <Shield className="w-3.5 h-3.5" />
-            <span>{currentUser.role}{currentUser.accessLevel ? ` (${currentUser.accessLevel})` : ''}</span>
-            {currentUser.demoMode && (
-              <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">DEMO</span>
-            )}
+            <select
+              value={currentAcademicYear.id}
+              onChange={(e) => setCurrentAcademicYearId(e.target.value)}
+              className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer"
+            >
+              {academicYears.map((ay) => (
+                <option key={ay.id} value={ay.id}>
+                  {ay.year} {ay.isCurrent ? '(Aktif)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* User Profile & Settings */}
@@ -154,14 +111,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
             >
               <Settings className="w-4 h-4" />
-            </button>
-            <button
-              onClick={onLogout}
-              title="Keluar"
-              className="flex items-center gap-1.5 px-2.5 py-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors text-xs font-semibold"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Keluar</span>
             </button>
           </div>
         </div>

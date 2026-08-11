@@ -8,7 +8,7 @@ import { Student, Book, Transaction, AcademicYear, AuditLogItem, SchoolSettings,
 export const initialSchoolSettings: SchoolSettings = {
   name: 'YPIS Mambaul Ulum Surabaya',
   address: 'Jl. Wonokusumo Kidul no 44 Surabaya',
-  phone: '(021) 789-0123',
+  phone: '(031)3744522',
   monthlyDeductionEnabled: true,
   monthlyDeductionAmount: 2000,
   sppTKAmount: 50000,
@@ -40,10 +40,10 @@ export const ALL_CLASSES: ClassGrade[] = [
 ];
 
 export const initialUsers: User[] = [
-  { id: 'u-dev', username: 'masdev', name: 'Mas Dev (Developer)', role: 'Developer', password: '@mimu123' },
-  { id: 'u-demo-super', username: 'demo', name: 'Demo Super Admin (Read-Only)', role: 'Super Admin', password: 'demo123', demoMode: true },
-  { id: 'u-admin-tk', username: 'admtk', name: 'Admin TK', role: 'Admin', password: 'admintk123', accessLevel: 'TK' },
-  { id: 'u-admin-mi', username: 'admmi', name: 'Admin MI', role: 'Admin', password: 'adminmi123', accessLevel: 'MI' },
+  { id: 'u-dev', username: 'masdev', name: 'Mas Dev (Developer)', role: 'Developer' },
+  { id: 'u-demo-super', username: 'demo', name: 'Demo Super Admin (Read-Only)', role: 'Super Admin' },
+  { id: 'u-admin-tk', username: 'admtk', name: 'Admin TK', role: 'Admin' },
+  { id: 'u-admin-mi', username: 'admmi', name: 'Admin MI', role: 'Admin' },
 ];
 
 const sampleStudentNames = [
