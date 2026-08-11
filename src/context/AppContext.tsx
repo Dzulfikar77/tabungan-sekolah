@@ -1616,11 +1616,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const executeCloseAccount = async (student: Student) => {
     const finalAmount = student.balance;
-    const linked = findLinkedViewerUser(student.id);
-    if (linked) {
-      setUsers((prev) => prev.filter((u) => u.id !== linked.id));
-      await deleteRow('users', linked.id);
-    }
+    await deleteLinkedViewerUser(student.id, 'tutup tabungan');
     setStudents((prev) => prev.filter((s) => s.id !== student.id));
     setBookDistributions((prev) => prev.filter((d) => d.studentId !== student.id));
     setBookPayments((prev) => prev.filter((p) => p.studentId !== student.id));
