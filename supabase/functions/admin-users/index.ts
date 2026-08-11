@@ -246,18 +246,36 @@ serve(async (req: Request) => {
         return json({ error: "Insufficient permissions" }, 403);
       }
 
-      const { student_id, student_name, parent_name, academic_year } = body;
+      const { student_id } = body;
 
-      // Generate viewer credentials
-      const normalizedName = normalizeName(student_name);
-      const username = `${normalizedName}_ortu`;
-      const password = `${academic_year.replace("/", "")}_seq`;
+      // Identity is derived from NIS (unique per definition), not from the
+      // student's name — two students sharing a name used to collide on the
+      // same username and the second provisioning call would fail.
+      const { data: student, error: studentError } = await supabase
+        .from("students")
+        .select("id, nis, name, parent_name")
+        .eq("id", student_id)
+        .single();
 
-      // Create auth user
+      if (studentError || !student) {
+        return json({ error: "Siswa tidak ditemukan" }, 404);
+      }
+
+      const normalizedNis = String(student.nis).replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      if (!normalizedNis) {
+        return json({ error: "NIS siswa tidak valid" }, 400);
+      }
+
+      const username = `${normalizedNis}_ortu`;
+      // NIS + 4 random alphanumeric chars: the initial code stays guessable-length
+      // for printing on a slip, but isn't reproducible from NIS alone.
+      const randomSuffix = crypto.randomUUID().replace(/-/g, "").slice(0, 4);
+      const initialCode = `${normalizedNis}_${randomSuffix}`;
+
       const email = `${username}@akun.tabungan-sekolah.local`;
       const { data: authUser, error: createError } = await supabase.auth.admin.createUser({
         email,
-        password,
+        password: initialCode,
         email_confirm: true,
       });
 
@@ -265,15 +283,17 @@ serve(async (req: Request) => {
         return json({ error: createError.message }, 400);
       }
 
-      // Create profile
+      // must_change_password: true — the initial code is a one-time value
+      // printed on a slip, the parent replaces it on first login.
       const { error: profileInsertError } = await supabase
         .from("profiles")
         .insert({
           id: authUser.user.id,
           username,
-          name: parent_name || `${student_name} (Orang Tua)`,
+          name: student.parent_name || `${student.name} (Orang Tua)`,
           role: "Viewer",
-          student_id,
+          student_id: student.id,
+          must_change_password: true,
         });
 
       if (profileInsertError) {
@@ -281,7 +301,7 @@ serve(async (req: Request) => {
         return json({ error: profileInsertError.message }, 400);
       }
 
-      return json({ success: true, userId: authUser.user.id, username, password });
+      return json({ success: true, userId: authUser.user.id, username, initialCode });
     }
 
     return json({ error: "Unknown action" }, 404);

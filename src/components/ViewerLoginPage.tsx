@@ -3,21 +3,33 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { normalizeName, searchViewerSuggestions, ViewerSuggestion, verifyParentIdentity } from '../utils/viewerCredentials';
+import type { ViewerSuggestion } from '../utils/viewerCredentials';
 import { ShieldCheck, Lock, LogIn, Eye, EyeOff, X, Search, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 
 interface ViewerLoginPageProps {
   onBackToAdmin: () => void;
 }
 
+async function fetchSuggestions(query: string): Promise<ViewerSuggestion[]> {
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/viewer-auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'suggest', query }),
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return json.suggestions || [];
+}
+
 export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin }) => {
-  const { setCurrentUser, schoolSettings, users, students, resetViewerPassword } = useApp();
-  const [username, setUsername] = useState('');
+  const { schoolSettings } = useApp();
+  const [query, setQuery] = useState('');
   const [password, setPassword] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<ViewerSuggestion | null>(null);
+  const [suggestions, setSuggestions] = useState<ViewerSuggestion[]>([]);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const [isListOpen, setIsListOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -29,18 +41,40 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
   const [phoneInput, setPhoneInput] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [forgotAttempts, setForgotAttempts] = useState(0);
   const [forgotStep, setForgotStep] = useState<'verify' | 'setPassword' | 'success' | 'locked'>('verify');
+  const [recoverLoading, setRecoverLoading] = useState(false);
 
-  const query = selectedStudent ? '' : username;
-  const suggestions = useMemo(
-    () => searchViewerSuggestions(users, students, query),
-    [users, students, query]
-  );
+  // Debounced server-side search — the login page has no session yet, so it
+  // must never hold the full roster client-side (that's what the old
+  // client-side searchViewerSuggestions did, unauthenticated, before login).
+  useEffect(() => {
+    if (selectedStudent || query.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const results = await fetchSuggestions(query.trim());
+      if (!cancelled) setSuggestions(results);
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, selectedStudent]);
+
   const showList = !selectedStudent && isListOpen && suggestions.length > 0;
 
-  const handleUsernameChange = (v: string) => {
-    setUsername(v);
+  // Suggestions can legitimately repeat name+classGrade (twins in the same
+  // class) — only then does the NIS tail get shown as a disambiguator.
+  const duplicateKeys = new Set(
+    suggestions
+      .map((s) => `${s.name}|${s.classGrade}`)
+      .filter((key, i, arr) => arr.indexOf(key) !== i)
+  );
+
+  const handleQueryChange = (v: string) => {
+    setQuery(v);
     setSelectedStudent(null);
     setHighlightIndex(0);
     setIsListOpen(true);
@@ -49,7 +83,7 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
 
   const handlePick = (s: ViewerSuggestion) => {
     setSelectedStudent(s);
-    setUsername(s.name);
+    setQuery(s.name);
     setHighlightIndex(0);
     setIsListOpen(false);
     setError('');
@@ -58,7 +92,7 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
 
   const handleClearPick = () => {
     setSelectedStudent(null);
-    setUsername('');
+    setQuery('');
     setHighlightIndex(0);
     setIsListOpen(false);
     passwordRef.current?.focus();
@@ -84,12 +118,11 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
     e.preventDefault();
     setError('');
 
-    const nameToUse = selectedStudent ? selectedStudent.name : username;
-    if (!nameToUse.trim()) {
-      setError('Nama tidak boleh kosong.');
+    if (!selectedStudent) {
+      setError('Pilih nama anak dari daftar saran terlebih dahulu.');
       return;
     }
-    const email = `${normalizeName(nameToUse)}@akun.tabungan-sekolah.local`;
+    const email = `${selectedStudent.username}@akun.tabungan-sekolah.local`;
 
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
@@ -112,11 +145,10 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
     setPhoneInput('');
     setNewPassword('');
     setConfirmNewPassword('');
-    setForgotAttempts(0);
     setForgotStep('verify');
     setError('');
     setSelectedStudent(null);
-    setUsername('');
+    setQuery('');
     setHighlightIndex(0);
     setIsListOpen(false);
   };
@@ -129,19 +161,15 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
 
   const handleVerify = () => {
     if (!selectedStudent) return;
-    const student = students.find((s) => s.id === selectedStudent.studentId);
-    if (verifyParentIdentity(student, parentNameInput, phoneInput)) {
-      setForgotStep('setPassword');
-      setError('');
+    if (!parentNameInput.trim() || !phoneInput.trim()) {
+      setError('Nama orang tua dan no. HP wajib diisi.');
       return;
     }
-    const next = forgotAttempts + 1;
-    setForgotAttempts(next);
-    if (next >= 5) {
-      setForgotStep('locked');
-      return;
-    }
-    setError('Nama orang tua atau no. HP salah.');
+    // Identity is checked server-side in one shot at the final "Simpan" step —
+    // this only gates the UI to the next form, it makes no network call and
+    // is not itself a verification result.
+    setForgotStep('setPassword');
+    setError('');
   };
 
   const handleSavePassword = async () => {
@@ -154,13 +182,35 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
       setError('Konfirmasi password tidak cocok.');
       return;
     }
-    const result = await resetViewerPassword(selectedStudent.studentId, newPassword);
-    if (result.success) {
+    setRecoverLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/viewer-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'recover',
+          username: selectedStudent.username,
+          parent_name: parentNameInput,
+          phone: phoneInput,
+          new_password: newPassword,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        if (res.status === 403) {
+          setForgotStep('locked');
+          return;
+        }
+        setError(json.error || 'Gagal mengganti password.');
+        return;
+      }
       setForgotStep('success');
-      setError('');
-      return;
+    } catch {
+      setError('Gagal terhubung ke server. Coba lagi.');
+    } finally {
+      setRecoverLoading(false);
     }
-    setError(result.error || 'Gagal mengganti password.');
   };
 
   const studentCombobox = (
@@ -173,9 +223,9 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
       <input
         type="text"
         placeholder="Ketik nama anak..."
-        value={username}
+        value={query}
         readOnly={!!selectedStudent}
-        onChange={(e) => handleUsernameChange(e.target.value)}
+        onChange={(e) => handleQueryChange(e.target.value)}
         onKeyDown={handleKeyDown}
         onFocus={() => !selectedStudent && setIsListOpen(true)}
         onBlur={() => setTimeout(() => setIsListOpen(false), 150)}
@@ -201,24 +251,25 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
           role="listbox"
           className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-56 overflow-auto"
         >
-          {suggestions.map((s, i) => (
-            <li key={s.studentId} role="option" aria-selected={i === highlightIndex}>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => handlePick(s)}
-                onMouseEnter={() => setHighlightIndex(i)}
-                className={`w-full text-left px-3 py-2 transition-colors cursor-pointer ${i === highlightIndex ? 'bg-emerald-50' : ''}`}
-              >
-                <span className="block text-sm font-semibold text-slate-800">
-                  {s.name} — Kelas {s.classGrade}
-                </span>
-                <span className="block text-[11px] text-slate-500">
-                  Orang Tua: {s.parentName || '-'}
-                </span>
-              </button>
-            </li>
-          ))}
+          {suggestions.map((s, i) => {
+            const isDuplicate = duplicateKeys.has(`${s.name}|${s.classGrade}`);
+            return (
+              <li key={s.username} role="option" aria-selected={i === highlightIndex}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handlePick(s)}
+                  onMouseEnter={() => setHighlightIndex(i)}
+                  className={`w-full text-left px-3 py-2 transition-colors cursor-pointer ${i === highlightIndex ? 'bg-emerald-50' : ''}`}
+                >
+                  <span className="block text-sm font-semibold text-slate-800">
+                    {s.name} — Kelas {s.classGrade}
+                    {isDuplicate && <span className="text-slate-400 font-normal"> ·•••{s.nisTail}</span>}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
@@ -249,7 +300,7 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Nama Anak</label>
               {studentCombobox}
               <p className="text-[11px] text-slate-400 mt-1">
-                Ketik nama anak — saran muncul otomatis. Pilih anak Anda, lalu isi password.
+                Ketik minimal 3 huruf — saran muncul otomatis. Pilih anak Anda, lalu isi password.
               </p>
             </div>
 
@@ -377,7 +428,7 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
                         className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-lg transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
                       >
                         <ShieldCheck className="w-4 h-4" />
-                        Verifikasi
+                        Lanjutkan
                       </button>
                     </>
                   )}
@@ -415,10 +466,11 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
                       <button
                         type="button"
                         onClick={handleSavePassword}
-                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-lg transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                        disabled={recoverLoading}
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white font-semibold text-sm rounded-lg transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
                       >
                         <Lock className="w-4 h-4" />
-                        Simpan
+                        {recoverLoading ? 'Memproses…' : 'Simpan'}
                       </button>
                     </>
                   )}

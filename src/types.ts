@@ -14,6 +14,7 @@ export interface User {
   password?: string;
   demoMode?: boolean;
   accessLevel?: 'TK' | 'MI';
+  mustChangePassword?: boolean; // Viewer provisioned with a derivable initial code
 }
 
 export type ClassGrade =

@@ -1,6 +1,13 @@
 // supabase/functions/viewer-auth/index.ts
-// Edge function for viewer authentication (login, recover)
-// Rate-limited per IP
+// Edge function for viewer-facing actions: name search (suggest), self-service
+// password recovery (recover), and admin-triggered reset (reset-password).
+// Dispatch is by `action` in the JSON body — the client always POSTs to the
+// bare function URL.
+//
+// suggest/recover run before the parent has a session, so they take no JWT —
+// identity is instead resolved server-side (username lookup / parent name+phone
+// match against the DB via the service-role key, never trusting client input
+// for anything but the search string).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -10,57 +17,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Simple in-memory rate limiter (resets on cold start)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_MAX = 5;
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const ROLE_RANK: Record<string, number> = {
+  Developer: 4,
+  "Super Admin": 3,
+  Admin: 2,
+  "Wali Kelas": 1,
+  Viewer: 0,
+};
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX) {
-    return false;
-  }
-
-  entry.count++;
-  return true;
-}
-
-// Helper: normalize name for matching
 function normalizeName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return name.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-// Helper: normalize phone for matching
 function normalizePhone(phone: string): string {
-  return phone.replace(/[^0-9]/g, "").replace(/^0/, "62");
+  return phone.replace(/\D/g, "");
 }
 
-// Helper: verify parent identity
-function verifyParentIdentity(
-  student: { parent_name: string; phone: string },
-  parentName: string,
-  phone: string
-): boolean {
-  const normalizedStudentParent = normalizeName(student.parent_name || "");
-  const normalizedInputParent = normalizeName(parentName);
-  const normalizedStudentPhone = normalizePhone(student.phone || "");
-  const normalizedInputPhone = normalizePhone(phone);
-
-  return (
-    normalizedStudentParent === normalizedInputParent &&
-    normalizedStudentPhone === normalizedInputPhone
-  );
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -70,132 +50,108 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get client IP for rate limiting
+    if (req.method !== "POST") {
+      return json({ error: "Method not allowed" }, 405);
+    }
+
+    const body = await req.json();
+    const action = body.action;
+
     const forwarded = req.headers.get("x-forwarded-for");
-    const clientIp = forwarded?.split(",")[0] || "unknown";
+    const clientIp = forwarded?.split(",")[0]?.trim() || "unknown";
 
-    if (!checkRateLimit(clientIp)) {
-      return new Response(JSON.stringify({ error: "Too many attempts. Try again later." }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    async function checkRateLimit(rateAction: string, max: number, windowSeconds: number): Promise<boolean> {
+      const { data, error } = await supabase.rpc("check_rate_limit", {
+        p_key: `${clientIp}:${rateAction}`,
+        p_max: max,
+        p_window_seconds: windowSeconds,
       });
+      // Fail open on infra errors — a rate-limit outage should not lock every parent out.
+      if (error) return true;
+      return data === true;
     }
 
-    const url = new URL(req.url);
-    const path = url.pathname.split("/").pop();
-
-    if (req.method === "POST" && path === "login") {
-      const { nameOrUsername, password } = await req.json();
-
-      if (!nameOrUsername || !password) {
-        return new Response(JSON.stringify({ error: "Name/username and password required" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    if (action === "suggest") {
+      const allowed = await checkRateLimit("suggest", 30, 15 * 60);
+      if (!allowed) {
+        return json({ error: "Too many requests. Try again later." }, 429);
       }
 
-      // Find viewer profile by username
-      const normalizedName = normalizeName(nameOrUsername);
-      const { data: profiles, error: profileError } = await supabase
+      const query = (body.query || "").trim();
+      if (query.length < 3) {
+        return json({ suggestions: [] });
+      }
+
+      const { data: matches, error: studentsError } = await supabase
+        .from("students")
+        .select("id, name, class_grade, nis")
+        .eq("is_deleted", false)
+        .ilike("name", `%${query}%`)
+        .limit(50);
+
+      if (studentsError) {
+        return json({ error: "Database error" }, 500);
+      }
+
+      const studentIds = (matches || []).map((s) => s.id);
+      if (studentIds.length === 0) {
+        return json({ suggestions: [] });
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, username, name, role, student_id")
-        .eq("role", "Viewer");
+        .select("username, student_id")
+        .eq("role", "Viewer")
+        .in("student_id", studentIds);
 
-      if (profileError) {
-        return new Response(JSON.stringify({ error: "Database error" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (profilesError) {
+        return json({ error: "Database error" }, 500);
       }
 
-      // Find matching profile
-      const profile = profiles?.find(
-        (p) => normalizeName(p.username) === normalizedName || normalizeName(p.name) === normalizedName
-      );
+      const usernameByStudentId = new Map((profiles || []).map((p) => [p.student_id, p.username]));
+      const q = normalizeName(query);
 
-      if (!profile) {
-        return new Response(JSON.stringify({ error: "Account not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const suggestions = (matches || [])
+        .filter((s) => usernameByStudentId.has(s.id))
+        .map((s) => ({
+          username: usernameByStudentId.get(s.id)!,
+          name: s.name,
+          classGrade: s.class_grade,
+          nisTail: String(s.nis).slice(-3),
+        }))
+        .sort((a, b) => {
+          const aPrefix = normalizeName(a.name).startsWith(q) ? 0 : 1;
+          const bPrefix = normalizeName(b.name).startsWith(q) ? 0 : 1;
+          if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+          return a.name.localeCompare(b.name);
+        })
+        .slice(0, 8);
 
-      // Sign in with synthetic email
-      const email = `${profile.username}@akun.tabungan-sekolah.local`;
-      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        return new Response(JSON.stringify({ error: "Invalid password" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          session: authData.session,
-          user: {
-            id: profile.id,
-            username: profile.username,
-            name: profile.name,
-            role: profile.role,
-            studentId: profile.student_id,
-          },
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return json({ suggestions });
     }
 
-    if (req.method === "POST" && path === "recover") {
-      const { nameOrUsername, parentName, phone, newPassword } = await req.json();
-
-      if (!nameOrUsername || !parentName || !phone || !newPassword) {
-        return new Response(JSON.stringify({ error: "All fields required" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    if (action === "recover") {
+      const allowed = await checkRateLimit("recover", 5, 15 * 60);
+      if (!allowed) {
+        return json({ error: "Too many attempts. Try again later." }, 429);
       }
 
-      // Find viewer profile
-      const normalizedName = normalizeName(nameOrUsername);
-      const { data: profiles, error: profileError } = await supabase
+      const { username, parent_name, phone, new_password } = body;
+      if (!username || !parent_name || !phone || !new_password) {
+        return json({ error: "All fields required" }, 400);
+      }
+
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("id, username, name, role, student_id")
-        .eq("role", "Viewer");
+        .select("id, student_id")
+        .eq("role", "Viewer")
+        .eq("username", username)
+        .single();
 
-      if (profileError) {
-        return new Response(JSON.stringify({ error: "Database error" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (profileError || !profile || !profile.student_id) {
+        return json({ error: "Account not found" }, 404);
       }
 
-      const profile = profiles?.find(
-        (p) => normalizeName(p.username) === normalizedName || normalizeName(p.name) === normalizedName
-      );
-
-      if (!profile) {
-        return new Response(JSON.stringify({ error: "Account not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      if (!profile.student_id) {
-        return new Response(JSON.stringify({ error: "Viewer account not linked to student" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Get student data for identity verification
       const { data: student, error: studentError } = await supabase
         .from("students")
         .select("parent_name, phone")
@@ -203,46 +159,72 @@ serve(async (req: Request) => {
         .single();
 
       if (studentError || !student) {
-        return new Response(JSON.stringify({ error: "Student data not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Student data not found" }, 404);
       }
 
-      // Verify parent identity
-      if (!verifyParentIdentity(student, parentName, phone)) {
-        return new Response(JSON.stringify({ error: "Identity verification failed" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      const nameOk = normalizeName(student.parent_name || "") === normalizeName(parent_name);
+      const phoneOk = normalizePhone(student.phone || "") === normalizePhone(phone);
+      if (!nameOk || !phoneOk) {
+        return json({ error: "Identity verification failed" }, 403);
       }
 
-      // Reset password
       const { error: resetError } = await supabase.auth.admin.updateUserById(profile.id, {
-        password: newPassword,
+        password: new_password,
       });
 
       if (resetError) {
-        return new Response(JSON.stringify({ error: resetError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: resetError.message }, 400);
       }
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      await supabase.from("profiles").update({ must_change_password: false }).eq("id", profile.id);
+
+      return json({ success: true });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown route" }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    if (action === "reset-password") {
+      // Admin-triggered reset — requires a staff JWT, rank >= 2 (Admin+).
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return json({ error: "Missing authorization" }, 401);
+      }
+
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !user) {
+        return json({ error: "Invalid token" }, 401);
+      }
+
+      const { data: callerProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError || !callerProfile) {
+        return json({ error: "Profile not found" }, 403);
+      }
+
+      const callerRank = ROLE_RANK[callerProfile.role] || 0;
+      if (callerRank < 2) {
+        return json({ error: "Insufficient permissions" }, 403);
+      }
+
+      const { target_user_id, new_password } = body;
+      const { error: resetError } = await supabase.auth.admin.updateUserById(target_user_id, {
+        password: new_password,
+      });
+
+      if (resetError) {
+        return json({ error: resetError.message }, 400);
+      }
+
+      await supabase.from("profiles").update({ must_change_password: false }).eq("id", target_user_id);
+
+      return json({ success: true });
+    }
+
+    return json({ error: "Unknown action" }, 404);
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: error.message }, 500);
   }
 });

@@ -5,7 +5,6 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { normalizeName } from '../utils/viewerCredentials';
 import { formatRupiah, formatDate, isPendingApprovalStatus } from '../utils/format';
 import { generateStudentCertificatePDF } from '../utils/pdfGenerator';
 import {
@@ -43,7 +42,6 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
   } = useApp();
 
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [showIdentityConfirm, setShowIdentityConfirm] = useState(true);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPw, setShowNewPw] = useState(false);
@@ -52,6 +50,83 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
 
   const student = students.find((s) => s.id === currentUser.studentId);
 
+  const handleForcedChange = async () => {
+    setPwError('');
+    if (newPassword.length < 4) {
+      setPwError('Password baru minimal 4 karakter.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwError('Konfirmasi password tidak cocok.');
+      return;
+    }
+    const res = await changeViewerPassword(newPassword);
+    if (!res.success) {
+      setPwError(res.error || 'Gagal mengubah password.');
+    }
+  };
+
+  if (currentUser.mustChangePassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 space-y-4 border border-slate-200">
+          <div className="flex items-center gap-2 text-slate-900 font-bold text-base">
+            <Lock className="w-5 h-5 text-emerald-600" />
+            Ganti Password Awal
+          </div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Akun Anda dibuat dengan kode sementara. Buat password baru sebelum melanjutkan ke portal.
+          </p>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">Password Baru</label>
+            <div className="relative">
+              <input
+                type={showNewPw ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-8"
+                placeholder="Min. 4 karakter"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPw(!showNewPw)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer"
+              >
+                {showNewPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">Konfirmasi Password Baru</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="Ulangi password baru"
+            />
+          </div>
+          {pwError && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium px-3 py-2 rounded-lg">{pwError}</div>
+          )}
+          <button
+            onClick={handleForcedChange}
+            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-lg transition-colors cursor-pointer"
+          >
+            Simpan & Lanjutkan
+          </button>
+          <button
+            onClick={onLogout}
+            className="w-full text-xs text-slate-400 hover:text-slate-600 cursor-pointer underline"
+          >
+            Keluar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!student) {
     return (
       <div className="text-center py-20 text-slate-500">
@@ -59,10 +134,6 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
       </div>
     );
   }
-
-  const nameHasDuplicate = students.some(
-    (s) => !s.isDeleted && s.id !== student.id && normalizeName(s.name) === normalizeName(student.name)
-  );
 
   const studentTransactions = transactions.filter((t) => t.studentId === student.id);
   const studentBookPayments = bookPayments.filter((bp) => bp.studentId === student.id);
@@ -149,35 +220,6 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
           </button>
         </div>
       </div>
-
-      {/* Ambiguous Name Confirmation */}
-      {showIdentityConfirm && nameHasDuplicate && (
-        <div className="bg-amber-50 rounded-2xl border border-amber-300 p-5 shadow-xs space-y-3">
-          <h3 className="font-bold text-amber-900 text-sm flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-            Pastikan ini anak Anda
-          </h3>
-          <p className="text-xs text-amber-800 leading-relaxed">
-            Terdapat siswa lain dengan nama yang sama. Anak Anda:{' '}
-            <strong>{student.name}</strong> — Kelas {student.classGrade} (NIS: {student.nis}) ·
-            Orang Tua: {student.parentName || '-'}
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowIdentityConfirm(false)}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-            >
-              Ini anak saya
-            </button>
-            <button
-              onClick={onLogout}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-            >
-              Bukan anak saya
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Change Password Form */}
       {showChangePassword && (

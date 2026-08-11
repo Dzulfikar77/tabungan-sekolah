@@ -330,6 +330,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             studentId: profile.student_id || undefined,
             accessLevel: profile.access_level || undefined,
             demoMode: profile.demo_mode ?? false,
+            mustChangePassword: profile.must_change_password ?? false,
           });
         }
       } else {
@@ -483,15 +484,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const findLinkedViewerUser = (studentId: string): User | undefined =>
     users.find((u) => u.role === 'Viewer' && u.studentId === studentId);
 
-  const deleteLinkedViewerUser = async (studentId: string, reason: string) => {
+  const deleteLinkedViewerUser = async (studentId: string, reason: string): Promise<{ success: boolean; error?: string }> => {
     const linked = findLinkedViewerUser(studentId);
-    if (!linked) return;
+    if (!linked) return { success: true };
     try {
       await callAdminUsers('delete', { user_id: linked.id });
       setUsers((prev) => prev.filter((u) => u.id !== linked.id));
       addAuditLog('Hapus User Viewer', `User: ${linked.username}`, '-', `User viewer ${linked.username} dihapus (${reason}).`);
+      return { success: true };
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gagal menghapus akun viewer.';
       console.error('deleteLinkedViewerUser failed:', err);
+      return { success: false, error: message };
     }
   };
 
@@ -504,6 +508,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) return { success: false, error: error.message };
+    if (currentUser.mustChangePassword) {
+      await updateRow('profiles', currentUser.id, { mustChangePassword: false });
+      setCurrentUser((prev) => (prev ? { ...prev, mustChangePassword: false } : prev));
+    }
     addAuditLog('Ubah Password Viewer', currentUser.username, currentUser.username, `Viewer ${currentUser.name} mengubah password sendiri.`);
     return { success: true };
   };
@@ -651,7 +659,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     affected.forEach((s) => {
       updateRow('students', s.id, toClass === 'Lulus' ? { status: 'Lulus' } : { classGrade: toClass });
-      if (toClass === 'Lulus') deleteLinkedViewerUser(s.id, 'naik ke Lulus');
+      if (toClass === 'Lulus') {
+        deleteLinkedViewerUser(s.id, 'naik ke Lulus').then((res) => {
+          if (!res.success) {
+            addAuditLog('Hapus User Viewer Gagal', `Siswa: ${s.name}`, '-', `Gagal menghapus akun viewer untuk ${s.name} saat kelulusan: ${res.error || 'unknown error'}.`);
+          }
+        });
+      }
     });
     addAuditLog('Pindah Kelas Massal', `Kelas asal: ${fromClass}`, `Kelas tujuan: ${toClass}`, `Memindahkan ${affected.length} siswa dari kelas ${fromClass} ke ${toClass}`);
   };
