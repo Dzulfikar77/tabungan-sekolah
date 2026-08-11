@@ -5,7 +5,8 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { resolveViewerLogin, searchViewerSuggestions, ViewerSuggestion, verifyParentIdentity } from '../utils/viewerCredentials';
+import { supabase } from '../lib/supabase';
+import { normalizeName, searchViewerSuggestions, ViewerSuggestion, verifyParentIdentity } from '../utils/viewerCredentials';
 import { ShieldCheck, Lock, LogIn, Eye, EyeOff, X, Search, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 
 interface ViewerLoginPageProps {
@@ -79,30 +80,30 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (selectedStudent) {
-      const user = users.find((u) => u.role === 'Viewer' && u.studentId === selectedStudent.studentId);
-      if (!user) {
-        setError('Akun viewer tidak ditemukan. Hubungi sekolah.');
-        return;
-      }
-      if (user.password !== password) {
-        setError('Password salah.');
-        return;
-      }
-      setCurrentUser(user);
+    const nameToUse = selectedStudent ? selectedStudent.name : username;
+    if (!nameToUse.trim()) {
+      setError('Nama tidak boleh kosong.');
       return;
     }
+    const email = `${normalizeName(nameToUse)}@akun.tabungan-sekolah.local`;
 
-    const result = resolveViewerLogin(users, students, username, password);
-    if ('user' in result) {
-      setCurrentUser(result.user);
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      if (authError.message.includes('Invalid login credentials')) {
+        setError('Password salah atau akun belum terdaftar.');
+      } else {
+        setError(authError.message || 'Gagal login. Silakan coba lagi.');
+      }
       return;
     }
-    setError(result.error);
   };
 
   const resetForgotState = () => {
@@ -143,7 +144,7 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
     setError('Nama orang tua atau no. HP salah.');
   };
 
-  const handleSavePassword = () => {
+  const handleSavePassword = async () => {
     if (!selectedStudent) return;
     if (newPassword.length < 4) {
       setError('Password baru minimal 4 karakter.');
@@ -153,7 +154,7 @@ export const ViewerLoginPage: React.FC<ViewerLoginPageProps> = ({ onBackToAdmin 
       setError('Konfirmasi password tidak cocok.');
       return;
     }
-    const result = resetViewerPassword(selectedStudent.studentId, newPassword);
+    const result = await resetViewerPassword(selectedStudent.studentId, newPassword);
     if (result.success) {
       setForgotStep('success');
       setError('');

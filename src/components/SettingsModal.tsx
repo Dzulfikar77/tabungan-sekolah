@@ -183,12 +183,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     setYearMsg({ success: true, msg: `Tahun ajaran ${trimmed} dibuat dan langsung diaktifkan.` });
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!newUsername.trim() || !newUserName.trim() || !newUserPassword.trim()) {
       setUserMsg({ success: false, msg: 'Username, nama, dan password wajib diisi.' });
       return;
     }
-    const res = addUser({
+    const res = await addUser({
       username: newUsername.trim(),
       name: newUserName.trim(),
       role: newUserRole as UserRole,
@@ -207,21 +207,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   };
 
-  const handleChangePassword = (id: string, name: string) => {
+  const handleChangePassword = async (id: string, name: string) => {
     const newPw = prompt(`Masukkan password baru untuk ${name}:`);
     if (newPw === null) return;
     if (!newPw.trim()) {
       setUserMsg({ success: false, msg: 'Password tidak boleh kosong.' });
       return;
     }
-    changeUserPassword(id, newPw.trim());
-    setUserMsg({ success: true, msg: `Password ${name} berhasil diganti.` });
+    const res = await changeUserPassword(id, newPw.trim());
+    if (res.success) {
+      setUserMsg({ success: true, msg: `Password ${name} berhasil diganti.` });
+    } else {
+      setUserMsg({ success: false, msg: res.error || 'Gagal mengubah password.' });
+    }
   };
 
-  const handleDeleteUser = (id: string, name: string, username: string) => {
+  const handleDeleteUser = async (id: string, name: string, username: string) => {
     if (!confirm(`Hapus user "${name}" (${username})? Tindakan ini tidak dapat dibatalkan.`)) return;
-    deleteUser(id);
-    setUserMsg({ success: true, msg: `User ${name} dihapus.` });
+    const res = await deleteUser(id);
+    if (res.success) {
+      setUserMsg({ success: true, msg: `User ${name} dihapus.` });
+    } else {
+      setUserMsg({ success: false, msg: res.error || 'Gagal menghapus user.' });
+    }
   };
 
   const canResetStaffPassword = (targetRole: UserRole, studentId?: string) => {
@@ -232,7 +240,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     return true;
   };
 
-  const handleResetStaffPassword = (id: string, name: string, targetRole: UserRole, studentId?: string) => {
+  const handleResetStaffPassword = async (id: string, name: string, targetRole: UserRole, studentId?: string) => {
     if (!canResetStaffPassword(targetRole, studentId)) {
       setUserMsg({ success: false, msg: 'Tidak memiliki wewenang untuk reset password user ini.' });
       return;
@@ -243,7 +251,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       setUserMsg({ success: false, msg: 'Password baru minimal 4 karakter.' });
       return;
     }
-    const res = resetStaffPassword(id, newPw.trim());
+    const res = await resetStaffPassword(id, newPw.trim());
     if (res.success) {
       setUserMsg({ success: true, msg: `Password ${name} berhasil direset.` });
     } else {

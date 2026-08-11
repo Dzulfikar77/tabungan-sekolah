@@ -97,7 +97,7 @@ export function formatDateShort(dateString: string): string {
 }
 
 // Generate transaction number
-export function generateTransactionNumber(prefix: 'ST' | 'PT' | 'BK', year: string, count: number): string {
+export function generateTransactionNumber(prefix: 'ST' | 'PT' | 'KP', year: string, count: number): string {
   const currentYear = year.split('/')[0] || new Date().getFullYear().toString();
   const sequence = (count + 1).toString().padStart(5, '0');
   return `${prefix}/${currentYear}/${sequence}`;

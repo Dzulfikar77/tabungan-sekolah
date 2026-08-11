@@ -3,25 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type UserRole = 'Developer' | 'Super Admin' | 'Admin' | 'Wali Kelas' | 'Viewer';
+export type UserRole = 'Developer' | 'Super Admin' | 'Admin' | 'Viewer';
 
 export interface User {
   id: string;
   username: string;
   name: string;
   role: UserRole;
-  studentId?: string;
-  assignedClass?: ClassGrade;
-  password?: string;
-  demoMode?: boolean;
-  accessLevel?: 'TK' | 'MI';
+  studentId?: string; // If role is Viewer, linked student NIS/ID
 }
 
 export type ClassGrade =
-  | 'TK A.1'
-  | 'TK A.2'
-  | 'TK B.1'
-  | 'TK B.2'
+  | 'TK A'
+  | 'TK B'
   | 'Kelas 1A'
   | 'Kelas 1 B'
   | 'Kelas 2A'
@@ -47,31 +41,11 @@ export interface Student {
   parentName?: string;
   phone?: string;
   isDeleted?: boolean;
-  pendingDebt?: number; // Akumulasi tunggakan potongan bulanan
-  viewerPassword?: string; // Password untuk login viewer portal
-  viewerUsername?: string; // Username untuk login viewer portal (NIS tanpa spasi)
   createdAt: string;
 }
 
 export type TransactionType = 'Setoran' | 'Penarikan' | 'Potongan Bulanan';
-export type TransactionStatus =
-  | 'Disetujui'
-  | 'Menunggu Persetujuan'
-  | 'Menunggu Approval Admin'
-  | 'Menunggu Approval Super Admin'
-  | 'Ditolak';
-
-// Permintaan perbaikan (edit) transaksi yang sudah disetujui — butuh persetujuan Super Admin
-export interface TransactionEditRequest {
-  requestedById: string;
-  requestedByName: string;
-  requestedByRole: UserRole;
-  requestedAt: string;
-  oldAmount: number;
-  newAmount: number;
-  oldReason: string;
-  newReason: string;
-}
+export type TransactionStatus = 'Disetujui' | 'Menunggu Persetujuan' | 'Ditolak';
 
 export interface Transaction {
   id: string;
@@ -84,10 +58,6 @@ export interface Transaction {
   amount: number;
   status: TransactionStatus;
   reason: string;
-  approvedByAdmin?: boolean;
-  approvedByAdminName?: string;
-  approvedBySuperAdmin?: boolean;
-  approvedBySuperAdminName?: string;
   createdById: string;
   createdByName: string;
   createdByRole: UserRole;
@@ -97,70 +67,46 @@ export interface Transaction {
   rejectionReason?: string;
   academicYearId: string;
   createdAt: string; // ISO String
-  closesAccount?: boolean; // Tutup tabungan (lulus/pindah): saldo 0 + data siswa dihapus saat disetujui
-  hasPendingEdit?: boolean; // Ada permintaan perbaikan menunggu persetujuan Super Admin
-  editRequest?: TransactionEditRequest; // Detail permintaan perbaikan (nominal/keterangan baru)
 }
-
-export type KoperasiKegiatanType = 'Koperasi' | 'Kegiatan';
-
-export interface KoperasiKegiatanItem {
-  id: string;
-  title: string;
-  type: KoperasiKegiatanType; // 'Koperasi' | 'Kegiatan'
-  category: string; // 'Buku', 'Seragam', 'Alat Tulis', 'Outing Class', 'Outbound', or custom
-  classGrade: ClassGrade | 'Semua Kelas';
-  price: number;
-  stock?: number;
-  description?: string;
-}
-
-// Backward compatibility alias
-export type BookCategory = string;
-export type Book = KoperasiKegiatanItem;
-
-export interface KoperasiKegiatanDistribution {
-  id: string;
-  itemId: string; // bookId / itemId
-  bookId?: string;
-  studentId: string;
-  received: boolean;
-  receivedAt?: string;
-}
-export type BookDistribution = KoperasiKegiatanDistribution;
 
 export type PaymentMethod = 'Tunai' | 'Potong Tabungan';
 
-export interface KoperasiKegiatanPayment {
-  id: string;
-  transactionNumber: string; // e.g. KK/2026/00001
-  itemId: string;
-  bookId?: string; // backward compat
-  itemTitle: string;
-  bookTitle?: string; // backward compat
-  itemType: KoperasiKegiatanType; // 'Koperasi' | 'Kegiatan'
-  category: string;
-  studentId: string;
-  studentName: string;
-  studentNis: string;
-  classGrade: ClassGrade;
-  amount: number;
-  paymentMethod: PaymentMethod;
-  status: TransactionStatus; // 'Disetujui', 'Menunggu Approval Admin', 'Menunggu Approval Super Admin', 'Ditolak'
-  approvedByAdmin?: boolean;
-  approvedByAdminName?: string;
-  approvedBySuperAdmin?: boolean;
-  approvedBySuperAdminName?: string;
-  savingsTransactionId?: string; // Linked savings deduction transaction ID
-  createdByName: string;
-  createdAt: string;
-  academicYearId: string;
-}
-export type BookPayment = KoperasiKegiatanPayment;
+export type ActivityCategory = 'Study Tour' | 'Lomba' | 'Ekstrakurikuler' | 'Lainnya';
 
-export interface SppPayment {
+export interface CooperativeItem {
+  id: string;
+  name: string;
+  category: string; // Flexible — not a locked enum. Defaults: 'Buku', 'Alat Tulis', 'Seragam'
+  price: number;
+  stock?: number;
+}
+
+export interface SchoolActivity {
+  id: string;
+  name: string;
+  category: ActivityCategory;
+  description: string;
+  date: string;
+  fee: number;
+  targetClasses: ClassGrade[];
+}
+
+export interface ActivityParticipation {
+  id: string;
+  activityId: string;
+  studentId: string;
+  registered: boolean;
+  registeredAt?: string;
+}
+
+export type PaymentType = 'Koprasi' | 'Kegiatan';
+
+export interface Payment {
   id: string;
   transactionNumber: string;
+  paymentType: PaymentType;
+  refId: string;
+  refName: string;
   studentId: string;
   studentName: string;
   studentNis: string;
@@ -168,7 +114,7 @@ export interface SppPayment {
   amount: number;
   paymentMethod: PaymentMethod;
   status: TransactionStatus;
-  period: string; // e.g. "Juli 2026"
+  savingsTransactionId?: string;
   createdByName: string;
   createdAt: string;
   academicYearId: string;
@@ -200,9 +146,8 @@ export interface SchoolSettings {
   logoUrl?: string;
   monthlyDeductionEnabled: boolean;
   monthlyDeductionAmount: number;
+  monthlyDeductionMinBalance: number;
   lastMonthlyDeductionRun?: string;
-  sppTKAmount?: number;
-  sppSDAmount?: number;
 }
 
 export interface MonthlyDeductionSummary {
@@ -211,5 +156,4 @@ export interface MonthlyDeductionSummary {
   totalAmountDeducted: number;
   deductedStudents: { id: string; name: string; nis: string; balanceBefore: number; balanceAfter: number }[];
   skippedStudents: { id: string; name: string; nis: string; balance: number; reason: string }[];
-  pendingDebtStudents: { id: string; name: string; nis: string; debt: number; balance: number }[];
 }

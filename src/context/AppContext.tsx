@@ -34,7 +34,7 @@ import {
   initialAuditLogs,
 } from '../utils/initialData';
 import { generateTransactionNumber, isClassInUserLevel } from '../utils/format';
-import { generateViewerUsername, generateViewerPassword } from '../utils/viewerCredentials';
+import { normalizeName } from '../utils/viewerCredentials';
 import { YearEndDecision, nextClassFrom } from '../utils/yearEnd';
 import { mergeSchoolSettings } from '../utils/schoolSettings';
 import { inspectBackupPayload } from '../utils/backup';
@@ -42,6 +42,10 @@ import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onS
 import { supabase } from '../lib/supabase';
 
 const ROLE_RANK: Record<UserRole, number> = { Developer: 4, 'Super Admin': 3, Admin: 2, 'Wali Kelas': 1, Viewer: 0 };
+
+function emailFor(username: string): string {
+  return `${normalizeName(username)}@akun.tabungan-sekolah.local`;
+}
 
 // Migrasi data lama: TK A -> TK A.1, TK B -> TK B.1 (kelas TK dipecah jadi 2 kelompok).
 type WithClassGrade = { classGrade?: string };
@@ -114,17 +118,14 @@ interface AppContextType {
   syncState: SyncState;
 
   users: User[];
-  addUser: (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => { success: boolean; error?: string };
-  updateUserRole: (id: string, role: UserRole) => void;
-  updateUserAccessLevel: (id: string, accessLevel: 'TK' | 'MI' | undefined) => void;
-  changeUserPassword: (id: string, newPassword: string) => void;
-  changeViewerPassword: (newPassword: string) => { success: boolean; error?: string };
-  resetViewerPassword: (studentId: string, newPassword: string) => { success: boolean; error?: string };
-  verifyRecoveryKey: (key: string) => boolean;
-  resetStaffPassword: (targetUserId: string, newPassword: string) => { success: boolean; error?: string };
-  selfResetAdminPassword: (username: string, key: string, newPassword: string) => { success: boolean; error?: string };
-  backfillViewerCredentials: () => Promise<{ created: number; errors: string[] }>;
-  deleteUser: (id: string) => void;
+  addUser: (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => Promise<{ success: boolean; error?: string }>;
+  updateUserRole: (id: string, role: UserRole) => Promise<void>;
+  updateUserAccessLevel: (id: string, accessLevel: 'TK' | 'MI' | undefined) => Promise<void>;
+  changeUserPassword: (id: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  changeViewerPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  resetViewerPassword: (studentId: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  resetStaffPassword: (targetUserId: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  deleteUser: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -273,7 +274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchAll<SppPayment>('spp_payments'),
       fetchAll<AcademicYear>('academic_years'),
       fetchAll<AuditLogItem>('audit_logs'),
-      fetchAll<User>('users'),
+      fetchAll<User>('profiles'),
     ]);
     if (dbSchoolSettings.length > 0) {
       setSchoolSettings((prev) => mergeSchoolSettings(prev, dbSchoolSettings[0]));
@@ -312,6 +313,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [fetchFromSupabase]);
 
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) {
+          setCurrentUser({
+            id: profile.id,
+            username: profile.username,
+            name: profile.name,
+            role: profile.role,
+            studentId: profile.student_id || undefined,
+            accessLevel: profile.access_level || undefined,
+            demoMode: profile.demo_mode ?? false,
+          });
+        }
+      } else {
+        setCurrentUser(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   const [syncErrors, setSyncErrors] = useState<SyncError[]>([]);
   useEffect(() => {
     return onSyncError((err) => {
@@ -328,57 +355,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0];
 
   const login = async (username: string, password: string) => {
-    const user = users.find(
-      (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
-    );
-    if (user) {
-      setCurrentUser(user);
-      return { success: true };
+    const { error } = await supabase.auth.signInWithPassword({
+      email: emailFor(username),
+      password,
+    });
+    if (error) {
+      return { success: false, error: 'Username atau kata sandi salah.' };
     }
-    return { success: false, error: 'Username atau kata sandi salah.' };
+    return { success: true };
   };
 
-  const logout = () => {
-    setCurrentUser(null);
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
-  const addUser = (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => {
+  const callAdminUsers = async (action: string, payload: Record<string, unknown> = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+      },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? json.message ?? `HTTP ${res.status}`);
+    return json;
+  };
+
+  const addUser = async (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => {
     if (!currentUser || currentUser.demoMode || (currentUser.role !== 'Developer' && currentUser.role !== 'Super Admin')) {
       return { success: false, error: 'Hanya Developer / Super Admin yang dapat menambah user.' };
     }
     if (users.some((u) => u.username.toLowerCase() === data.username.trim().toLowerCase())) {
       return { success: false, error: `Username "${data.username}" sudah dipakai.` };
     }
-    const newUser: User = {
-      id: `u-${Date.now()}`,
-      username: data.username.trim(),
-      name: data.name.trim(),
-      role: data.role,
-      password: data.password,
-      accessLevel: data.accessLevel,
-    };
-    setUsers((prev) => [...prev, newUser]);
-    insertRow('users', newUser);
-    addAuditLog('Tambah User', '-', `User: ${newUser.username} (${newUser.role})`, `Menambahkan user baru ${newUser.name} dengan role ${newUser.role}`);
-    return { success: true };
+    try {
+      await callAdminUsers('create', {
+        username: data.username.trim(),
+        name: data.name.trim(),
+        role: data.role,
+        password: data.password,
+        access_level: data.accessLevel ?? null,
+      });
+      // Re-fetch users from profiles table
+      const { data: rows } = await supabase.from('profiles').select('*');
+      if (rows) setUsers(rows as User[]);
+      addAuditLog('Tambah User', '-', `User: ${data.username.trim()} (${data.role})`, `Menambahkan user baru ${data.name.trim()} dengan role ${data.role}`);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Gagal membuat user.' };
+    }
   };
 
-  const updateUserRole = (id: string, role: UserRole) => {
+  const updateUserRole = async (id: string, role: UserRole) => {
     if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
     const target = users.find((u) => u.id === id);
     if (!target || target.role === role) return;
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
-    updateRow('users', id, { role });
-    addAuditLog('Ubah Role User', `User: ${target.username} (${target.role})`, `User: ${target.username} (${role})`, `Mengubah role user ${target.name} menjadi ${role}`);
+    try {
+      await callAdminUsers('update-role', { user_id: id, role });
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
+      addAuditLog('Ubah Role User', `User: ${target.username} (${target.role})`, `User: ${target.username} (${role})`, `Mengubah role user ${target.name} menjadi ${role}`);
+    } catch (err) {
+      console.error('updateUserRole failed:', err);
+    }
   };
 
-  const updateUserAccessLevel = (id: string, accessLevel: 'TK' | 'MI' | undefined) => {
+  const updateUserAccessLevel = async (id: string, accessLevel: 'TK' | 'MI' | undefined) => {
     if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
     const target = users.find((u) => u.id === id);
     if (!target || target.accessLevel === accessLevel) return;
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, accessLevel } : u)));
-    updateRow('users', id, { accessLevel: accessLevel ?? null });
-    addAuditLog('Ubah Akses Level User', `User: ${target.username} (${target.accessLevel || 'Semua'})`, `User: ${target.username} (${accessLevel || 'Semua'})`, `Mengubah akses level user ${target.name} ke ${accessLevel || 'Semua'}`);
+    try {
+      await callAdminUsers('update-access-level', { user_id: id, access_level: accessLevel ?? null });
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, accessLevel } : u)));
+      addAuditLog('Ubah Akses Level User', `User: ${target.username} (${target.accessLevel || 'Semua'})`, `User: ${target.username} (${accessLevel || 'Semua'})`, `Mengubah akses level user ${target.name} ke ${accessLevel || 'Semua'}`);
+    } catch (err) {
+      console.error('updateUserAccessLevel failed:', err);
+    }
   };
 
   const canAccessStudent = (student?: Student): boolean => {
@@ -386,16 +440,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return !!student && isClassInUserLevel(student.classGrade, currentUser);
   };
 
-  const changeUserPassword = (id: string, newPassword: string) => {
-    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
-    const target = users.find((u) => u.id === id);
-    if (!target) return;
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, password: newPassword } : u)));
-    updateRow('users', id, { password: newPassword });
-    addAuditLog('Ganti Password User', `User: ${target.username}`, `User: ${target.username}`, `Password user ${target.name} diubah oleh Developer.`);
+  const changeUserPassword = async (id: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') {
+      return { success: false, error: 'Hanya Developer yang dapat mengubah password user lain.' };
+    }
+    if (newPassword.length < 4) {
+      return { success: false, error: 'Password baru minimal 4 karakter.' };
+    }
+    try {
+      await callAdminUsers('reset-password', { user_id: id, new_password: newPassword });
+      const target = users.find((u) => u.id === id);
+      if (target) addAuditLog('Ganti Password User', `User: ${target.username}`, `User: ${target.username}`, `Password user ${target.name} diubah oleh Developer.`);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Gagal mengubah password.' };
+    }
   };
 
-  const deleteUser = (id: string) => {
+  const deleteUser = async (id: string) => {
     if (!currentUser || currentUser.demoMode || (currentUser.role !== 'Developer' && currentUser.role !== 'Super Admin')) return;
     if (id === currentUser.id) return;
     const target = users.find((u) => u.id === id);
@@ -409,36 +471,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAuditLog('Hapus User Ditolak', `User: ${target.username}`, '-', `Percobaan menghapus Developer terakhir ditolak.`);
       return;
     }
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-    deleteRow('users', id);
-    addAuditLog('Hapus User', `User: ${target.username} (${target.role})`, '-', `Menghapus user ${target.name} (${target.username}) dari sistem.`);
+    try {
+      await callAdminUsers('delete', { user_id: id });
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      addAuditLog('Hapus User', `User: ${target.username} (${target.role})`, '-', `Menghapus user ${target.name} (${target.username}) dari sistem.`);
+    } catch (err) {
+      console.error('deleteUser failed:', err);
+    }
   };
 
   const findLinkedViewerUser = (studentId: string): User | undefined =>
     users.find((u) => u.role === 'Viewer' && u.studentId === studentId);
 
-  const deleteLinkedViewerUser = (studentId: string, reason: string) => {
+  const deleteLinkedViewerUser = async (studentId: string, reason: string) => {
     const linked = findLinkedViewerUser(studentId);
     if (!linked) return;
-    setUsers((prev) => prev.filter((u) => u.id !== linked.id));
-    deleteRow('users', linked.id);
-    addAuditLog('Hapus User Viewer', `User: ${linked.username}`, '-', `User viewer ${linked.username} dihapus (${reason}).`);
+    try {
+      await callAdminUsers('delete', { user_id: linked.id });
+      setUsers((prev) => prev.filter((u) => u.id !== linked.id));
+      addAuditLog('Hapus User Viewer', `User: ${linked.username}`, '-', `User viewer ${linked.username} dihapus (${reason}).`);
+    } catch (err) {
+      console.error('deleteLinkedViewerUser failed:', err);
+    }
   };
 
-  const changeViewerPassword = (newPassword: string) => {
+  const changeViewerPassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
     if (!currentUser || currentUser.role !== 'Viewer') {
       return { success: false, error: 'Hanya Viewer yang dapat mengubah password sendiri.' };
     }
     if (newPassword.length < 4) {
       return { success: false, error: 'Password baru minimal 4 karakter.' };
     }
-    setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? { ...u, password: newPassword } : u)));
-    updateRow('users', currentUser.id, { password: newPassword });
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { success: false, error: error.message };
     addAuditLog('Ubah Password Viewer', currentUser.username, currentUser.username, `Viewer ${currentUser.name} mengubah password sendiri.`);
     return { success: true };
   };
 
-  const resetViewerPassword = (studentId: string, newPassword: string) => {
+  const resetViewerPassword = async (studentId: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
     if (!newPassword || newPassword.length < 4) {
       return { success: false, error: 'Password baru minimal 4 karakter.' };
     }
@@ -446,19 +516,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!target) {
       return { success: false, error: 'Akun viewer tidak ditemukan.' };
     }
-    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, password: newPassword } : u)));
-    updateRow('users', target.id, { password: newPassword });
-    addAuditLog('Reset Password Viewer', 'User: ' + target.username, 'User: ' + target.username, 'Password viewer ' + target.username + ' direset melalui lupa-password.');
-    return { success: true };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/viewer-auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ action: 'reset-password', target_user_id: target.id, new_password: newPassword }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      addAuditLog('Reset Password Viewer', 'User: ' + target.username, 'User: ' + target.username, 'Password viewer ' + target.username + ' direset melalui admin.');
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Gagal mereset password viewer.' };
+    }
   };
 
-  const verifyRecoveryKey = (key: string) => {
-    const envKey = import.meta.env.VITE_ADMIN_RECOVERY_KEY;
-    if (!envKey) return false;
-    return key.trim() === envKey;
-  };
-
-  const resetStaffPassword = (targetUserId: string, newPassword: string) => {
+  const resetStaffPassword = async (targetUserId: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -472,69 +549,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (newPassword.length < 4) {
       return { success: false, error: 'Password baru minimal 4 karakter.' };
     }
-    setUsers((prev) => prev.map((u) => (u.id === targetUserId ? { ...u, password: newPassword } : u)));
-    updateRow('users', targetUserId, { password: newPassword });
-    addAuditLog('Reset Password User', 'User: ' + target.username, 'User: ' + target.username, 'Password ' + target.username + ' direset oleh ' + currentUser.name + '.');
-    return { success: true };
-  };
-
-  const selfResetAdminPassword = (username: string, key: string, newPassword: string) => {
-    if (!verifyRecoveryKey(key)) {
-      return { success: false, error: 'Recovery key salah.' };
+    try {
+      await callAdminUsers('reset-password', { user_id: targetUserId, new_password: newPassword });
+      addAuditLog('Reset Password User', 'User: ' + target.username, 'User: ' + target.username, 'Password ' + target.username + ' direset oleh ' + currentUser.name + '.');
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Gagal mereset password.' };
     }
-    if (newPassword.length < 4) {
-      return { success: false, error: 'Password baru minimal 4 karakter.' };
-    }
-    const target = users.find((u) => u.role !== 'Viewer' && u.username.toLowerCase() === username.trim().toLowerCase());
-    if (!target) {
-      return { success: false, error: 'Username tidak ditemukan.' };
-    }
-    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, password: newPassword } : u)));
-    updateRow('users', target.id, { password: newPassword });
-    addAuditLog('Reset Password via Recovery Key', 'User: ' + target.username, 'User: ' + target.username, 'Password ' + target.username + ' direset via recovery key.');
-    return { success: true };
-  };
-
-  const backfillViewerCredentials = async () => {
-    if (!currentUser || currentUser.demoMode) {
-      return { created: 0, errors: ['Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.'] };
-    }
-    if (currentUser.role !== 'Developer' && currentUser.role !== 'Super Admin' && currentUser.role !== 'Admin') {
-      return { created: 0, errors: ['Anda tidak memiliki hak untuk melakukan backfill.'] };
-    }
-    const usedUsernames: string[] = users.map((u) => u.username);
-    const usedPasswords: string[] = users.filter((u) => u.role === 'Viewer').map((u) => u.password || '');
-    const createdUsers: User[] = [];
-
-    students.forEach((s) => {
-      if (s.isDeleted || s.status !== 'Aktif') return;
-      if (findLinkedViewerUser(s.id)) return;
-      const ay = academicYears.find((y) => y.id === s.academicYearId) || currentAcademicYear;
-      const username = generateViewerUsername(s.name, usedUsernames);
-      const password = generateViewerPassword(ay, usedPasswords);
-      usedUsernames.push(username);
-      usedPasswords.push(password);
-      createdUsers.push({
-        id: `u-bf-${Date.now()}-${createdUsers.length}`,
-        username,
-        name: s.name,
-        role: 'Viewer',
-        studentId: s.id,
-        password,
-      });
-    });
-
-    if (createdUsers.length > 0) {
-      const results = await Promise.all(createdUsers.map((u) => insertRow('users', u)));
-      const failed = results.filter((r) => !r.success).length;
-      if (failed > 0) {
-        setUsers((prev) => prev.filter((u) => !createdUsers.some((c) => c.id === u.id)));
-        return { created: 0, errors: [`${failed} akun viewer gagal tersimpan ke database.`] };
-      }
-      setUsers((prev) => [...createdUsers, ...prev]);
-      addAuditLog('Backfill Kredensial Viewer', '-', `User Viewer dibuat: ${createdUsers.length}`, `Membuat ${createdUsers.length} User Viewer untuk siswa eksisting.`);
-    }
-    return { created: createdUsers.length, errors: [] };
   };
 
   const addAuditLog = async (action: string, valueBefore: string, valueAfter: string, details: string) => {
@@ -766,24 +787,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStudents((prev) => [newStudent, ...prev]);
     saveSnapshot();
 
-    // Auto-create viewer user (username = nama, password = tahun ajaran + seq)
-    const ay = academicYears.find((y) => y.id === newStudent.academicYearId) || currentAcademicYear;
-    const viewerUser: User = {
-      id: `u-${Date.now()}`,
-      username: generateViewerUsername(newStudent.name, users.map((u) => u.username)),
-      name: newStudent.name,
-      role: 'Viewer',
-      studentId: newStudent.id,
-      password: generateViewerPassword(ay, users.filter((u) => u.role === 'Viewer').map((u) => u.password || '')),
-    };
-    const userRes = await insertRow('users', viewerUser);
-    if (!userRes.success) {
-      // viewer gagal tapi siswa sudah tersimpan — sukses agar UI tidak menyembunyikan siswa
-      addAuditLog('Tambah Siswa Baru', '-', `Siswa: ${newStudent.name} (NIS: ${newStudent.nis})`, `Menambahkan siswa baru kelas ${newStudent.classGrade} dengan saldo awal Rp ${initialBal}`);
-      return { success: true };
-    }
-    setUsers((prev) => [viewerUser, ...prev]);
-
     if (initialBal > 0) {
       const trNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length);
       const initialTx: Transaction = {
@@ -861,7 +864,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let addedCount = 0;
     const errors: string[] = [];
     const addedArray: Student[] = [];
-    const addedUsers: User[] = [];
     const addedTransactions: Transaction[] = [];
 
     newStudentsList.forEach((st, idx) => {
@@ -894,22 +896,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addedArray.push(newStudent);
       addedCount++;
 
-      // Auto-create viewer user (username = nama, password = tahun ajaran + seq)
-      const ay = academicYears.find((y) => y.id === (st.academicYearId || currentAcademicYear.id)) || currentAcademicYear;
-      const batchUsernames = addedUsers.map((u) => u.username);
-      const batchPws = addedUsers.map((u) => u.password || '');
-      const allUsernames = users.map((u) => u.username).concat(batchUsernames);
-      const allPws = users.filter((u) => u.role === 'Viewer').map((u) => u.password || '').concat(batchPws);
-      const viewerUser: User = {
-        id: `u-imp-${Date.now()}-${idx}`,
-        username: generateViewerUsername(newStudent.name, allUsernames),
-        name: newStudent.name,
-        role: 'Viewer',
-        studentId: newStudent.id,
-        password: generateViewerPassword(ay, allPws),
-      };
-      addedUsers.push(viewerUser);
-
       if (initBal > 0) {
         const trNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length + addedTransactions.length);
         addedTransactions.push({
@@ -937,10 +923,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const failedStudentIds = new Set(
         addedArray.filter((_, i) => !studentResults[i]?.success).map((s) => s.id)
       );
-      const userResults = addedUsers.length > 0 ? await Promise.all(addedUsers.map((u) => insertRow('users', u))) : [];
-      const failedUserIds = new Set(
-        addedUsers.filter((_, i) => !userResults[i]?.success).map((u) => u.id)
-      );
       const txResults = addedTransactions.length > 0 ? await Promise.all(addedTransactions.map((t) => insertRow('transactions', t))) : [];
       const failedTxIds = new Set(
         addedTransactions.filter((_, i) => !txResults[i]?.success).map((t) => t.id)
@@ -949,16 +931,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const keptStudents = addedArray.filter((s) => !failedStudentIds.has(s.id));
       addedCount = keptStudents.length;
 
-      if (failedStudentIds.size > 0 || failedUserIds.size > 0 || failedTxIds.size > 0) {
+      if (failedStudentIds.size > 0 || failedTxIds.size > 0) {
         errors.push(
-          `${failedStudentIds.size} siswa, ${failedUserIds.size} akun viewer, ${failedTxIds.size} transaksi awal gagal tersimpan ke database dan tidak dimasukkan.`
+          `${failedStudentIds.size} siswa, ${failedTxIds.size} transaksi awal gagal tersimpan ke database dan tidak dimasukkan.`
         );
       }
 
       setStudents((prev) => [...keptStudents, ...prev.filter((s) => !failedStudentIds.has(s.id))]);
-      if (addedUsers.length > 0) {
-        setUsers((prev) => [...addedUsers.filter((u) => !failedUserIds.has(u.id)), ...prev]);
-      }
       if (addedTransactions.length > 0) {
         setTransactions((prev) => [...addedTransactions.filter((t) => !failedTxIds.has(t.id)), ...prev]);
       }
@@ -2376,10 +2355,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         changeUserPassword,
         changeViewerPassword,
         resetViewerPassword,
-        verifyRecoveryKey,
         resetStaffPassword,
-        selfResetAdminPassword,
-        backfillViewerCredentials,
         deleteUser,
       }}
     >

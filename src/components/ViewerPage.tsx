@@ -44,10 +44,8 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
 
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showIdentityConfirm, setShowIdentityConfirm] = useState(true);
-  const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showOldPw, setShowOldPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
@@ -91,14 +89,10 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
     onLogout();
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     setPwError('');
     setPwSuccess('');
 
-    if (currentUser.password !== oldPassword) {
-      setPwError('Password lama salah.');
-      return;
-    }
     if (newPassword.length < 4) {
       setPwError('Password baru minimal 4 karakter.');
       return;
@@ -108,13 +102,12 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
       return;
     }
 
-    const res = changeViewerPassword(newPassword);
+    const res = await changeViewerPassword(newPassword);
     if (!res.success) {
       setPwError(res.error || 'Gagal mengubah password.');
       return;
     }
     setPwSuccess('Password berhasil diubah!');
-    setOldPassword('');
     setNewPassword('');
     setConfirmPassword('');
     setTimeout(() => {
@@ -193,26 +186,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
             <Lock className="w-4 h-4 text-emerald-600" />
             Ubah Password
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Password Lama</label>
-              <div className="relative">
-                <input
-                  type={showOldPw ? 'text' : 'password'}
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-8"
-                  placeholder="Password lama"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowOldPw(!showOldPw)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer"
-                >
-                  {showOldPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">Password Baru</label>
               <div className="relative">
@@ -257,7 +231,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ onLogout }) => {
               Simpan
             </button>
             <button
-              onClick={() => { setShowChangePassword(false); setPwError(''); setPwSuccess(''); setOldPassword(''); setNewPassword(''); setConfirmPassword(''); }}
+              onClick={() => { setShowChangePassword(false); setPwError(''); setPwSuccess(''); setNewPassword(''); setConfirmPassword(''); }}
               className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
             >
               Batal
