@@ -133,6 +133,11 @@ const LOCAL_STORAGE_KEY = 'tabungan_sekolah_v4_data';
 
 const SNAPSHOT_DEDUP_MS = 5 * 60 * 1000;
 
+// Auto-logout setelah idle — standar aplikasi kasir/keuangan (5-15 menit).
+// 15 menit dipilih karena admin/guru sering bolak-balik dari komputer di
+// sekolah, bukan terus-menerus mengetik.
+const IDLE_LOGOUT_MS = 15 * 60 * 1000;
+
 const hasSupabase = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 function mergeById<T extends { id: string }>(db: T[], local: T[]): T[] {
@@ -398,6 +403,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ].forEach((key) => localStorage.removeItem(`${LOCAL_STORAGE_KEY}_${key}`));
   };
 
+  // Auto-logout setelah IDLE_LOGOUT_MS tanpa aktivitas (mouse/keyboard/scroll/
+  // sentuhan) — berlaku untuk semua role yang sedang login (staff & Viewer).
+  useEffect(() => {
+    if (!currentUser) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        logout();
+      }, IDLE_LOGOUT_MS);
+    };
+    const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'];
+    events.forEach((e) => window.addEventListener(e, resetTimer));
+    resetTimer();
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
+
   const callAdminUsers = async (action: string, payload: Record<string, unknown> = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users`, {
@@ -414,8 +440,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addUser = async (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => {
-    if (!currentUser || currentUser.demoMode || (currentUser.role !== 'Developer' && currentUser.role !== 'Super Admin')) {
-      return { success: false, error: 'Hanya Developer / Super Admin yang dapat menambah user.' };
+    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') {
+      return { success: false, error: 'Hanya Developer yang dapat menambah user.' };
     }
     if (users.some((u) => u.username.toLowerCase() === data.username.trim().toLowerCase())) {
       return { success: false, error: `Username "${data.username}" sudah dipakai.` };

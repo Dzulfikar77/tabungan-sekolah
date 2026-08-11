@@ -18,18 +18,21 @@ import {
   Settings,
   Eye,
   Layers,
+  LogOut,
 } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   openSettingsModal: () => void;
+  onLogout: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   openSettingsModal,
+  onLogout,
 }) => {
   const {
     currentUser,
@@ -111,6 +114,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
             >
               <Settings className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                if (confirm('Keluar dari aplikasi?')) onLogout();
+              }}
+              title="Keluar"
+              className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>

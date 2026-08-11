@@ -83,15 +83,23 @@ serve(async (req: Request) => {
     const action = body.action;
 
     if (action === "create") {
-      // Create user: Developer, Super Admin only
-      if (callerRank < 3) {
+      // Create user: Developer only. Super Admin is deliberately excluded —
+      // adding staff accounts is a Developer-exclusive privilege, unlike
+      // update-role/update-access-level/delete which Super Admin also holds.
+      if (callerRank < 4) {
         return json({ error: "Insufficient permissions" }, 403);
       }
 
       const { username, name, role, access_level, password } = body;
 
-      // Validate role rank (can't create higher than yourself)
-      if ((ROLE_RANK[role] || 0) >= callerRank) {
+      // Validate role rank (can't create higher than yourself). Developer
+      // creating another Developer is a supported peer action (mirrors the
+      // isDeveloperPeer carve-out in the "delete" action below) — otherwise a
+      // lone bootstrap Developer could never create a replacement and would
+      // be permanently stuck as the un-deletable "last Developer".
+      const targetRoleRank = ROLE_RANK[role] || 0;
+      const isDeveloperPeer = callerRank === 4 && targetRoleRank === 4;
+      if (!isDeveloperPeer && targetRoleRank >= callerRank) {
         return json({ error: "Cannot create user with equal or higher role" }, 403);
       }
 

@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRupiah, formatDate, filterByAccessLevel, filterByUserLevel, isPendingApprovalStatus } from '../utils/format';
+import { formatRupiah, formatDate, filterByAccessLevel, filterByUserLevel, isPendingApprovalStatus, isClassInUserLevel } from '../utils/format';
 import { MonthlyDeductionSummary, ClassGrade, Transaction } from '../types';
 import { ALL_CLASSES } from '../utils/initialData';
 import {
@@ -81,8 +81,13 @@ export const Dashboard: React.FC = () => {
     (t) => isPendingApprovalStatus(t.status)
   );
 
+  // Admin TK/MI only see their own jenjang's cards/breakdown; Developer,
+  // Super Admin, and Wali Kelas (no accessLevel set) see both.
+  const showTk = !currentUser.accessLevel || currentUser.accessLevel === 'TK';
+  const showMi = !currentUser.accessLevel || currentUser.accessLevel === 'MI';
+
   // Class Balance Breakdown
-  const classes = ALL_CLASSES;
+  const classes = ALL_CLASSES.filter((cls) => isClassInUserLevel(cls, currentUser));
   const classBalances = classes.map((cls) => {
     const list = activeStudents.filter((s) => s.classGrade === cls);
     const sum = list.reduce((acc, s) => acc + s.balance, 0);
@@ -155,29 +160,33 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Total Tabungan TK */}
-        <div className="bg-white p-5 rounded-2xl border border-pink-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-pink-500 mb-1">Tabungan TK</p>
-            <h3 className="text-xl font-extrabold text-pink-900">{formatRupiah(tkSavings)}</h3>
-            <p className="text-[11px] text-pink-400 mt-1">{tkCount} Siswa TK</p>
+        {/* Total Tabungan TK — disembunyikan dari Admin MI */}
+        {showTk && (
+          <div className="bg-white p-5 rounded-2xl border border-pink-200 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-pink-500 mb-1">Tabungan TK</p>
+              <h3 className="text-xl font-extrabold text-pink-900">{formatRupiah(tkSavings)}</h3>
+              <p className="text-[11px] text-pink-400 mt-1">{tkCount} Siswa TK</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-bold">
+              <Wallet className="w-6 h-6" />
+            </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-bold">
-            <Wallet className="w-6 h-6" />
-          </div>
-        </div>
+        )}
 
-        {/* Total Tabungan MI */}
-        <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-blue-500 mb-1">Tabungan MI</p>
-            <h3 className="text-xl font-extrabold text-blue-900">{formatRupiah(miSavings)}</h3>
-            <p className="text-[11px] text-blue-400 mt-1">{miCount} Siswa MI</p>
+        {/* Total Tabungan MI — disembunyikan dari Admin TK */}
+        {showMi && (
+          <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-blue-500 mb-1">Tabungan MI</p>
+              <h3 className="text-xl font-extrabold text-blue-900">{formatRupiah(miSavings)}</h3>
+              <p className="text-[11px] text-blue-400 mt-1">{miCount} Siswa MI</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+              <Wallet className="w-6 h-6" />
+            </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-            <Wallet className="w-6 h-6" />
-          </div>
-        </div>
+        )}
 
         {/* Total Siswa */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
@@ -481,60 +490,64 @@ export const Dashboard: React.FC = () => {
           }
 
           return (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* TK Section */}
-              <div>
-                <h4 className="font-bold text-pink-700 text-xs mb-2 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-pink-500 inline-block"></span>
-                  TK ({tkStudents.length} belum bayar)
-                </h4>
-                {Object.keys(tkGroups).length === 0 ? (
-                  <div className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3 text-center">Semua siswa TK sudah lunas</div>
-                ) : (
-                  <div className="space-y-2">
-                    {Object.entries(tkGroups).map(([cls, students]) => (
-                      <div key={cls} className="bg-pink-50 rounded-xl border border-pink-200 p-3">
-                        <div className="text-[11px] font-bold text-pink-800 mb-1.5">Kelas {cls}</div>
-                        <div className="space-y-1">
-                          {students.map((s) => (
-                            <div key={s.id} className="flex justify-between text-xs text-pink-900 bg-white/70 rounded-lg px-2.5 py-1.5">
-                              <span className="font-medium">{s.name}</span>
-                              <span className="text-pink-600">{s.nis}</span>
-                            </div>
-                          ))}
+            <div className={`grid grid-cols-1 gap-6 ${showTk && showMi ? 'lg:grid-cols-2' : ''}`}>
+              {/* TK Section — disembunyikan dari Admin MI */}
+              {showTk && (
+                <div>
+                  <h4 className="font-bold text-pink-700 text-xs mb-2 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-pink-500 inline-block"></span>
+                    TK ({tkStudents.length} belum bayar)
+                  </h4>
+                  {Object.keys(tkGroups).length === 0 ? (
+                    <div className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3 text-center">Semua siswa TK sudah lunas</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(tkGroups).map(([cls, students]) => (
+                        <div key={cls} className="bg-pink-50 rounded-xl border border-pink-200 p-3">
+                          <div className="text-[11px] font-bold text-pink-800 mb-1.5">Kelas {cls}</div>
+                          <div className="space-y-1">
+                            {students.map((s) => (
+                              <div key={s.id} className="flex justify-between text-xs text-pink-900 bg-white/70 rounded-lg px-2.5 py-1.5">
+                                <span className="font-medium">{s.name}</span>
+                                <span className="text-pink-600">{s.nis}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
-              {/* MI Section */}
-              <div>
-                <h4 className="font-bold text-blue-700 text-xs mb-2 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
-                  MI ({miStudents.length} belum bayar)
-                </h4>
-                {Object.keys(miGroups).length === 0 ? (
-                  <div className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3 text-center">Semua siswa MI sudah lunas</div>
-                ) : (
-                  <div className="space-y-2">
-                    {Object.entries(miGroups).map(([cls, students]) => (
-                      <div key={cls} className="bg-blue-50 rounded-xl border border-blue-200 p-3">
-                        <div className="text-[11px] font-bold text-blue-800 mb-1.5">Kelas {cls}</div>
-                        <div className="space-y-1">
-                          {students.map((s) => (
-                            <div key={s.id} className="flex justify-between text-xs text-blue-900 bg-white/70 rounded-lg px-2.5 py-1.5">
-                              <span className="font-medium">{s.name}</span>
-                              <span className="text-blue-600">{s.nis}</span>
-                            </div>
-                          ))}
+              {/* MI Section — disembunyikan dari Admin TK */}
+              {showMi && (
+                <div>
+                  <h4 className="font-bold text-blue-700 text-xs mb-2 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                    MI ({miStudents.length} belum bayar)
+                  </h4>
+                  {Object.keys(miGroups).length === 0 ? (
+                    <div className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3 text-center">Semua siswa MI sudah lunas</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(miGroups).map(([cls, students]) => (
+                        <div key={cls} className="bg-blue-50 rounded-xl border border-blue-200 p-3">
+                          <div className="text-[11px] font-bold text-blue-800 mb-1.5">Kelas {cls}</div>
+                          <div className="space-y-1">
+                            {students.map((s) => (
+                              <div key={s.id} className="flex justify-between text-xs text-blue-900 bg-white/70 rounded-lg px-2.5 py-1.5">
+                                <span className="font-medium">{s.name}</span>
+                                <span className="text-blue-600">{s.nis}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })()}

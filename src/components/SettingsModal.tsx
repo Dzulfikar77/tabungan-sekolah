@@ -593,59 +593,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               ))}
             </div>
 
-            <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 space-y-2">
-              <div className="font-bold text-purple-900 text-[11px]">Tambah User Baru</div>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  placeholder="Username"
-                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
-                />
-                <input
-                  type="text"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="Nama Lengkap"
-                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
-                />
-                <select
-                  value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value)}
-                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+            {/* Tambah User Baru — Developer only. Menambah akun staff bukan
+                privilege Super Admin, beda dari reset-password/delete di atas
+                yang tetap Developer+Super Admin (lihat admin-users/index.ts action="create"). */}
+            {currentUser.role === 'Developer' && (
+              <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 space-y-2">
+                <div className="font-bold text-purple-900 text-[11px]">Tambah User Baru</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    placeholder="Username"
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    placeholder="Nama Lengkap"
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
+                  />
+                  <select
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value)}
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                  >
+                    {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Viewer'] as UserRole[])
+                      .filter((r) => ROLE_RANK[r] < ROLE_RANK[currentUser.role])
+                      .map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                  </select>
+                  <select
+                    value={newUserAccessLevel}
+                    onChange={(e) => setNewUserAccessLevel(e.target.value)}
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                  >
+                    <option value="">Semua Jenjang</option>
+                    <option value="TK">Khusus TK</option>
+                    <option value="MI">Khusus MI</option>
+                  </select>
+                  <input
+                    type="password"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    placeholder="Password (min. 8 karakter)"
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddUser}
+                  className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg cursor-pointer"
                 >
-                  {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Viewer'] as UserRole[])
-                    .filter((r) => ROLE_RANK[r] < ROLE_RANK[currentUser.role])
-                    .map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                </select>
-                <select
-                  value={newUserAccessLevel}
-                  onChange={(e) => setNewUserAccessLevel(e.target.value)}
-                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
-                >
-                  <option value="">Semua Jenjang</option>
-                  <option value="TK">Khusus TK</option>
-                  <option value="MI">Khusus MI</option>
-                </select>
-                <input
-                  type="password"
-                  value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
-                  placeholder="Password (min. 8 karakter)"
-                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
-                />
+                  Tambah User
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleAddUser}
-                className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg cursor-pointer"
-              >
-                Tambah User
-              </button>
-            </div>
+            )}
 
             {userMsg && (
               <div className={`p-2 rounded-lg text-xs font-semibold ${userMsg.success ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
