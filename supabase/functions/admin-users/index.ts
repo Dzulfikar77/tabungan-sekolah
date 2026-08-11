@@ -1,6 +1,8 @@
 // supabase/functions/admin-users/index.ts
-// Edge function for user management (create, reset-password, update-role, delete, provision-viewer)
+// Edge function for user management (create, reset-password, update-role, update-access-level, delete, provision-viewer)
 // Only handler with service-role key. Verifies JWT and enforces ROLE_RANK.
+// Dispatch is by `action` in the JSON body (not the URL path) — the client always
+// POSTs to the bare function URL with { action, ...payload }.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -10,7 +12,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Role rank mapping (must match AppContext.tsx:479 and SettingsModal.tsx:229)
+// Role rank mapping (must match src/context/AppContext.tsx and src/components/SettingsModal.tsx)
 const ROLE_RANK: Record<string, number> = {
   Developer: 4,
   "Super Admin": 3,
@@ -18,6 +20,19 @@ const ROLE_RANK: Record<string, number> = {
   "Wali Kelas": 1,
   Viewer: 0,
 };
+
+// Must match src/utils/viewerCredentials.ts normalizeName() so create-time and
+// login-time email derivation always agree.
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 serve(async (req: Request) => {
   // Handle CORS preflight
@@ -34,20 +49,14 @@ serve(async (req: Request) => {
     // Verify caller's JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Missing authorization" }, 401);
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Invalid token" }, 401);
     }
 
     // Get caller's profile and role
@@ -58,38 +67,38 @@ serve(async (req: Request) => {
       .single();
 
     if (profileError || !callerProfile) {
-      return new Response(JSON.stringify({ error: "Profile not found" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Profile not found" }, 403);
     }
 
     const callerRank = ROLE_RANK[callerProfile.role] || 0;
-    const url = new URL(req.url);
-    const path = url.pathname.split("/").pop();
 
-    // Route handling
-    if (req.method === "POST" && path === "create") {
+    if (req.method !== "POST") {
+      return json({ error: "Method not allowed" }, 405);
+    }
+
+    const body = await req.json();
+    const action = body.action;
+
+    if (action === "create") {
       // Create user: Developer, Super Admin only
       if (callerRank < 3) {
-        return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Insufficient permissions" }, 403);
       }
 
-      const { username, name, role, accessLevel, password } = await req.json();
+      const { username, name, role, access_level, password } = body;
 
       // Validate role rank (can't create higher than yourself)
       if ((ROLE_RANK[role] || 0) >= callerRank) {
-        return new Response(JSON.stringify({ error: "Cannot create user with equal or higher role" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Cannot create user with equal or higher role" }, 403);
       }
 
-      // Create auth user with synthetic email
-      const email = `${username}@akun.tabungan-sekolah.local`;
+      const normalizedUsername = normalizeName(username);
+      if (!normalizedUsername) {
+        return json({ error: "Username tidak valid" }, 400);
+      }
+
+      // Create auth user with synthetic email derived the same way login does
+      const email = `${normalizedUsername}@akun.tabungan-sekolah.local`;
       const { data: authUser, error: createError } = await supabase.auth.admin.createUser({
         email,
         password,
@@ -97,10 +106,7 @@ serve(async (req: Request) => {
       });
 
       if (createError) {
-        return new Response(JSON.stringify({ error: createError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: createError.message }, 400);
       }
 
       // Create profile
@@ -108,121 +114,108 @@ serve(async (req: Request) => {
         .from("profiles")
         .insert({
           id: authUser.user.id,
-          username,
+          username: normalizedUsername,
           name,
           role,
-          access_level: accessLevel || null,
+          access_level: access_level || null,
         });
 
       if (profileInsertError) {
         // Rollback: delete auth user
         await supabase.auth.admin.deleteUser(authUser.user.id);
-        return new Response(JSON.stringify({ error: profileInsertError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: profileInsertError.message }, 400);
       }
 
-      return new Response(JSON.stringify({ success: true, userId: authUser.user.id }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true, userId: authUser.user.id });
     }
 
-    if (req.method === "POST" && path === "reset-password") {
+    if (action === "reset-password") {
       // Reset password: caller rank must be > target rank
-      const { userId, newPassword } = await req.json();
+      const { user_id, new_password } = body;
 
       const { data: targetProfile, error: targetError } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", userId)
+        .eq("id", user_id)
         .single();
 
       if (targetError || !targetProfile) {
-        return new Response(JSON.stringify({ error: "Target user not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Target user not found" }, 404);
       }
 
       const targetRank = ROLE_RANK[targetProfile.role] || 0;
       if (callerRank <= targetRank) {
-        return new Response(JSON.stringify({ error: "Cannot reset password of equal or higher role" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Cannot reset password of equal or higher role" }, 403);
       }
 
-      const { error: resetError } = await supabase.auth.admin.updateUserById(userId, {
-        password: newPassword,
+      const { error: resetError } = await supabase.auth.admin.updateUserById(user_id, {
+        password: new_password,
       });
 
       if (resetError) {
-        return new Response(JSON.stringify({ error: resetError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: resetError.message }, 400);
       }
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true });
     }
 
-    if (req.method === "POST" && path === "update-role") {
+    if (action === "update-role") {
       // Update role: Developer only
       if (callerRank < 4) {
-        return new Response(JSON.stringify({ error: "Only Developer can change roles" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Only Developer can change roles" }, 403);
       }
 
-      const { userId, role, accessLevel } = await req.json();
+      const { user_id, role } = body;
 
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ role, access_level: accessLevel || null })
-        .eq("id", userId);
+        .update({ role })
+        .eq("id", user_id);
 
       if (updateError) {
-        return new Response(JSON.stringify({ error: updateError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: updateError.message }, 400);
       }
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true });
     }
 
-    if (req.method === "DELETE" && path === "delete") {
-      // Delete user: Developer, Super Admin + guard "Developer terakhir"
-      if (callerRank < 3) {
-        return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    if (action === "update-access-level") {
+      // Update access level: Developer only (mirrors update-role gate)
+      if (callerRank < 4) {
+        return json({ error: "Only Developer can change access level" }, 403);
       }
 
-      const { userId } = await req.json();
+      const { user_id, access_level } = body;
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ access_level: access_level || null })
+        .eq("id", user_id);
+
+      if (updateError) {
+        return json({ error: updateError.message }, 400);
+      }
+
+      return json({ success: true });
+    }
+
+    if (action === "delete") {
+      // Delete user: Developer, Super Admin + guard "Developer terakhir"
+      if (callerRank < 3) {
+        return json({ error: "Insufficient permissions" }, 403);
+      }
+
+      const { user_id } = body;
 
       // Get target profile
       const { data: targetProfile, error: targetError } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", userId)
+        .eq("id", user_id)
         .single();
 
       if (targetError || !targetProfile) {
-        return new Response(JSON.stringify({ error: "Target user not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Target user not found" }, 404);
       }
 
       // Guard: can't delete Developer if last one
@@ -233,44 +226,32 @@ serve(async (req: Request) => {
           .eq("role", "Developer");
 
         if (count && count <= 1) {
-          return new Response(JSON.stringify({ error: "Cannot delete last Developer" }), {
-            status: 403,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return json({ error: "Cannot delete last Developer" }, 403);
         }
       }
 
       // Delete auth user (cascades to profiles)
-      const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(user_id);
 
       if (deleteError) {
-        return new Response(JSON.stringify({ error: deleteError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: deleteError.message }, 400);
       }
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true });
     }
 
-    if (req.method === "POST" && path === "provision-viewer") {
+    if (action === "provision-viewer") {
       // Provision viewer: Developer, Super Admin, Admin
       if (callerRank < 2) {
-        return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Insufficient permissions" }, 403);
       }
 
-      const { studentId, studentName, parentName, phone, academicYear } = await req.json();
+      const { student_id, student_name, parent_name, academic_year } = body;
 
       // Generate viewer credentials
-      const normalizedName = studentName.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const normalizedName = normalizeName(student_name);
       const username = `${normalizedName}_ortu`;
-      const password = `${academicYear.replace("/", "")}_seq`;
+      const password = `${academic_year.replace("/", "")}_seq`;
 
       // Create auth user
       const email = `${username}@akun.tabungan-sekolah.local`;
@@ -281,10 +262,7 @@ serve(async (req: Request) => {
       });
 
       if (createError) {
-        return new Response(JSON.stringify({ error: createError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: createError.message }, 400);
       }
 
       // Create profile
@@ -293,33 +271,21 @@ serve(async (req: Request) => {
         .insert({
           id: authUser.user.id,
           username,
-          name: parentName || `${studentName} (Orang Tua)`,
+          name: parent_name || `${student_name} (Orang Tua)`,
           role: "Viewer",
-          student_id: studentId,
+          student_id,
         });
 
       if (profileInsertError) {
         await supabase.auth.admin.deleteUser(authUser.user.id);
-        return new Response(JSON.stringify({ error: profileInsertError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: profileInsertError.message }, 400);
       }
 
-      return new Response(JSON.stringify({ success: true, userId: authUser.user.id, username, password }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true, userId: authUser.user.id, username, password });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown route" }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "Unknown action" }, 404);
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: error.message }, 500);
   }
 });
