@@ -76,8 +76,9 @@ export const SppPayment: React.FC = () => {
     s.nis.toLowerCase().includes(studentSearchMI.toLowerCase())
   );
 
-  const sppTKRate = schoolSettings.sppTKAmount || 50000;
-  const sppMIRate = schoolSettings.sppSDAmount || 100000;
+  // ?? not || : sppSDAmount = 0 is a deliberate "gratis" setting, not a missing value.
+  const sppTKRate = schoolSettings.sppTKAmount ?? 50000;
+  const sppMIRate = schoolSettings.sppSDAmount ?? 0;
 
   const handlePaySpp = (studentId: string) => {
     const student = students.find((s) => s.id === studentId);

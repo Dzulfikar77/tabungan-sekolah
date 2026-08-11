@@ -38,7 +38,7 @@ import { normalizeName } from '../utils/viewerCredentials';
 import { YearEndDecision, nextClassFrom } from '../utils/yearEnd';
 import { mergeSchoolSettings } from '../utils/schoolSettings';
 import { inspectBackupPayload } from '../utils/backup';
-import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, onSyncError, SyncError, onSyncState, SyncState } from '../lib/db';
+import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, toDbRow, onSyncError, SyncError, onSyncState, SyncState } from '../lib/db';
 import { supabase } from '../lib/supabase';
 
 const ROLE_RANK: Record<UserRole, number> = { Developer: 4, 'Super Admin': 3, Admin: 2, 'Wali Kelas': 1, Viewer: 0 };
@@ -66,9 +66,9 @@ interface AppContextType {
 
   academicYears: AcademicYear[];
   currentAcademicYear: AcademicYear;
-  addAcademicYear: (year: string) => void;
+  addAcademicYear: (year: string) => Promise<{ success: boolean; error?: string }>;
   deleteAcademicYear: (id: string) => { success: boolean; error?: string };
-  setCurrentAcademicYearId: (id: string) => void;
+  setCurrentAcademicYearId: (id: string) => Promise<{ success: boolean; error?: string }>;
   bulkPromoteStudents: (fromClass: string, toClass: string) => void;
   runYearEndClosure: (decisions: YearEndDecision[], targetAcademicYearId: string) => Promise<{ success: boolean; moved: number; repeated: number; skipped: number; totalWithdrawn: number; errors: string[] }>;
 
@@ -108,7 +108,7 @@ interface AppContextType {
   sppPayments: SppPayment[];
   addSppPayment: (studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan', period: string) => Promise<{ success: boolean; error?: string }>;
 
-  exportBackupData: () => string;
+  exportBackupData: () => { success: boolean; data?: string; error?: string };
   restoreBackupData: (jsonString: string) => Promise<{ success: boolean; error?: string }>;
   lastSnapshotTime: string | null;
   restoreLastSnapshot: () => Promise<{ success: boolean; error?: string }>;
@@ -132,8 +132,6 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'tabungan_sekolah_v4_data';
 
-const SNAPSHOT_KEY = `${LOCAL_STORAGE_KEY}_snapshots`;
-const MAX_SNAPSHOTS = 10;
 const SNAPSHOT_DEDUP_MS = 5 * 60 * 1000;
 
 const hasSupabase = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
@@ -218,14 +216,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
   }, [dbLoaded, schoolSettings, academicYears, students, transactions, books, bookDistributions, bookPayments, auditLogs, sppPayments, users]);
 
-  const [lastSnapshotTime, setLastSnapshotTime] = useState<string | null>(() => {
-    try {
-      const existing = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]');
-      return existing.length > 0 ? existing[existing.length - 1].timestamp : null;
-    } catch {
-      return null;
-    }
-  });
+  const [lastSnapshotTime, setLastSnapshotTime] = useState<string | null>(null);
+  const lastSnapshotTimeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('snapshots')
+      .select('created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setLastSnapshotTime(data.created_at);
+          lastSnapshotTimeRef.current = data.created_at;
+        }
+      });
+  }, []);
 
   const buildBackupPayload = () => ({
     version: '1.0',
@@ -242,15 +249,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     auditLogs,
   });
 
-  const saveSnapshot = (force = false) => {
+  // Snapshots live in the `snapshots` table (007_restore_rpc.sql), not
+  // localStorage — per-machine storage was useless as an actual rollback:
+  // gone if that one browser's data was cleared, invisible to anyone else.
+  const saveSnapshot = async (force = false) => {
+    if (!force && lastSnapshotTimeRef.current && Date.now() - new Date(lastSnapshotTimeRef.current).getTime() < SNAPSHOT_DEDUP_MS) {
+      return;
+    }
     try {
-      const existing: { timestamp: string; data: unknown }[] = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]');
-      const last = existing[existing.length - 1];
-      if (!force && last && Date.now() - new Date(last.timestamp).getTime() < SNAPSHOT_DEDUP_MS) return;
-      existing.push({ timestamp: new Date().toISOString(), data: buildBackupPayload() });
-      if (existing.length > MAX_SNAPSHOTS) existing.splice(0, existing.length - MAX_SNAPSHOTS);
-      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(existing));
-      setLastSnapshotTime(existing[existing.length - 1].timestamp);
+      const { error } = await supabase
+        .from('snapshots')
+        .insert({ created_by: currentUser?.name, payload: buildBackupPayload() });
+      if (error) return; // snapshot non-kritis — gagal tidak memblokir operasi
+      const now = new Date().toISOString();
+      setLastSnapshotTime(now);
+      lastSnapshotTimeRef.current = now;
     } catch {
       // snapshot non-kritis — gagal tidak memblokir operasi
     }
@@ -400,9 +413,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         password: data.password,
         access_level: data.accessLevel ?? null,
       });
-      // Re-fetch users from profiles table
-      const { data: rows } = await supabase.from('profiles').select('*');
-      if (rows) setUsers(rows as User[]);
+      // Re-fetch users from profiles table (fetchAll converts snake_case -> camelCase)
+      const rows = await fetchAll<User>('profiles');
+      if (rows.length > 0) setUsers(rows);
       addAuditLog('Tambah User', '-', `User: ${data.username.trim()} (${data.role})`, `Menambahkan user baru ${data.name.trim()} dengan role ${data.role}`);
       return { success: true };
     } catch (err) {
@@ -587,7 +600,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateSchoolSettings = async (settings: Partial<SchoolSettings>) => {
-    if (!currentUser || currentUser.demoMode) return;
+    if (!currentUser || currentUser.demoMode || ROLE_RANK[currentUser.role] < 3) return;
     const before = JSON.stringify(schoolSettings);
     const nextSettings = { ...schoolSettings, ...settings };
     const res = await upsertRow('school_settings', { id: 'singleton', ...nextSettings });
@@ -598,40 +611,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await addAuditLog('Update Pengaturan Sekolah', before, JSON.stringify(nextSettings), 'Mengubah nama, alamat, atau logo sekolah');
   };
 
-  const addAcademicYear = (yearStr: string) => {
-    if (!currentUser || currentUser.demoMode) return;
+  const addAcademicYear = async (yearStr: string): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') {
+      return { success: false, error: 'Hanya Developer yang dapat membuka tahun ajaran baru.' };
+    }
     const newYearId = `ay-${Date.now()}`;
-    const updatedYears = academicYears.map((y) => ({ ...y, isCurrent: false }));
     const newYear: AcademicYear = {
       id: newYearId,
       year: yearStr,
       isCurrent: true,
       createdAt: new Date().toISOString(),
     };
-    setAcademicYears([...updatedYears, newYear]);
+    const previousCurrent = academicYears.filter((y) => y.isCurrent);
+
+    const insertRes = await insertRow('academic_years', newYear);
+    if (!insertRes.success) {
+      return { success: false, error: insertRes.error || 'Gagal menyimpan tahun ajaran baru ke database.' };
+    }
+    const demoteResults = await Promise.all(
+      previousCurrent.map((y) => updateRow('academic_years', y.id, { isCurrent: false }))
+    );
+    if (demoteResults.some((r) => !r.success)) {
+      return { success: false, error: 'Tahun ajaran baru tersimpan, tapi gagal mengarsipkan tahun sebelumnya.' };
+    }
+
+    setAcademicYears([...academicYears.map((y) => ({ ...y, isCurrent: false })), newYear]);
     setCurrentAcademicYearIdState(newYearId);
-    insertRow('academic_years', newYear);
-    academicYears.forEach((y) => {
-      if (y.isCurrent) updateRow('academic_years', y.id, { isCurrent: false });
-    });
     addAuditLog('Tambah Tahun Ajaran', `Aktif: ${currentAcademicYear.year}`, `Aktif: ${yearStr}`, `Membuka tahun ajaran baru ${yearStr} dan mengarsip data sebelumnya.`);
+    return { success: true };
   };
 
-  const setCurrentAcademicYearId = (id: string) => {
-    if (!currentUser || currentUser.demoMode) return;
+  const setCurrentAcademicYearId = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
     const target = academicYears.find((y) => y.id === id);
-    if (!target || target.isCurrent) return;
+    if (!target || target.isCurrent) return { success: true };
+
+    const toUpdate = academicYears.filter((y) => y.isCurrent || y.id === id);
+    const results = await Promise.all(
+      toUpdate.map((y) => updateRow('academic_years', y.id, { isCurrent: y.id === id }))
+    );
+    if (results.some((r) => !r.success)) {
+      return { success: false, error: 'Gagal mengubah tahun ajaran aktif di database.' };
+    }
+
     setAcademicYears((prev) => prev.map((y) => ({ ...y, isCurrent: y.id === id })));
     setCurrentAcademicYearIdState(id);
-    academicYears.forEach((y) => {
-      if (y.isCurrent || y.id === id) updateRow('academic_years', y.id, { isCurrent: y.id === id });
-    });
     addAuditLog('Ganti Tahun Ajaran Aktif', `Aktif: ${currentAcademicYear.year}`, `Aktif: ${target.year}`, `Mengubah tahun ajaran aktif menjadi ${target.year}`);
+    return { success: true };
   };
 
   const deleteAcademicYear = (id: string) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    if (currentUser.role !== 'Developer') {
+      return { success: false, error: 'Hanya Developer yang dapat menghapus tahun ajaran.' };
     }
     const target = academicYears.find((y) => y.id === id);
     if (!target) return { success: false, error: 'Tahun ajaran tidak ditemukan.' };
@@ -2225,9 +2261,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
-  const exportBackupData = () => {
-    addAuditLog('Backup Database JSON', '-', `Versi 1.0`, `Ekspor cadangan data sistem oleh ${currentUser?.name}`);
-    return JSON.stringify(buildBackupPayload(), null, 2);
+  const exportBackupData = (): { success: boolean; data?: string; error?: string } => {
+    if (!currentUser || ROLE_RANK[currentUser.role] < 3) {
+      return { success: false, error: 'Hanya Super Admin/Developer yang dapat mengekspor cadangan database.' };
+    }
+    addAuditLog('Backup Database JSON', '-', `Versi 1.0`, `Ekspor cadangan data sistem oleh ${currentUser.name}`);
+    return { success: true, data: JSON.stringify(buildBackupPayload(), null, 2) };
   };
 
   const restoreBackupData = async (jsonString: string) => {
@@ -2246,22 +2285,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // Safety net: snapshot paksa kondisi sebelum restore (untuk rollback manual)
-      saveSnapshot(true);
+      await saveSnapshot(true);
 
-      const results = await Promise.all([
-        upsertRow('school_settings', data.schoolSettings),
-        ...(data.academicYears || []).map((y: any) => upsertRow('academic_years', y)),
-        ...(data.students || []).map((s: any) => upsertRow('students', s)),
-        ...(data.transactions || []).map((t: any) => upsertRow('transactions', t)),
-        ...(data.books || []).map((b: any) => upsertRow('books', b)),
-        ...(data.bookDistributions || []).map((bd: any) => upsertRow('book_distributions', bd)),
-        ...(data.bookPayments || []).map((bp: any) => upsertRow('book_payments', bp)),
-        ...(data.sppPayments || []).map((sp: any) => upsertRow('spp_payments', sp)),
-        ...(data.auditLogs || []).map((al: any) => upsertRow('audit_logs', al)),
-      ]);
-      const failedCount = results.filter((r) => !r.success).length;
-      if (failedCount > 0) {
-        return { success: false, error: `${failedCount} operasi restore gagal tersimpan ke database. Data lokal tidak diubah.` };
+      // restore_backup() runs as one Postgres transaction (007_restore_rpc.sql):
+      // any failure rolls back everything, so this either fully applies or the
+      // database is genuinely untouched — no more partial-restore state.
+      const restorePayload = {
+        school_settings: data.schoolSettings ? toDbRow(data.schoolSettings) : null,
+        academic_years: (data.academicYears || []).map(toDbRow),
+        students: (data.students || []).map(toDbRow),
+        transactions: (data.transactions || []).map(toDbRow),
+        books: (data.books || []).map(toDbRow),
+        book_distributions: (data.bookDistributions || []).map(toDbRow),
+        book_payments: (data.bookPayments || []).map(toDbRow),
+        spp_payments: (data.sppPayments || []).map(toDbRow),
+        audit_logs: (data.auditLogs || []).map(toDbRow),
+      };
+      const { error: rpcError } = await supabase.rpc('restore_backup', { payload: restorePayload });
+      if (rpcError) {
+        return { success: false, error: `Restore gagal, database TIDAK diubah (transaksi di-rollback): ${rpcError.message}` };
       }
 
       setSchoolSettings(data.schoolSettings);
@@ -2296,11 +2338,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Fitur restore hanya dapat diakses oleh role Developer.' };
     }
     try {
-      const existing = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]');
-      if (existing.length === 0) {
+      const { data, error } = await supabase
+        .from('snapshots')
+        .select('payload')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) {
         return { success: false, error: 'Belum ada snapshot tersimpan.' };
       }
-      return await restoreBackupData(JSON.stringify(existing[existing.length - 1].data));
+      return await restoreBackupData(JSON.stringify(data.payload));
     } catch {
       return { success: false, error: 'Gagal membaca snapshot.' };
     }

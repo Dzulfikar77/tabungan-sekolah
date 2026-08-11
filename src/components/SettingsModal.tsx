@@ -31,11 +31,10 @@ const ROLE_RANK: Record<UserRole, number> = {
 };
 
 interface SettingsModalProps {
-  isOpen: boolean;
   onClose: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const {
     schoolSettings,
     updateSchoolSettings,
@@ -61,12 +60,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [phone, setPhone] = useState(schoolSettings.phone);
   const [logoUrl, setLogoUrl] = useState(schoolSettings.logoUrl || '');
 
-  const [monthlyAmount, setMonthlyAmount] = useState(schoolSettings.monthlyDeductionAmount || 2000);
-  const [sppTKAmount, setSppTKAmount] = useState(schoolSettings.sppTKAmount || 50000);
-  const [sppSDAmount, setSppSDAmount] = useState(schoolSettings.sppSDAmount || 0);
+  const [monthlyAmount, setMonthlyAmount] = useState(schoolSettings.monthlyDeductionAmount ?? 2000);
+  const [sppTKAmount, setSppTKAmount] = useState(schoolSettings.sppTKAmount ?? 50000);
+  const [sppSDAmount, setSppSDAmount] = useState(schoolSettings.sppSDAmount ?? 0);
+  const [settingsError, setSettingsError] = useState('');
 
   const [restoreJson, setRestoreJson] = useState('');
   const [restoreMessage, setRestoreMessage] = useState<{ success?: boolean; msg?: string } | null>(null);
+  const [backupError, setBackupError] = useState('');
   const [restorePreview, setRestorePreview] = useState<BackupPreview | null>(null);
   const [restoreLoading, setRestoreLoading] = useState(false);
 
@@ -80,10 +81,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [newUserPassword, setNewUserPassword] = useState('');
   const [userMsg, setUserMsg] = useState<{ success?: boolean; msg?: string } | null>(null);
 
-  if (!isOpen) return null;
-
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
+    const values = { monthlyAmount, sppTKAmount, sppSDAmount };
+    for (const [label, value] of Object.entries(values)) {
+      if (!Number.isInteger(Number(value)) || Number(value) < 0) {
+        setSettingsError(`Nominal "${label}" harus berupa angka bulat, tidak boleh negatif.`);
+        return;
+      }
+    }
+    setSettingsError('');
     updateSchoolSettings({
       name,
       address,
@@ -110,13 +117,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   };
 
   const handleDownloadBackup = () => {
-    const jsonStr = exportBackupData();
-    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const res = exportBackupData();
+    if (!res.success || !res.data) {
+      setBackupError(res.error || 'Gagal mengekspor cadangan.');
+      return;
+    }
+    setBackupError('');
+    const blob = new Blob([res.data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `Backup_Tabungan_Sekolah_${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleInspectRestore = () => {
@@ -159,7 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     });
   };
 
-  const handleAddYear = () => {
+  const handleAddYear = async () => {
     if (currentUser.demoMode) {
       setYearMsg({ success: false, msg: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' });
       return;
@@ -178,7 +191,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       setYearMsg({ success: false, msg: `Tahun ajaran ${trimmed} sudah ada.` });
       return;
     }
-    addAcademicYear(trimmed);
+    const res = await addAcademicYear(trimmed);
+    if (!res.success) {
+      setYearMsg({ success: false, msg: res.error || 'Gagal membuat tahun ajaran baru.' });
+      return;
+    }
     setNewYear('');
     setYearMsg({ success: true, msg: `Tahun ajaran ${trimmed} dibuat dan langsung diaktifkan.` });
   };
@@ -422,6 +439,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           </div>
 
+          {settingsError && (
+            <div className="p-2 rounded-lg text-xs font-semibold bg-rose-100 text-rose-800">{settingsError}</div>
+          )}
+
           <button
             type="submit"
             className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-xs"
@@ -603,18 +624,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </h4>
 
           {/* Backup Button */}
-          <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 flex items-center justify-between">
-            <div>
-              <div className="font-bold text-purple-900">Ekspor Cadangan JSON</div>
-              <div className="text-[11px] text-purple-700">Unduh seluruh file keadaan sistem</div>
+          {ROLE_RANK[currentUser.role] >= 3 ? (
+            <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 flex items-center justify-between">
+              <div>
+                <div className="font-bold text-purple-900">Ekspor Cadangan JSON</div>
+                <div className="text-[11px] text-purple-700">Unduh seluruh file keadaan sistem</div>
+              </div>
+              <button
+                onClick={handleDownloadBackup}
+                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
+              >
+                <Download className="w-3.5 h-3.5" /> Unduh Backup
+              </button>
             </div>
-            <button
-              onClick={handleDownloadBackup}
-              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
-            >
-              <Download className="w-3.5 h-3.5" /> Unduh Backup
-            </button>
-          </div>
+          ) : (
+            <div className="p-3 bg-slate-100 rounded-xl border border-slate-200 text-slate-500 text-[11px]">
+              * Ekspor cadangan hanya dapat dilakukan oleh role Super Admin/Developer.
+            </div>
+          )}
+          {backupError && (
+            <div className="p-2 rounded-lg text-xs font-semibold bg-rose-100 text-rose-800">{backupError}</div>
+          )}
 
           <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200 flex items-center justify-between gap-2">
             <div>

@@ -7,8 +7,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Set ALLOWED_ORIGIN (supabase secrets set ALLOWED_ORIGIN=https://your-app-domain)
+// once the app's real deployed origin is known — falls back to "*" until then.
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") || "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -130,7 +132,11 @@ serve(async (req: Request) => {
     }
 
     if (action === "reset-password") {
-      // Reset password: caller rank must be > target rank
+      // Reset password: rank floor (Admin+) AND caller rank must exceed target rank
+      if (callerRank < 2) {
+        return json({ error: "Insufficient permissions" }, 403);
+      }
+
       const { user_id, new_password } = body;
 
       const { data: targetProfile, error: targetError } = await supabase
@@ -216,6 +222,16 @@ serve(async (req: Request) => {
 
       if (targetError || !targetProfile) {
         return json({ error: "Target user not found" }, 404);
+      }
+
+      // Developer-deletes-Developer is a supported peer action (guarded below
+      // by "can't delete the last Developer"); every other role must strictly
+      // outrank its target — this is what blocked e.g. a Super Admin from
+      // deleting another Super Admin before.
+      const targetRank = ROLE_RANK[targetProfile.role] || 0;
+      const isDeveloperPeer = callerRank === 4 && targetRank === 4;
+      if (!isDeveloperPeer && callerRank <= targetRank) {
+        return json({ error: "Cannot delete a user with equal or higher role" }, 403);
       }
 
       // Guard: can't delete Developer if last one
@@ -306,6 +322,7 @@ serve(async (req: Request) => {
 
     return json({ error: "Unknown action" }, 404);
   } catch (error) {
-    return json({ error: error.message }, 500);
+    console.error("admin-users unhandled error:", error);
+    return json({ error: "Internal server error" }, 500);
   }
 });

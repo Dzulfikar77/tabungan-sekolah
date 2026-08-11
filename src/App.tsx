@@ -75,10 +75,9 @@ function MainLayout() {
         </div>
       </footer>
 
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-      />
+      {isSettingsModalOpen && (
+        <SettingsModal onClose={() => setIsSettingsModalOpen(false)} />
+      )}
     </div>
   );
 }

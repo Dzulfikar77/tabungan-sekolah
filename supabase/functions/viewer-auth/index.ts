@@ -12,8 +12,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Set ALLOWED_ORIGIN (supabase secrets set ALLOWED_ORIGIN=https://your-app-domain)
+// once the app's real deployed origin is known — falls back to "*" until then.
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") || "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -225,6 +227,7 @@ serve(async (req: Request) => {
 
     return json({ error: "Unknown action" }, 404);
   } catch (error) {
-    return json({ error: error.message }, 500);
+    console.error("viewer-auth unhandled error:", error);
+    return json({ error: "Internal server error" }, 500);
   }
 });
