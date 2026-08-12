@@ -52,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'students', label: 'Siswa', icon: Users, roles: ['Developer', 'Super Admin', 'Admin'] },
     { id: 'deposit', label: 'Setoran', icon: Banknote, roles: ['Developer', 'Super Admin', 'Admin'] },
     { id: 'withdrawal', label: 'Penarikan / Approval', icon: ArrowDownCircle, roles: ['Developer', 'Super Admin', 'Admin'], badge: pendingApprovalsCount },
-    { id: 'koprasi', label: 'Koprasi & Kegiatan', icon: Store, roles: ['Developer', 'Super Admin', 'Admin'] },
+    { id: 'koprasi', label: 'Koprasi & Kegiatan', icon: Store, roles: ['Developer', 'Super Admin', 'Admin', 'Admin Koperasi', 'Wali Kelas'] },
     { id: 'reports', label: 'Laporan', icon: FileSpreadsheet, roles: ['Developer', 'Super Admin', 'Admin'] },
     { id: 'audit', label: 'Audit Log', icon: History, roles: ['Developer', 'Super Admin'] },
     { id: 'viewer', label: 'Tabungan Saya', icon: Eye, roles: ['Viewer'] },

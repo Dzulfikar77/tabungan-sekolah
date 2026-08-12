@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type UserRole = 'Developer' | 'Super Admin' | 'Admin' | 'Wali Kelas' | 'Viewer';
+export type UserRole = 'Developer' | 'Super Admin' | 'Admin' | 'Wali Kelas' | 'Admin Koperasi' | 'Viewer';
 
 export interface User {
   id: string;
@@ -14,6 +14,10 @@ export interface User {
   password?: string;
   demoMode?: boolean;
   accessLevel?: 'TK' | 'MI';
+  // Kelas spesifik yang dipegang Wali Kelas (Guru Kelas) — dipakai buat kunci
+  // akses input Kegiatan & laporan tunggakan ke kelasnya sendiri saja, beda
+  // dari accessLevel yang cuma level TK/MI secara umum.
+  assignedClass?: ClassGrade;
   mustChangePassword?: boolean; // Viewer provisioned with a derivable initial code
 }
 
@@ -129,6 +133,18 @@ export type BookDistribution = KoperasiKegiatanDistribution;
 
 export type PaymentMethod = 'Tunai' | 'Potong Tabungan';
 
+// Koperasi & Kegiatan juga bisa dibebankan tanpa dibayar di tempat ("Belum
+// Bayar") — beda dari Setoran/Penarikan/SPP yang masih pakai PaymentMethod
+// polos, makanya union terpisah biar gak ngubah fitur lain yang shared type.
+export type BookPaymentMethod = PaymentMethod | 'Belum Bayar';
+
+// 'Belum Lunas' = dibebankan tapi belum dibayar sama sekali (metode Belum
+// Bayar). 'Lunas Sebagian' = Potong Tabungan tapi saldo gak cukup — bagian
+// yang tertutup saldo sudah diproses (ikut alur approval 2-tier biasa),
+// sisanya jadi tanggungan (outstandingAmount) yang melekat ke siswa sampai
+// dilunasi atau siswa lulus. Saldo tabungan TIDAK PERNAH dipotong sampai minus.
+export type BookPaymentStatus = TransactionStatus | 'Belum Lunas' | 'Lunas Sebagian';
+
 export interface KoperasiKegiatanPayment {
   id: string;
   transactionNumber: string; // e.g. KK/2026/00001
@@ -142,14 +158,17 @@ export interface KoperasiKegiatanPayment {
   studentName: string;
   studentNis: string;
   classGrade: ClassGrade;
-  amount: number;
-  paymentMethod: PaymentMethod;
-  status: TransactionStatus; // 'Disetujui', 'Menunggu Approval Admin', 'Menunggu Approval Super Admin', 'Ditolak'
+  amount: number; // total harga item
+  amountPaid: number; // sudah terbayar/terpotong sejauh ini
+  outstandingAmount: number; // amount - amountPaid; 0 kalau sudah lunas
+  paymentMethod: BookPaymentMethod;
+  status: BookPaymentStatus;
   approvedByAdmin?: boolean;
   approvedByAdminName?: string;
   approvedBySuperAdmin?: boolean;
   approvedBySuperAdminName?: string;
   savingsTransactionId?: string; // Linked savings deduction transaction ID
+  settledAt?: string; // waktu outstandingAmount mencapai 0
   createdByName: string;
   createdAt: string;
   academicYearId: string;

@@ -9,7 +9,7 @@ import {
   KoperasiKegiatanItem,
   KoperasiKegiatanType,
   ClassGrade,
-  PaymentMethod,
+  BookPaymentMethod,
   BookPayment,
 } from '../types';
 import { formatRupiah, formatDate, filterByAccessLevel, filterByUserLevel, levelVisibleClasses, isBookVisible } from '../utils/format';
@@ -30,6 +30,8 @@ import {
   Compass,
   ShieldCheck,
   UserCheck,
+  Wallet,
+  AlertTriangle,
 } from 'lucide-react';
 
 export const BookManagement: React.FC = () => {
@@ -42,17 +44,27 @@ export const BookManagement: React.FC = () => {
     toggleBookDistribution,
     bookPayments,
     addBookPayment,
+    settleBookPaymentDebt,
     approveWithdrawal,
     rejectWithdrawal,
     currentUser,
     currentAcademicYear,
   } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState<'catalog' | 'distribution' | 'payment'>('payment');
+  // Admin Koperasi: cuma boleh proses/kelola item Koperasi (seragam, buku, dll).
+  // Wali Kelas (Guru Kelas): cuma boleh proses item Kegiatan, terkunci ke
+  // kelas yang dia pegang (currentUser.assignedClass) kalau sudah diatur.
+  const isAdminKoperasi = currentUser.role === 'Admin Koperasi';
+  const isGuruKelas = currentUser.role === 'Wali Kelas';
+  const isUnrestrictedStaff = currentUser.role === 'Developer' || currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
+  const fixedTransType: KoperasiKegiatanType | null = isAdminKoperasi ? 'Koperasi' : isGuruKelas ? 'Kegiatan' : null;
+  const lockedClass = isGuruKelas ? currentUser.assignedClass : undefined;
+
+  const [activeSubTab, setActiveSubTab] = useState<'catalog' | 'distribution' | 'payment' | 'tanggungan'>('payment');
 
   // Add Item Modal State
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
-  const [itemType, setItemType] = useState<KoperasiKegiatanType>('Koperasi');
+  const [itemType, setItemType] = useState<KoperasiKegiatanType>(fixedTransType || 'Koperasi');
   const [itemCategoryChoice, setItemCategoryChoice] = useState<string>('Buku');
   const [customCategory, setCustomCategory] = useState<string>('');
   const [itemTitle, setItemTitle] = useState('');
@@ -60,19 +72,25 @@ export const BookManagement: React.FC = () => {
   const [itemPrice, setItemPrice] = useState<number>(25000);
 
   // Distribution Filter
-  const [distClassFilter, setDistClassFilter] = useState<ClassGrade>(() =>
-    currentUser.accessLevel === 'TK' ? 'TK A.1' : 'Kelas 1A'
+  const [distClassFilter, setDistClassFilter] = useState<ClassGrade>(
+    lockedClass || (currentUser.accessLevel === 'TK' ? 'TK A.1' : 'Kelas 1A')
   );
 
   // Transaction Input Form State
-  const [transType, setTransType] = useState<KoperasiKegiatanType>('Koperasi');
+  const [transType, setTransType] = useState<KoperasiKegiatanType>(fixedTransType || 'Koperasi');
   const [selectedItemId, setSelectedItemId] = useState('');
-  const [selectedStudentClass, setSelectedStudentClass] = useState<ClassGrade>('Kelas 1A');
+  const [selectedStudentClass, setSelectedStudentClass] = useState<ClassGrade>(
+    lockedClass || (currentUser.accessLevel === 'TK' ? 'TK A.1' : 'Kelas 1A')
+  );
   const [selectedStudentId, setSelectedStudentId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Tunai');
+  const [paymentMethod, setPaymentMethod] = useState<BookPaymentMethod>('Tunai');
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
+
+  // Tanggungan (settle) state
+  const [settleError, setSettleError] = useState('');
+  const [settleSuccess, setSettleSuccess] = useState('');
 
   const activeStudents = filterByAccessLevel(students.filter(
     (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id
@@ -95,6 +113,14 @@ export const BookManagement: React.FC = () => {
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
 
   const visibleBookPayments = filterByUserLevel<BookPayment>(bookPayments, currentUser);
+  const outstandingPayments = visibleBookPayments.filter((bp) => bp.outstandingAmount > 0);
+
+  const canSettle = (bp: BookPayment): boolean => {
+    if (isUnrestrictedStaff) return true;
+    if (isAdminKoperasi) return bp.itemType === 'Koperasi';
+    if (isGuruKelas) return bp.itemType === 'Kegiatan' && (!lockedClass || bp.classGrade === lockedClass);
+    return false;
+  };
 
   const handleSaveItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +131,7 @@ export const BookManagement: React.FC = () => {
 
     addBook({
       title: itemTitle.trim(),
-      type: itemType,
+      type: fixedTransType || itemType,
       category: finalCategory,
       classGrade: itemClass,
       price: itemPrice,
@@ -135,11 +161,33 @@ export const BookManagement: React.FC = () => {
       setPaymentSuccess(
         paymentMethod === 'Tunai'
           ? 'Transaksi pembayaran tunai berhasil dicatat!'
-          : 'Pengajuan potong tabungan berhasil dibuat! Memerlukan persetujuan Admin (Wali Kelas) & Super Admin (Kepala Sekolah).'
+          : paymentMethod === 'Belum Bayar'
+          ? 'Tanggungan berhasil dicatat. Bisa dilunasi kapan saja lewat tab Tanggungan.'
+          : 'Pengajuan potong tabungan berhasil dibuat! Kalau saldo gak cukup, sisanya otomatis jadi tanggungan. Butuh persetujuan Admin (Wali Kelas) & Super Admin (Kepala Sekolah).'
       );
       setSelectedItemId('');
       setSelectedStudentId('');
     }
+  };
+
+  const handleSettle = async (bp: BookPayment, method: 'Tunai' | 'Potong Tabungan') => {
+    setSettleError('');
+    setSettleSuccess('');
+    const res = await settleBookPaymentDebt(bp.id, method);
+    if (!res.success) {
+      setSettleError(res.error || 'Gagal melunasi tanggungan.');
+    } else {
+      setSettleSuccess(`Tanggungan ${bp.itemTitle} (${bp.studentName}) berhasil diproses.`);
+    }
+  };
+
+  const statusBadgeClass = (status: string) => {
+    if (status === 'Disetujui') return 'bg-emerald-100 text-emerald-800';
+    if (status === 'Menunggu Approval Super Admin') return 'bg-amber-100 text-amber-800';
+    if (status === 'Menunggu Approval Admin') return 'bg-blue-100 text-blue-800';
+    if (status === 'Lunas Sebagian') return 'bg-purple-100 text-purple-800';
+    if (status === 'Belum Lunas') return 'bg-orange-100 text-orange-800';
+    return 'bg-rose-100 text-rose-800';
   };
 
   return (
@@ -157,16 +205,18 @@ export const BookManagement: React.FC = () => {
           >
             <CreditCard className="w-4 h-4" /> Input Transaksi Koperasi & Kegiatan
           </button>
-          <button
-            onClick={() => setActiveSubTab('catalog')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
-              activeSubTab === 'catalog'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <Layers className="w-4 h-4" /> Katalog Master Item
-          </button>
+          {(isUnrestrictedStaff || isAdminKoperasi) && (
+            <button
+              onClick={() => setActiveSubTab('catalog')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
+                activeSubTab === 'catalog'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Layers className="w-4 h-4" /> Katalog Master Item
+            </button>
+          )}
           <button
             onClick={() => setActiveSubTab('distribution')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
@@ -177,9 +227,24 @@ export const BookManagement: React.FC = () => {
           >
             <CheckSquare className="w-4 h-4" /> Status Penyerahan / Keikutsertaan
           </button>
+          <button
+            onClick={() => setActiveSubTab('tanggungan')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
+              activeSubTab === 'tanggungan'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Wallet className="w-4 h-4" /> Tanggungan
+            {outstandingPayments.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[10px] rounded-full font-bold">
+                {outstandingPayments.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        {activeSubTab === 'catalog' && (
+        {activeSubTab === 'catalog' && (isUnrestrictedStaff || isAdminKoperasi) && (
           <button
             onClick={() => setIsAddItemOpen(true)}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
@@ -209,62 +274,87 @@ export const BookManagement: React.FC = () => {
             </div>
 
             <form onSubmit={handleProcessPayment} className="space-y-4 text-xs">
-              {/* STEP 1: Choose Section Type (Koperasi vs Kegiatan) */}
+              {/* STEP 1: Choose Section Type (Koperasi vs Kegiatan) — terkunci
+                  untuk Admin Koperasi (Koperasi saja) & Guru Kelas (Kegiatan saja) */}
               <div>
                 <label className="block font-bold text-slate-800 mb-1.5">
                   1. Pilih Kategori Section *
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTransType('Koperasi');
-                      setSelectedItemId('');
-                    }}
-                    className={`p-3 rounded-xl border text-left cursor-pointer flex items-center gap-3 transition-all ${
-                      transType === 'Koperasi'
-                        ? 'border-emerald-600 bg-emerald-50/80 text-emerald-950 font-bold shadow-2xs'
-                        : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                {fixedTransType ? (
+                  <div
+                    className={`p-3 rounded-xl border flex items-center gap-3 ${
+                      fixedTransType === 'Koperasi'
+                        ? 'border-emerald-600 bg-emerald-50/80 text-emerald-950'
+                        : 'border-blue-600 bg-blue-50/80 text-blue-950'
                     }`}
                   >
-                    <ShoppingBag
-                      className={`w-5 h-5 ${
-                        transType === 'Koperasi' ? 'text-emerald-600' : 'text-slate-400'
-                      }`}
-                    />
+                    {fixedTransType === 'Koperasi' ? (
+                      <ShoppingBag className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <Compass className="w-5 h-5 text-blue-600" />
+                    )}
                     <div>
-                      <div className="text-xs font-bold">Koperasi Sekolah</div>
+                      <div className="text-xs font-bold">
+                        {fixedTransType === 'Koperasi' ? 'Koperasi Sekolah' : 'Kegiatan Siswa'}
+                      </div>
                       <div className="text-[10px] text-slate-500 font-normal">
-                        Buku, Seragam, Alat Tulis & item khusus
+                        Terkunci sesuai peran akun Anda ({currentUser.role})
                       </div>
                     </div>
-                  </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTransType('Koperasi');
+                        setSelectedItemId('');
+                      }}
+                      className={`p-3 rounded-xl border text-left cursor-pointer flex items-center gap-3 transition-all ${
+                        transType === 'Koperasi'
+                          ? 'border-emerald-600 bg-emerald-50/80 text-emerald-950 font-bold shadow-2xs'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      <ShoppingBag
+                        className={`w-5 h-5 ${
+                          transType === 'Koperasi' ? 'text-emerald-600' : 'text-slate-400'
+                        }`}
+                      />
+                      <div>
+                        <div className="text-xs font-bold">Koperasi Sekolah</div>
+                        <div className="text-[10px] text-slate-500 font-normal">
+                          Buku, Seragam, Alat Tulis & item khusus
+                        </div>
+                      </div>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTransType('Kegiatan');
-                      setSelectedItemId('');
-                    }}
-                    className={`p-3 rounded-xl border text-left cursor-pointer flex items-center gap-3 transition-all ${
-                      transType === 'Kegiatan'
-                        ? 'border-blue-600 bg-blue-50/80 text-blue-950 font-bold shadow-2xs'
-                        : 'border-slate-200 hover:bg-slate-50 text-slate-600'
-                    }`}
-                  >
-                    <Compass
-                      className={`w-5 h-5 ${
-                        transType === 'Kegiatan' ? 'text-blue-600' : 'text-slate-400'
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTransType('Kegiatan');
+                        setSelectedItemId('');
+                      }}
+                      className={`p-3 rounded-xl border text-left cursor-pointer flex items-center gap-3 transition-all ${
+                        transType === 'Kegiatan'
+                          ? 'border-blue-600 bg-blue-50/80 text-blue-950 font-bold shadow-2xs'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                       }`}
-                    />
-                    <div>
-                      <div className="text-xs font-bold">Kegiatan Siswa</div>
-                      <div className="text-[10px] text-slate-500 font-normal">
-                        Outing class, Outbound & kegiatan sekolah
+                    >
+                      <Compass
+                        className={`w-5 h-5 ${
+                          transType === 'Kegiatan' ? 'text-blue-600' : 'text-slate-400'
+                        }`}
+                      />
+                      <div>
+                        <div className="text-xs font-bold">Kegiatan Siswa</div>
+                        <div className="text-[10px] text-slate-500 font-normal">
+                          Outing class, Outbound & kegiatan sekolah
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                </div>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* STEP 2: Choose Item */}
@@ -292,27 +382,33 @@ export const BookManagement: React.FC = () => {
                   <label className="block font-bold text-slate-800 mb-1">
                     3a. Pilih Kelas Siswa *
                   </label>
-                  <div className="flex flex-wrap gap-1.5 max-h-[200px] overflow-y-auto p-0.5">
-                    {levelVisibleClasses(currentUser).map((cls) => {
-                      const count = activeStudents.filter((s) => s.classGrade === cls).length;
-                      return (
-                        <button
-                          key={cls}
-                          type="button"
-                          onClick={() => { setSelectedStudentClass(cls); setSelectedStudentId(''); }}
-                          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                            selectedStudentClass === cls
-                              ? 'bg-slate-900 text-white shadow-xs'
-                              : count > 0
-                                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                : 'bg-slate-50 text-slate-300 cursor-not-allowed'
-                          }`}
-                        >
-                          {cls} ({count})
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {lockedClass ? (
+                    <div className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-slate-900 text-white inline-block">
+                      Kelas {lockedClass} (terkunci — kelas Anda)
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5 max-h-[200px] overflow-y-auto p-0.5">
+                      {levelVisibleClasses(currentUser).map((cls) => {
+                        const count = activeStudents.filter((s) => s.classGrade === cls).length;
+                        return (
+                          <button
+                            key={cls}
+                            type="button"
+                            onClick={() => { setSelectedStudentClass(cls); setSelectedStudentId(''); }}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                              selectedStudentClass === cls
+                                ? 'bg-slate-900 text-white shadow-xs'
+                                : count > 0
+                                  ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                  : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                            }`}
+                          >
+                            {cls} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -368,11 +464,11 @@ export const BookManagement: React.FC = () => {
                 <label className="block font-bold text-slate-800 mb-2">
                   4. Metode Pembayaran *
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2.5">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('Tunai')}
-                    className={`p-3 rounded-xl border text-left cursor-pointer flex items-center gap-3 transition-colors ${
+                    className={`p-3 rounded-xl border text-left cursor-pointer flex items-center gap-2.5 transition-colors ${
                       paymentMethod === 'Tunai'
                         ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-600'
@@ -380,9 +476,9 @@ export const BookManagement: React.FC = () => {
                   >
                     <Banknote className="w-5 h-5 text-emerald-600 shrink-0" />
                     <div>
-                      <div className="text-xs font-bold">Tunai (Cash)</div>
+                      <div className="text-xs font-bold">Tunai / Transfer</div>
                       <div className="text-[10px] text-slate-500 font-normal">
-                        Langsung lunas & disetujui
+                        Langsung lunas
                       </div>
                     </div>
                   </button>
@@ -390,7 +486,7 @@ export const BookManagement: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('Potong Tabungan')}
-                    className={`p-3 rounded-xl border text-left cursor-pointer flex items-center gap-3 transition-colors ${
+                    className={`p-3 rounded-xl border text-left cursor-pointer flex items-center gap-2.5 transition-colors ${
                       paymentMethod === 'Potong Tabungan'
                         ? 'border-purple-500 bg-purple-50 text-purple-900 font-bold'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-600'
@@ -400,7 +496,25 @@ export const BookManagement: React.FC = () => {
                     <div>
                       <div className="text-xs font-bold">Potong Tabungan</div>
                       <div className="text-[10px] text-purple-700 font-medium">
-                        Perlu Approval 2-Tier (Admin & Super Admin)
+                        Sisa saldo kurang jadi tanggungan
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('Belum Bayar')}
+                    className={`p-3 rounded-xl border text-left cursor-pointer flex items-center gap-2.5 transition-colors ${
+                      paymentMethod === 'Belum Bayar'
+                        ? 'border-orange-500 bg-orange-50 text-orange-900 font-bold'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    <Clock className="w-5 h-5 text-orange-600 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold">Belum Bayar</div>
+                      <div className="text-[10px] text-orange-700 font-medium">
+                        Jadi tanggungan, lunasi nanti
                       </div>
                     </div>
                   </button>
@@ -411,9 +525,12 @@ export const BookManagement: React.FC = () => {
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-[11px] space-y-1">
                   <div className="font-bold flex items-center gap-1.5 text-amber-800">
                     <ShieldCheck className="w-4 h-4 text-amber-600" />
-                    Alur Persetujuan 2-Tier Potong Tabungan:
+                    Alur Potong Tabungan:
                   </div>
                   <ol className="list-decimal list-inside space-y-0.5 text-slate-700 pl-1">
+                    <li>
+                      Saldo tidak akan pernah dipotong sampai minus — kalau saldo kurang, sisanya otomatis jadi tanggungan (lihat tab Tanggungan).
+                    </li>
                     <li>
                       <strong>Tahap 1 (Admin / Wali Kelas):</strong> Menyetujui pengajuan potongan.
                     </li>
@@ -421,6 +538,12 @@ export const BookManagement: React.FC = () => {
                       <strong>Tahap 2 (Super Admin / Kepala Sekolah):</strong> Persetujuan final & pemotongan saldo tabungan.
                     </li>
                   </ol>
+                </div>
+              )}
+
+              {paymentMethod === 'Belum Bayar' && (
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl text-orange-900 text-[11px]">
+                  Seluruh harga item langsung tercatat sebagai tanggungan siswa. Bisa dilunasi kapan saja (Tunai atau Potong Tabungan) lewat tab <strong>Tanggungan</strong>, sampai siswa lulus kalau belum terlunasi.
                 </div>
               )}
 
@@ -483,26 +606,24 @@ export const BookManagement: React.FC = () => {
                       Siswa: <strong>{bp.studentName}</strong> ({bp.classGrade})
                     </div>
 
+                    {bp.outstandingAmount > 0 && (
+                      <div className="text-[10px] text-orange-700 font-semibold flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Tanggungan: {formatRupiah(bp.outstandingAmount)}
+                      </div>
+                    )}
+
                     {/* Status Badge & Approval details */}
                     <div className="pt-1 border-t border-slate-200 flex flex-col gap-1.5 text-[10px]">
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500">Metode: <strong>{bp.paymentMethod}</strong></span>
                         <span
-                          className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                            bp.status === 'Disetujui'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : bp.status === 'Menunggu Approval Super Admin'
-                              ? 'bg-amber-100 text-amber-800'
-                              : bp.status === 'Menunggu Approval Admin'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
+                          className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${statusBadgeClass(bp.status)}`}
                         >
                           {bp.status}
                         </span>
                       </div>
 
-                      {bp.paymentMethod === 'Potong Tabungan' && (
+                      {bp.paymentMethod === 'Potong Tabungan' && bp.savingsTransactionId && (
                         <div className="bg-white p-2 rounded-lg border border-slate-200 space-y-1">
                           <div className="flex justify-between items-center text-[10px]">
                             <span>1. Admin / Wali Kelas:</span>
@@ -518,7 +639,7 @@ export const BookManagement: React.FC = () => {
                           </div>
 
                           {/* Quick Approve Action buttons inside sidebar for Wali Kelas / Admin / Super Admin */}
-                          {bp.savingsTransactionId && bp.status !== 'Disetujui' && bp.status !== 'Ditolak' && (
+                          {bp.savingsTransactionId && bp.status !== 'Disetujui' && bp.status !== 'Ditolak' && bp.status !== 'Lunas Sebagian' && (
                             <div className="pt-1.5 flex gap-1">
                               {(currentUser.role === 'Wali Kelas' || currentUser.role === 'Admin') && !bp.approvedByAdmin && (
                                 <button
@@ -567,13 +688,14 @@ export const BookManagement: React.FC = () => {
       )}
 
       {/* 2. MASTER CATALOG TAB */}
-      {activeSubTab === 'catalog' && (
+      {activeSubTab === 'catalog' && (isUnrestrictedStaff || isAdminKoperasi) && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden p-5">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h3 className="font-bold text-slate-900 text-sm">Master Katalog Koperasi & Kegiatan</h3>
               <p className="text-xs text-slate-500">
                 Daftar lengkap item Koperasi (Buku, Seragam, Alat Tulis) dan Kegiatan (Outing class, Outbound, dll).
+                {isAdminKoperasi && ' Admin Koperasi hanya dapat menambah/mengelola item Koperasi.'}
               </p>
             </div>
             <button
@@ -626,12 +748,14 @@ export const BookManagement: React.FC = () => {
                         {formatRupiah(b.price)}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => deleteBook(b.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {(isUnrestrictedStaff || (isAdminKoperasi && b.type === 'Koperasi')) && (
+                          <button
+                            onClick={() => deleteBook(b.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -656,17 +780,23 @@ export const BookManagement: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-slate-600">Pilih Kelas:</span>
-              <select
-                value={distClassFilter}
-                onChange={(e) => setDistClassFilter(e.target.value as ClassGrade)}
-                className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
-              >
-                {levelVisibleClasses(currentUser).map((cls) => (
-                  <option key={cls} value={cls}>
-                    Kelas {cls}
-                  </option>
-                ))}
-              </select>
+              {lockedClass ? (
+                <span className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-bold">
+                  Kelas {lockedClass}
+                </span>
+              ) : (
+                <select
+                  value={distClassFilter}
+                  onChange={(e) => setDistClassFilter(e.target.value as ClassGrade)}
+                  className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
+                >
+                  {levelVisibleClasses(currentUser).map((cls) => (
+                    <option key={cls} value={cls}>
+                      Kelas {cls}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
@@ -676,7 +806,7 @@ export const BookManagement: React.FC = () => {
                 <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <th className="py-3 px-4">Nama Siswa (NIS)</th>
                   {visibleBooks
-                    .filter((b) => b.classGrade === distClassFilter || b.classGrade === 'Semua Kelas')
+                    .filter((b) => b.classGrade === (lockedClass || distClassFilter) || b.classGrade === 'Semua Kelas')
                     .map((b) => (
                       <th key={b.id} className="py-3 px-4 text-center">
                         <div className="font-bold">{b.title}</div>
@@ -686,22 +816,22 @@ export const BookManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {activeStudents.filter((s) => s.classGrade === distClassFilter).length === 0 ? (
+                {activeStudents.filter((s) => s.classGrade === (lockedClass || distClassFilter)).length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-8 text-center text-slate-400">
-                      Tidak ada siswa di Kelas {distClassFilter}.
+                      Tidak ada siswa di Kelas {lockedClass || distClassFilter}.
                     </td>
                   </tr>
                 ) : (
                   activeStudents
-                    .filter((s) => s.classGrade === distClassFilter)
+                    .filter((s) => s.classGrade === (lockedClass || distClassFilter))
                     .map((st) => (
                       <tr key={st.id} className="hover:bg-slate-50 transition-colors">
                         <td className="py-3 px-4 font-bold text-slate-900">
                           {st.name} <span className="text-slate-400 font-normal">({st.nis})</span>
                         </td>
                         {books
-                          .filter((b) => b.classGrade === distClassFilter || b.classGrade === 'Semua Kelas')
+                          .filter((b) => b.classGrade === (lockedClass || distClassFilter) || b.classGrade === 'Semua Kelas')
                           .map((b) => {
                             const dist = bookDistributions.find(
                               (bd) => (bd.itemId === b.id || bd.bookId === b.id) && bd.studentId === st.id
@@ -742,6 +872,108 @@ export const BookManagement: React.FC = () => {
         </div>
       )}
 
+      {/* 4. TANGGUNGAN (OUTSTANDING DEBT) TAB */}
+      {activeSubTab === 'tanggungan' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-orange-600" /> Tanggungan Koperasi & Kegiatan
+            </h3>
+            <p className="text-xs text-slate-500">
+              Item/kegiatan yang belum lunas (Belum Bayar atau Potong Tabungan yang saldonya gak cukup).
+              Tanggungan melekat ke siswa sampai dilunasi atau siswa lulus — saldo tabungan tidak pernah dipotong sampai minus.
+            </p>
+          </div>
+
+          {settleError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{settleError}</span>
+            </div>
+          )}
+          {settleSuccess && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{settleSuccess}</span>
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Siswa (Kelas)</th>
+                  <th className="py-3 px-4">Item</th>
+                  <th className="py-3 px-4">Total</th>
+                  <th className="py-3 px-4">Terbayar</th>
+                  <th className="py-3 px-4">Sisa Tanggungan</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {outstandingPayments.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-400">
+                      Tidak ada tanggungan yang belum lunas. 🎉
+                    </td>
+                  </tr>
+                ) : (
+                  outstandingPayments.map((bp) => (
+                    <tr key={bp.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-3 px-4 font-bold text-slate-900">
+                        {bp.studentName}
+                        <span className="text-slate-400 font-normal block text-[10px]">
+                          {bp.studentNis} — {bp.classGrade}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase mr-1 ${
+                            bp.itemType === 'Kegiatan' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          {bp.itemType}
+                        </span>
+                        <span className="font-semibold text-slate-700">{bp.itemTitle}</span>
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-slate-700">{formatRupiah(bp.amount)}</td>
+                      <td className="py-3 px-4 text-emerald-700 font-semibold">{formatRupiah(bp.amountPaid)}</td>
+                      <td className="py-3 px-4 text-orange-700 font-extrabold">{formatRupiah(bp.outstandingAmount)}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${statusBadgeClass(bp.status)}`}>
+                          {bp.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {canSettle(bp) ? (
+                          <div className="flex flex-col gap-1">
+                            <button
+                              onClick={() => handleSettle(bp, 'Tunai')}
+                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold text-[10px] cursor-pointer"
+                            >
+                              Lunasi Tunai
+                            </button>
+                            <button
+                              onClick={() => handleSettle(bp, 'Potong Tabungan')}
+                              className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md font-bold text-[10px] cursor-pointer"
+                            >
+                              Lunasi Potong Tabungan
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">Bukan wewenang Anda</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: ADD NEW ITEM (KOPERASI / KEGIATAN) */}
       {isAddItemOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
@@ -759,41 +991,47 @@ export const BookManagement: React.FC = () => {
             <form onSubmit={handleSaveItem} className="space-y-3 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Tipe Section *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setItemType('Koperasi');
-                      setItemCategoryChoice('Buku');
-                    }}
-                    className={`p-2 rounded-lg border text-center font-bold cursor-pointer ${
-                      itemType === 'Koperasi'
-                        ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    Koperasi
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setItemType('Kegiatan');
-                      setItemCategoryChoice('Outing Class');
-                    }}
-                    className={`p-2 rounded-lg border text-center font-bold cursor-pointer ${
-                      itemType === 'Kegiatan'
-                        ? 'bg-blue-50 border-blue-500 text-blue-800'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    Kegiatan
-                  </button>
-                </div>
+                {fixedTransType ? (
+                  <div className="p-2 rounded-lg border bg-emerald-50 border-emerald-500 text-emerald-800 text-center font-bold">
+                    {fixedTransType} (terkunci sesuai peran Anda)
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setItemType('Koperasi');
+                        setItemCategoryChoice('Buku');
+                      }}
+                      className={`p-2 rounded-lg border text-center font-bold cursor-pointer ${
+                        itemType === 'Koperasi'
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
+                          : 'border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      Koperasi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setItemType('Kegiatan');
+                        setItemCategoryChoice('Outing Class');
+                      }}
+                      className={`p-2 rounded-lg border text-center font-bold cursor-pointer ${
+                        itemType === 'Kegiatan'
+                          ? 'bg-blue-50 border-blue-500 text-blue-800'
+                          : 'border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      Kegiatan
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Kategori Item *</label>
-                {itemType === 'Koperasi' ? (
+                {(fixedTransType || itemType) === 'Koperasi' ? (
                   <select
                     value={itemCategoryChoice}
                     onChange={(e) => setItemCategoryChoice(e.target.value)}
@@ -839,7 +1077,7 @@ export const BookManagement: React.FC = () => {
                   type="text"
                   required
                   placeholder={
-                    itemType === 'Koperasi'
+                    (fixedTransType || itemType) === 'Koperasi'
                       ? 'Contoh: Seragam Olahraga Lengkap / LKS Matematika'
                       : 'Contoh: Outing Class Ke Museum / Leadership Camp'
                   }

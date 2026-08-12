@@ -15,6 +15,7 @@ import {
   Book,
   BookDistribution,
   BookPayment,
+  BookPaymentMethod,
   SppPayment,
   AcademicYear,
   AuditLogItem,
@@ -40,7 +41,7 @@ import { inspectBackupPayload } from '../utils/backup';
 import { fetchAll, insertRow, updateRow, deleteRow, deleteRowsBy, upsertRow, toDbRow, onSyncError, SyncError, onSyncState, SyncState } from '../lib/db';
 import { supabase } from '../lib/supabase';
 
-const ROLE_RANK: Record<UserRole, number> = { Developer: 4, 'Super Admin': 3, Admin: 2, 'Wali Kelas': 1, Viewer: 0 };
+const ROLE_RANK: Record<UserRole, number> = { Developer: 4, 'Super Admin': 3, Admin: 2, 'Wali Kelas': 1, 'Admin Koperasi': 1, Viewer: 0 };
 
 function emailFor(username: string): string {
   return `${normalizeName(username)}@akun.tabungan-sekolah.local`;
@@ -99,7 +100,8 @@ interface AppContextType {
   toggleBookDistribution: (bookId: string, studentId: string) => void;
 
   bookPayments: BookPayment[];
-  addBookPayment: (bookId: string, studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan') => Promise<{ success: boolean; error?: string }>;
+  addBookPayment: (bookId: string, studentId: string, paymentMethod: BookPaymentMethod) => Promise<{ success: boolean; error?: string }>;
+  settleBookPaymentDebt: (bookPaymentId: string, method: 'Tunai' | 'Potong Tabungan') => Promise<{ success: boolean; error?: string }>;
 
   auditLogs: AuditLogItem[];
   addAuditLog: (action: string, valueBefore: string, valueAfter: string, details: string) => void;
@@ -117,9 +119,10 @@ interface AppContextType {
   syncState: SyncState;
 
   users: User[];
-  addUser: (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => Promise<{ success: boolean; error?: string }>;
+  addUser: (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI'; assignedClass?: ClassGrade }) => Promise<{ success: boolean; error?: string }>;
   updateUserRole: (id: string, role: UserRole) => Promise<void>;
   updateUserAccessLevel: (id: string, accessLevel: 'TK' | 'MI' | undefined) => Promise<void>;
+  updateUserAssignedClass: (id: string, assignedClass: ClassGrade | undefined) => Promise<void>;
   changeUserPassword: (id: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   changeViewerPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   resetViewerPassword: (studentId: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
@@ -441,7 +444,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return json;
   };
 
-  const addUser = async (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI' }) => {
+  const addUser = async (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI'; assignedClass?: ClassGrade }) => {
     if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') {
       return { success: false, error: 'Hanya Developer yang dapat menambah user.' };
     }
@@ -455,6 +458,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: data.role,
         password: data.password,
         access_level: data.accessLevel ?? null,
+        assigned_class: data.assignedClass ?? null,
       });
       // Re-fetch users from profiles table (fetchAll converts snake_case -> camelCase)
       const rows = await fetchAll<User>('profiles');
@@ -489,6 +493,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAuditLog('Ubah Akses Level User', `User: ${target.username} (${target.accessLevel || 'Semua'})`, `User: ${target.username} (${accessLevel || 'Semua'})`, `Mengubah akses level user ${target.name} ke ${accessLevel || 'Semua'}`);
     } catch (err) {
       console.error('updateUserAccessLevel failed:', err);
+    }
+  };
+
+  // Kelas spesifik Guru Kelas (Wali Kelas) — mengunci input Kegiatan &
+  // laporan tunggakan ke satu kelas itu saja (lihat auth_assigned_class di
+  // migration 012), beda dari accessLevel yang cuma level TK/MI umum.
+  const updateUserAssignedClass = async (id: string, assignedClass: ClassGrade | undefined) => {
+    if (!currentUser || currentUser.demoMode || currentUser.role !== 'Developer') return;
+    const target = users.find((u) => u.id === id);
+    if (!target || target.assignedClass === assignedClass) return;
+    try {
+      await callAdminUsers('update-assigned-class', { user_id: id, assigned_class: assignedClass ?? null });
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, assignedClass } : u)));
+      addAuditLog('Ubah Kelas Guru', `User: ${target.username} (${target.assignedClass || 'Belum diatur'})`, `User: ${target.username} (${assignedClass || 'Belum diatur'})`, `Mengubah kelas yang dipegang ${target.name} ke ${assignedClass || 'Belum diatur'}`);
+    } catch (err) {
+      console.error('updateUserAssignedClass failed:', err);
     }
   };
 
@@ -1520,12 +1540,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
 
+    // Bagian yang harusnya dipotong dari tabungan gak pernah beneran
+    // ke-deduct kalau ditolak (baru dipotong pas approve_withdrawal_final) —
+    // jadi kembalikan tanggungan ke penuh, bukan cuma tandai 'Ditolak' tanpa
+    // membalik amountPaid/outstandingAmount (kalau gak, sistem nganggep udah
+    // sebagian lunas padahal saldonya gak pernah tersentuh).
     const rejectBp = bookPayments.find((bp) => bp.savingsTransactionId === transactionId);
     if (rejectBp) {
-      const bpRes = await updateRow('book_payments', rejectBp.id, { status: 'Ditolak', rejectionReason: reason });
+      const bpRes = await updateRow('book_payments', rejectBp.id, {
+        status: 'Ditolak',
+        rejectionReason: reason,
+        amountPaid: 0,
+        outstandingAmount: rejectBp.amount,
+      });
       if (bpRes.success) {
         setBookPayments((prev) =>
-          prev.map((bp) => (bp.savingsTransactionId === transactionId ? { ...bp, status: 'Ditolak', rejectionReason: reason } : bp))
+          prev.map((bp) =>
+            bp.savingsTransactionId === transactionId
+              ? { ...bp, status: 'Ditolak', rejectionReason: reason, amountPaid: 0, outstandingAmount: bp.amount }
+              : bp
+          )
         );
       }
     }
@@ -2139,7 +2173,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addBookPayment = async (bookId: string, studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan') => {
+  // Koperasi & Kegiatan sekarang diproses atomik lewat satu RPC
+  // (process_book_payment_atomic, migration 012) — server yang tentukan
+  // available/outstanding, generate nomor transaksi, insert transaksi
+  // Penarikan (kalau Potong Tabungan), potong saldo, dan insert book_payment,
+  // semua di satu row-locked transaction DB. Ini gantiin logic lama yang
+  // baca item/siswa dari state lokal (bisa stale, apalagi polling cuma tiap
+  // 20 detik) lalu nulis manual — rawan race condition + gak bisa nyicil
+  // (dulu Potong Tabungan cuma all-or-nothing, saldo kurang = ditolak total).
+  // Potong Tabungan yang saldonya gak cukup sekarang motong sebisanya
+  // (gak pernah sampai minus), sisanya jadi tanggungan (outstandingAmount)
+  // yang melekat ke siswa sampai dilunasi — lihat settleBookPaymentDebt.
+  const addBookPayment = async (bookId: string, studentId: string, paymentMethod: BookPaymentMethod) => {
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
@@ -2152,132 +2197,207 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!canAccessStudent(student)) {
       return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
     }
+    if (currentUser.role === 'Admin Koperasi' && item.type !== 'Koperasi') {
+      return { success: false, error: 'Admin Koperasi hanya dapat memproses item Koperasi.' };
+    }
+    if (currentUser.role === 'Wali Kelas') {
+      if (item.type !== 'Kegiatan') {
+        return { success: false, error: 'Guru Kelas hanya dapat memproses item Kegiatan.' };
+      }
+      if (currentUser.assignedClass && student.classGrade !== currentUser.assignedClass) {
+        return { success: false, error: 'Akses ditolak: siswa berada di luar kelas yang Anda pegang.' };
+      }
+    }
 
-    // Nomor transaksi digenerate atomik di DB (sequence, migration 011) —
-    // dulu dihitung dari bookPayments.length di memori client, bisa dobel
-    // kalau 2 pembayaran Koperasi/Kegiatan disubmit nyaris bersamaan.
-    const { data: trNumData, error: trNumError } = await supabase.rpc('next_transaction_number', {
-      p_prefix: 'KP',
-      p_year_label: currentAcademicYear.year,
+    const bpId = `bp-${Date.now()}`;
+    const { data, error } = await supabase.rpc('process_book_payment_atomic', {
+      p_book_payment_id: bpId,
+      p_item_id: bookId,
+      p_student_id: studentId,
+      p_payment_method: paymentMethod,
+      p_academic_year_id: currentAcademicYear.id,
+      p_academic_year_label: currentAcademicYear.year,
+      p_created_by_id: currentUser.id,
+      p_created_by_name: currentUser.name,
+      p_created_by_role: currentUser.role,
     });
-    if (trNumError) {
-      return { success: false, error: `Gagal membuat nomor transaksi: ${trNumError.message}` };
+    if (error) {
+      return { success: false, error: error.message };
     }
-    const trNum: string = trNumData;
 
-    if (paymentMethod === 'Tunai') {
-      const newPayment: BookPayment = {
-        id: `bp-${Date.now()}`,
-        transactionNumber: trNum,
-        itemId: item.id,
-        bookId: item.id,
-        itemTitle: item.title,
-        bookTitle: item.title,
-        itemType: item.type || 'Koperasi',
-        category: item.category,
+    const newPayment: BookPayment = {
+      id: data.id,
+      transactionNumber: data.transactionNumber,
+      itemId: item.id,
+      bookId: item.id,
+      itemTitle: data.itemTitle,
+      bookTitle: data.itemTitle,
+      itemType: data.itemType,
+      category: data.category,
+      studentId,
+      studentName: data.studentName,
+      studentNis: data.studentNis,
+      classGrade: data.classGrade,
+      amount: data.amount,
+      amountPaid: data.amountPaid,
+      outstandingAmount: data.outstandingAmount,
+      paymentMethod,
+      status: data.status,
+      approvedByAdmin: data.approvedByAdmin,
+      approvedByAdminName: data.approvedByAdminName,
+      approvedBySuperAdmin: data.approvedBySuperAdmin,
+      approvedBySuperAdminName: data.approvedBySuperAdminName,
+      savingsTransactionId: data.savingsTransactionId || undefined,
+      createdByName: currentUser.name,
+      createdAt: data.createdAt,
+      academicYearId: currentAcademicYear.id,
+    };
+    setBookPayments((prev) => [newPayment, ...prev]);
+
+    // Potong Tabungan (penuh atau sebagian) bikin transaksi Penarikan terkait
+    // — sinkronkan ke state lokal biar langsung muncul di antrean approval
+    // tanpa nunggu poll 20 detik.
+    if (data.savingsTransactionId && data.savingsTransactionNumber) {
+      const linkedTx: Transaction = {
+        id: data.savingsTransactionId,
+        transactionNumber: data.savingsTransactionNumber,
         studentId,
-        studentName: student.name,
-        studentNis: student.nis,
-        classGrade: student.classGrade,
-        amount: item.price,
-        paymentMethod: 'Tunai',
-        status: 'Disetujui',
+        studentName: data.studentName,
+        studentNis: data.studentNis,
+        classGrade: data.classGrade,
+        type: 'Penarikan',
+        amount: data.amount - data.outstandingAmount,
+        status: data.savingsTransactionStatus,
+        reason: `Pembayaran ${data.itemType} (${data.itemTitle}) via Potong Tabungan`,
+        approvedByAdmin: data.approvedByAdmin,
+        approvedByAdminName: data.approvedByAdminName,
+        approvedBySuperAdmin: data.approvedBySuperAdmin,
+        approvedBySuperAdminName: data.approvedBySuperAdminName,
+        createdById: currentUser.id,
         createdByName: currentUser.name,
-        createdAt: new Date().toISOString(),
+        createdByRole: currentUser.role,
         academicYearId: currentAcademicYear.id,
+        createdAt: data.createdAt,
       };
-
-      const bpRes = await insertRow('book_payments', newPayment);
-      if (!bpRes.success) {
-        return { success: false, error: `Gagal menyimpan pembayaran ke database: ${bpRes.error}` };
+      setTransactions((prev) => [linkedTx, ...prev]);
+      if (data.savingsTransactionStatus === 'Disetujui') {
+        setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, balance: data.balanceAfter } : s)));
       }
-      setBookPayments((prev) => [newPayment, ...prev]);
-      saveSnapshot();
+    }
 
-      // Automatically mark distribution as received
+    saveSnapshot();
+
+    // Cuma tandai "sudah diterima/ikut" kalau beneran lunas — jangan auto-mark
+    // untuk yang masih ada tanggungan (Belum Lunas / Lunas Sebagian).
+    if (data.outstandingAmount === 0) {
       toggleBookDistribution(item.id, studentId);
-
-      addAuditLog(
-        `Pembayaran ${item.type || 'Koperasi'} Tunai`,
-        '-',
-        `Lunas Tunai: Rp ${item.price.toLocaleString('id-ID')}`,
-        `Pembayaran ${item.type || 'Koperasi'} (${item.title}) oleh siswa ${student.name} secara tunai.`
-      );
-
-      return { success: true };
-    } else {
-      // Potong Tabungan -> must request withdrawal & go through 2-tier approval!
-      if (student.balance < item.price) {
-        return {
-          success: false,
-          error: `Saldo tabungan siswa (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi harga ${item.type.toLowerCase()} (Rp ${item.price.toLocaleString('id-ID')}).`,
-        };
-      }
-
-      // 1. Generate savings withdrawal transaction with status based on role
-      const balanceBefore = student.balance;
-      const withdrawalRes = await requestWithdrawal(
-        studentId,
-        item.price,
-        `Pembayaran ${item.type} (${item.title}) via Potong Tabungan`
-      );
-
-      if (!withdrawalRes.success || !withdrawalRes.transaction) {
-        return { success: false, error: withdrawalRes.error || 'Gagal mengajukan potongan tabungan.' };
-      }
-
-      const tx = withdrawalRes.transaction;
-
-      // 2. Generate BookPayment linked to withdrawal transaction ID
-      const newPayment: BookPayment = {
-        id: `bp-${Date.now()}`,
-        transactionNumber: trNum,
-        itemId: item.id,
-        bookId: item.id,
-        itemTitle: item.title,
-        bookTitle: item.title,
-        itemType: item.type || 'Koperasi',
-        category: item.category,
-        studentId,
-        studentName: student.name,
-        studentNis: student.nis,
-        classGrade: student.classGrade,
-        amount: item.price,
-        paymentMethod: 'Potong Tabungan',
-        status: tx.status,
-        approvedByAdmin: tx.approvedByAdmin,
-        approvedByAdminName: tx.approvedByAdminName,
-        approvedBySuperAdmin: tx.approvedBySuperAdmin,
-        approvedBySuperAdminName: tx.approvedBySuperAdminName,
-        savingsTransactionId: tx.id,
-        createdByName: currentUser.name,
-        createdAt: new Date().toISOString(),
-        academicYearId: currentAcademicYear.id,
-      };
-
-      const bpRes = await insertRow('book_payments', newPayment);
-      if (!bpRes.success) {
-        // Rollback: hapus transaksi penarikan + kembalikan saldo agar konsisten
-        await deleteRow('transactions', tx.id);
-        setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
-        if (tx.status === 'Disetujui') {
-          await updateRow('students', studentId, { balance: balanceBefore });
-          setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, balance: balanceBefore } : s)));
-        }
-        return { success: false, error: `Pembayaran gagal tersimpan (${bpRes.error}). Potongan tabungan dibatalkan, saldo dikembalikan ke Rp ${balanceBefore.toLocaleString('id-ID')}.` };
-      }
-      setBookPayments((prev) => [newPayment, ...prev]);
-      saveSnapshot();
-
-      addAuditLog(
-        `Pengajuan Pembayaran ${item.type} Potong Tabungan`,
-        `Status: ${tx.status}`,
-        `Status: ${tx.status}`,
-        `Pengajuan pembayaran ${item.type.toLowerCase()} (${item.title}) via potong tabungan. Status: ${tx.status}.`
-      );
-
-      return { success: true };
     }
+
+    addAuditLog(
+      `Pembayaran ${data.itemType} (${paymentMethod})`,
+      '-',
+      `Status: ${data.status}${data.outstandingAmount > 0 ? ` — Tanggungan Rp ${data.outstandingAmount.toLocaleString('id-ID')}` : ''}`,
+      `Pembayaran ${data.itemType} (${data.itemTitle}) oleh siswa ${data.studentName} via ${paymentMethod}. Status: ${data.status}.`
+    );
+
+    return { success: true };
+  };
+
+  // Melunasi (sebagian/seluruhnya) tanggungan Koperasi/Kegiatan yang masih
+  // outstanding — atomik lewat settle_book_payment_atomic (migration 012),
+  // sama pola row-lock-nya dengan addBookPayment.
+  const settleBookPaymentDebt = async (bookPaymentId: string, method: 'Tunai' | 'Potong Tabungan') => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    const bp = bookPayments.find((b) => b.id === bookPaymentId);
+    if (!bp) {
+      return { success: false, error: 'Data tanggungan tidak ditemukan.' };
+    }
+    if (currentUser.role === 'Admin Koperasi' && bp.itemType !== 'Koperasi') {
+      return { success: false, error: 'Admin Koperasi hanya dapat memproses item Koperasi.' };
+    }
+    if (currentUser.role === 'Wali Kelas') {
+      if (bp.itemType !== 'Kegiatan') {
+        return { success: false, error: 'Guru Kelas hanya dapat memproses item Kegiatan.' };
+      }
+      if (currentUser.assignedClass && bp.classGrade !== currentUser.assignedClass) {
+        return { success: false, error: 'Akses ditolak: siswa berada di luar kelas yang Anda pegang.' };
+      }
+    }
+
+    const { data, error } = await supabase.rpc('settle_book_payment_atomic', {
+      p_book_payment_id: bookPaymentId,
+      p_payment_method: method,
+      p_created_by_id: currentUser.id,
+      p_created_by_name: currentUser.name,
+      p_created_by_role: currentUser.role,
+    });
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    setBookPayments((prev) =>
+      prev.map((b) =>
+        b.id === bookPaymentId
+          ? {
+              ...b,
+              status: data.status,
+              amountPaid: data.amountPaid,
+              outstandingAmount: data.outstandingAmount,
+              settledAt: data.settled ? data.createdAt : b.settledAt,
+              approvedByAdmin: data.approvedByAdmin ?? b.approvedByAdmin,
+              approvedByAdminName: data.approvedByAdminName ?? b.approvedByAdminName,
+              approvedBySuperAdmin: data.approvedBySuperAdmin ?? b.approvedBySuperAdmin,
+              approvedBySuperAdminName: data.approvedBySuperAdminName ?? b.approvedBySuperAdminName,
+              savingsTransactionId: data.savingsTransactionId || b.savingsTransactionId,
+            }
+          : b
+      )
+    );
+
+    if (data.savingsTransactionId && data.savingsTransactionNumber) {
+      const linkedTx: Transaction = {
+        id: data.savingsTransactionId,
+        transactionNumber: data.savingsTransactionNumber,
+        studentId: data.studentId,
+        studentName: bp.studentName,
+        studentNis: bp.studentNis,
+        classGrade: data.classGrade,
+        type: 'Penarikan',
+        amount: (data.amountPaid ?? 0) - (bp.amount - bp.outstandingAmount),
+        status: data.savingsTransactionStatus,
+        reason: `Pelunasan tanggungan ${bp.itemType} (${bp.itemTitle})`,
+        approvedByAdmin: data.approvedByAdmin,
+        approvedByAdminName: data.approvedByAdminName,
+        approvedBySuperAdmin: data.approvedBySuperAdmin,
+        approvedBySuperAdminName: data.approvedBySuperAdminName,
+        createdById: currentUser.id,
+        createdByName: currentUser.name,
+        createdByRole: currentUser.role,
+        academicYearId: bp.academicYearId,
+        createdAt: data.createdAt,
+      };
+      setTransactions((prev) => [linkedTx, ...prev]);
+      if (data.savingsTransactionStatus === 'Disetujui') {
+        setStudents((prev) => prev.map((s) => (s.id === data.studentId ? { ...s, balance: data.balanceAfter } : s)));
+      }
+    }
+
+    if (data.settled) {
+      toggleBookDistribution(bp.itemId, bp.studentId);
+    }
+
+    saveSnapshot();
+
+    addAuditLog(
+      `Pelunasan Tanggungan ${bp.itemType}`,
+      `Tanggungan: Rp ${bp.outstandingAmount.toLocaleString('id-ID')}`,
+      `Status: ${data.status}${data.outstandingAmount > 0 ? ` — Sisa Rp ${data.outstandingAmount.toLocaleString('id-ID')}` : ' — Lunas'}`,
+      `Pelunasan tanggungan ${bp.itemType.toLowerCase()} (${bp.itemTitle}) siswa ${bp.studentName} via ${method}.`
+    );
+
+    return { success: true };
   };
 
   const addSppPayment = async (studentId: string, paymentMethod: 'Tunai' | 'Potong Tabungan', period: string) => {
@@ -2509,6 +2629,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleBookDistribution,
         bookPayments,
         addBookPayment,
+        settleBookPaymentDebt,
         auditLogs,
         addAuditLog,
         sppPayments,
@@ -2524,6 +2645,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addUser,
     updateUserRole,
     updateUserAccessLevel,
+    updateUserAssignedClass,
 
         changeUserPassword,
         changeViewerPassword,

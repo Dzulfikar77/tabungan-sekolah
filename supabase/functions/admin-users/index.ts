@@ -21,6 +21,7 @@ const ROLE_RANK: Record<string, number> = {
   "Super Admin": 3,
   Admin: 2,
   "Wali Kelas": 1,
+  "Admin Koperasi": 1,
   Viewer: 0,
 };
 
@@ -90,7 +91,7 @@ serve(async (req: Request) => {
         return json({ error: "Insufficient permissions" }, 403);
       }
 
-      const { username, name, role, access_level, password } = body;
+      const { username, name, role, access_level, assigned_class, password } = body;
 
       // Validate role rank (can't create higher than yourself). Developer
       // creating another Developer is a supported peer action (mirrors the
@@ -129,6 +130,7 @@ serve(async (req: Request) => {
           name,
           role,
           access_level: access_level || null,
+          assigned_class: assigned_class || null,
         });
 
       if (profileInsertError) {
@@ -205,6 +207,27 @@ serve(async (req: Request) => {
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ access_level: access_level || null })
+        .eq("id", user_id);
+
+      if (updateError) {
+        return json({ error: updateError.message }, 400);
+      }
+
+      return json({ success: true });
+    }
+
+    if (action === "update-assigned-class") {
+      // Update assigned class (Guru Kelas' single specific class): Developer
+      // only (mirrors update-role/update-access-level gate)
+      if (callerRank < 4) {
+        return json({ error: "Only Developer can change assigned class" }, 403);
+      }
+
+      const { user_id, assigned_class } = body;
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ assigned_class: assigned_class || null })
         .eq("id", user_id);
 
       if (updateError) {

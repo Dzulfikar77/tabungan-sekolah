@@ -7,7 +7,10 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { inspectBackupPayload } from '../utils/backup';
 import type { BackupPreview } from '../utils/backup';
-import { UserRole } from '../types';
+import { UserRole, ClassGrade } from '../types';
+import { levelVisibleClasses } from '../utils/format';
+
+const ALL_CLASS_GRADES: ClassGrade[] = levelVisibleClasses(null);
 import {
   Building2,
   Image as ImageIcon,
@@ -29,6 +32,7 @@ const ROLE_RANK: Record<UserRole, number> = {
   'Super Admin': 3,
   Admin: 2,
   'Wali Kelas': 1,
+  'Admin Koperasi': 1,
   Viewer: 0,
 };
 
@@ -52,6 +56,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     addUser,
     updateUserRole,
     updateUserAccessLevel,
+    updateUserAssignedClass,
     changeUserPassword,
     resetStaffPassword,
     deleteUser,
@@ -80,6 +85,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [newUserName, setNewUserName] = useState('');
   const [newUserRole, setNewUserRole] = useState<string>('Admin');
   const [newUserAccessLevel, setNewUserAccessLevel] = useState<string>('');
+  const [newUserAssignedClass, setNewUserAssignedClass] = useState<string>('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [userMsg, setUserMsg] = useState<{ success?: boolean; msg?: string } | null>(null);
 
@@ -244,6 +250,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       name: newUserName.trim(),
       role: newUserRole as UserRole,
       accessLevel: (newUserAccessLevel || undefined) as 'TK' | 'MI' | undefined,
+      assignedClass: (newUserRole === 'Wali Kelas' ? newUserAssignedClass || undefined : undefined) as ClassGrade | undefined,
       password: newUserPassword,
     });
     if (res.success) {
@@ -252,6 +259,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       setNewUserName('');
       setNewUserRole('Admin');
       setNewUserAccessLevel('');
+      setNewUserAssignedClass('');
       setNewUserPassword('');
     } else {
       setUserMsg({ success: false, msg: res.error || 'Gagal menambah user.' });
@@ -546,7 +554,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                       onChange={(e) => updateUserRole(u.id, e.target.value as UserRole)}
                       className="px-2 py-1 border border-slate-200 rounded-lg text-[11px] font-semibold bg-white focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
                     >
-                      {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Viewer'] as UserRole[]).map((r) => (
+                      {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Admin Koperasi', 'Viewer'] as UserRole[]).map((r) => (
                         <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
@@ -561,6 +569,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                       <option value="TK">TK</option>
                       <option value="MI">MI</option>
                     </select>
+                    {u.role === 'Wali Kelas' && (
+                      <select
+                        value={u.assignedClass || ''}
+                        disabled={u.demoMode || u.id === currentUser.id || currentUser.role !== 'Developer'}
+                        title={currentUser.role !== 'Developer' ? 'Hanya Developer yang dapat mengubah kelas' : 'Kelas spesifik yang dipegang guru ini'}
+                        onChange={(e) => updateUserAssignedClass(u.id, (e.target.value || undefined) as ClassGrade | undefined)}
+                        className="px-2 py-1 border border-slate-200 rounded-lg text-[11px] font-semibold bg-white focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                      >
+                        <option value="">Belum diatur (semua kelas)</option>
+                        {ALL_CLASS_GRADES.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    )}
                     <button
                       type="button"
                       onClick={() => setPasswordDialog({ id: u.id, name: u.name, action: 'change' })}
@@ -619,7 +641,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     onChange={(e) => setNewUserRole(e.target.value)}
                     className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
                   >
-                    {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Viewer'] as UserRole[])
+                    {(['Developer', 'Super Admin', 'Admin', 'Wali Kelas', 'Admin Koperasi', 'Viewer'] as UserRole[])
                       .filter((r) => ROLE_RANK[r] < ROLE_RANK[currentUser.role])
                       .map((r) => (
                         <option key={r} value={r}>{r}</option>
@@ -634,6 +656,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     <option value="TK">Khusus TK</option>
                     <option value="MI">Khusus MI</option>
                   </select>
+                  {newUserRole === 'Wali Kelas' && (
+                    <select
+                      value={newUserAssignedClass}
+                      onChange={(e) => setNewUserAssignedClass(e.target.value)}
+                      className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none col-span-2"
+                    >
+                      <option value="">Kelas yang dipegang (opsional)</option>
+                      {ALL_CLASS_GRADES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  )}
                   <input
                     type="password"
                     value={newUserPassword}
