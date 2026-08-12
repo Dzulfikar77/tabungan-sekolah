@@ -98,11 +98,15 @@ export const Dashboard: React.FC = () => {
 
   const handleRunDeductionNow = async () => {
     const amount = schoolSettings.monthlyDeductionAmount || 2000;
-    if (!confirm(`Apakah Anda yakin ingin menjalankan Potongan Bulanan Otomatis (Rp ${amount.toLocaleString('id-ID')}) sekarang untuk semua siswa aktif? Siswa dengan saldo kurang akan dicatat sebagai tunggakan.`)) {
+    if (!confirm(`Apakah Anda yakin ingin menjalankan Potongan Bulanan (Rp ${amount.toLocaleString('id-ID')}) sekarang untuk semua siswa aktif? Siswa dengan saldo kurang akan dicatat sebagai tunggakan.`)) {
       return;
     }
     let summary = await runMonthlyDeduction();
-    if (summary.blocked) {
+    if (summary.blocked && summary.blockedCode === 'disabled') {
+      alert(summary.blockedReason);
+      return;
+    }
+    if (summary.blocked && summary.blockedCode === 'already_ran') {
       if (!confirm(`${summary.blockedReason}\n\nJalankan LAGI sekarang? Ini akan memotong saldo semua siswa aktif SEKALI LAGI (dobel potong bulan ini).`)) {
         return;
       }
@@ -334,13 +338,13 @@ export const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                Potongan Bulanan Otomatis
+                Potongan Bulanan
               </h3>
               <button
                 onClick={() => toggleMonthlyDeduction(!schoolSettings.monthlyDeductionEnabled)}
                 disabled={!canRunDeduction}
                 className="cursor-pointer transition-transform hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Toggle Otomatis Rutin Awal Bulan"
+                title="Aktifkan/nonaktifkan fitur (tetap harus dijalankan manual)"
               >
                 {schoolSettings.monthlyDeductionEnabled ? (
                   <ToggleRight className="w-9 h-9 text-emerald-600" />
@@ -358,7 +362,7 @@ export const Dashboard: React.FC = () => {
                     schoolSettings.monthlyDeductionEnabled ? 'text-emerald-700' : 'text-slate-500'
                   }`}
                 >
-                  {schoolSettings.monthlyDeductionEnabled ? 'AKTIF (Setiap Tgl 28)' : 'NON-AKTIF'}
+                  {schoolSettings.monthlyDeductionEnabled ? 'AKTIF' : 'NON-AKTIF'}
                 </span>
               </div>
               <div className="flex justify-between text-slate-600">
@@ -370,13 +374,13 @@ export const Dashboard: React.FC = () => {
             </div>
 
             <p className="text-[11px] text-slate-500 leading-relaxed mb-4">
-              <strong>Aturan Eksekusi:</strong> Semua siswa aktif dipotong Rp {formatRupiah(schoolSettings.monthlyDeductionAmount || 2000)} setiap tanggal 28. Jika saldo tidak mencukupi, akan tercatat sebagai tunggakan dan dipotong otomatis saat saldo terisi.
+              <strong>Manual, bukan otomatis:</strong> tidak ada penjadwalan — staf (Super Admin/Developer) harus klik tombol di bawah setiap bulan. Semua siswa aktif dipotong Rp {formatRupiah(schoolSettings.monthlyDeductionAmount || 2000)}; kalau saldo tidak cukup, tercatat sebagai tunggakan dan otomatis dipotong dari setoran berikutnya.
             </p>
           </div>
 
           <button
             onClick={handleRunDeductionNow}
-            disabled={!canRunDeduction}
+            disabled={!canRunDeduction || !schoolSettings.monthlyDeductionEnabled}
             className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
           >
             <Play className="w-4 h-4 text-emerald-400" />

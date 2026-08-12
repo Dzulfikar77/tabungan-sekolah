@@ -1434,34 +1434,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: true };
       }
 
-      if (student.balance < tx.amount) {
-        return {
-          success: false,
-          error: `Saldo siswa saat ini (Rp ${student.balance.toLocaleString('id-ID')}) tidak mencukupi nominal potongan (Rp ${tx.amount.toLocaleString('id-ID')}).`,
-        };
-      }
-
-      const balanceBefore = student.balance;
-      const balanceAfter = balanceBefore - tx.amount;
-
-      // Saldo dipotong dulu di DB, baru status transaksi disetujui
-      const balRes = await updateRow('students', student.id, { balance: balanceAfter });
-      if (!balRes.success) {
-        return { success: false, error: `Saldo gagal dipotong: ${balRes.error}` };
-      }
-      const txRes = await updateRow('transactions', transactionId, {
-        status: 'Disetujui',
-        approvedByAdmin: true,
-        approvedBySuperAdmin: true,
-        approvedBySuperAdminName: currentUser.name,
-        approvedById: currentUser.id,
-        approvedByName: currentUser.name,
-        approvedByRole: currentUser.role,
+      // Saldo dipotong + status disetujui atomik di DB (RPC approve_withdrawal_final,
+      // 010_withdrawal_final_approval_atomic.sql) — row lock siswa+transaksi
+      // mencegah lost-update kalau 2 Super Admin approve penarikan siswa yang
+      // sama nyaris bersamaan (pola sama dengan deposit_savings untuk Setoran).
+      const { data, error: rpcError } = await supabase.rpc('approve_withdrawal_final', {
+        p_transaction_id: transactionId,
+        p_approved_by_id: currentUser.id,
+        p_approved_by_name: currentUser.name,
+        p_approved_by_role: currentUser.role,
       });
-      if (!txRes.success) {
-        await updateRow('students', student.id, { balance: balanceBefore });
-        return { success: false, error: `Status transaksi gagal diperbarui (${txRes.error}). Saldo dikembalikan ke Rp ${balanceBefore.toLocaleString('id-ID')}.` };
+      if (rpcError) {
+        return { success: false, error: rpcError.message };
       }
+
+      const balanceBefore: number = data.balanceBefore;
+      const balanceAfter: number = data.balanceAfter;
 
       setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: balanceAfter } : s)));
       setTransactions((prev) =>
@@ -1482,30 +1470,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         )
       );
 
+      // book_payments terkait (kalau ada) sudah ikut diupdate atomik di RPC
+      // yang sama — di sini cukup sinkronkan state lokal, gak perlu DB call lagi.
       const tier2Bp = bookPayments.find((bp) => bp.savingsTransactionId === transactionId);
       if (tier2Bp) {
-        const bpRes = await updateRow('book_payments', tier2Bp.id, {
-          status: 'Disetujui',
-          approvedByAdmin: true,
-          approvedBySuperAdmin: true,
-          approvedBySuperAdminName: currentUser.name,
-        });
-        if (bpRes.success) {
-          setBookPayments((prev) =>
-            prev.map((bp) =>
-              bp.savingsTransactionId === transactionId
-                ? {
-                    ...bp,
-                    status: 'Disetujui',
-                    approvedByAdmin: true,
-                    approvedByAdminName: bp.approvedByAdminName || currentUser.name,
-                    approvedBySuperAdmin: true,
-                    approvedBySuperAdminName: currentUser.name,
-                  }
-                : bp
-            )
-          );
-        }
+        setBookPayments((prev) =>
+          prev.map((bp) =>
+            bp.savingsTransactionId === transactionId
+              ? {
+                  ...bp,
+                  status: 'Disetujui',
+                  approvedByAdmin: true,
+                  approvedByAdminName: bp.approvedByAdminName || currentUser.name,
+                  approvedBySuperAdmin: true,
+                  approvedBySuperAdminName: currentUser.name,
+                }
+              : bp
+          )
+        );
       }
 
       addAuditLog(
@@ -1909,6 +1891,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer') {
       return { runDate: new Date().toISOString(), totalStudentsDeducted: 0, totalAmountDeducted: 0, deductedStudents: [], skippedStudents: [], pendingDebtStudents: [] };
     }
+    // Fitur ini TIDAK berjalan otomatis (tidak ada cron/scheduler) — hanya
+    // eksekusi manual lewat tombol "Jalankan Sekarang". Toggle ON/OFF harus
+    // benar-benar mencegah eksekusi, bukan sekadar dekorasi UI — tanpa cek ini
+    // toggle OFF tetap bisa dijalankan penuh kalau tombolnya diklik.
+    if (!schoolSettings.monthlyDeductionEnabled) {
+      return {
+        runDate: new Date().toISOString(),
+        totalStudentsDeducted: 0,
+        totalAmountDeducted: 0,
+        deductedStudents: [],
+        skippedStudents: [],
+        pendingDebtStudents: [],
+        blocked: true,
+        blockedCode: 'disabled',
+        blockedReason: 'Potongan bulanan sedang NON-AKTIF. Aktifkan toggle-nya dulu sebelum menjalankan.',
+      };
+    }
     // Guard anti-double-run: tanpa ini, klik "Jalankan Sekarang" 2x di bulan yang
     // sama akan memotong saldo SEMUA siswa aktif dua kali. Soft guard (client-side,
     // dilewati kalau force=true) — cukup untuk mencegah klik ganda yang tidak
@@ -1925,6 +1924,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         skippedStudents: [],
         pendingDebtStudents: [],
         blocked: true,
+        blockedCode: 'already_ran',
         blockedReason: `Potongan bulanan sudah pernah dijalankan bulan ini (${formatDate(lastRun!.toISOString())}).`,
       };
     }
