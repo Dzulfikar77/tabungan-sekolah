@@ -62,7 +62,7 @@ function MainLayout() {
         {activeTab === 'students' && <StudentManagement />}
         {activeTab === 'deposit' && <DepositForm />}
         {activeTab === 'withdrawal' && <WithdrawalForm />}
-        {activeTab === 'books' && <BookManagement />}
+        {activeTab === 'koprasi' && <BookManagement />}
         {activeTab === 'reports' && <Reports />}
         {activeTab === 'audit' && <AuditLogView />}
         {activeTab === 'spp' && <SppPayment />}
