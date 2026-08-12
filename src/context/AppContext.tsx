@@ -68,7 +68,7 @@ interface AppContextType {
   addAcademicYear: (year: string) => Promise<{ success: boolean; error?: string }>;
   deleteAcademicYear: (id: string) => { success: boolean; error?: string };
   setCurrentAcademicYearId: (id: string) => Promise<{ success: boolean; error?: string }>;
-  bulkPromoteStudents: (fromClass: string, toClass: string) => void;
+  bulkPromoteStudents: (fromClass: string, toClass: string, excludeIds?: string[]) => void;
   runYearEndClosure: (decisions: YearEndDecision[], targetAcademicYearId: string) => Promise<{ success: boolean; moved: number; repeated: number; skipped: number; totalWithdrawn: number; errors: string[] }>;
 
   students: Student[];
@@ -723,12 +723,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
-  const bulkPromoteStudents = (fromClass: string, toClass: string) => {
+  const bulkPromoteStudents = (fromClass: string, toClass: string, excludeIds: string[] = []) => {
     if (!currentUser || currentUser.demoMode) return;
-    const affected = students.filter((s) => !s.isDeleted && s.classGrade === fromClass);
+    const excludeSet = new Set(excludeIds);
+    const affected = students.filter(
+      (s) => !s.isDeleted && s.classGrade === fromClass && !excludeSet.has(s.id)
+    );
     setStudents((prev) =>
       prev.map((s) => {
-        if (!s.isDeleted && s.classGrade === fromClass) {
+        if (!s.isDeleted && s.classGrade === fromClass && !excludeSet.has(s.id)) {
           if (toClass === 'Lulus') {
             return { ...s, status: 'Lulus' };
           }
@@ -747,7 +750,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
     });
-    addAuditLog('Pindah Kelas Massal', `Kelas asal: ${fromClass}`, `Kelas tujuan: ${toClass}`, `Memindahkan ${affected.length} siswa dari kelas ${fromClass} ke ${toClass}`);
+    const skippedCount = excludeSet.size;
+    addAuditLog(
+      'Pindah Kelas Massal',
+      `Kelas asal: ${fromClass}`,
+      `Kelas tujuan: ${toClass}`,
+      `Memindahkan ${affected.length} siswa dari kelas ${fromClass} ke ${toClass}` +
+        (skippedCount > 0 ? ` (${skippedCount} siswa tetap tinggal di ${fromClass})` : '')
+    );
   };
 
   const runYearEndClosure = async (

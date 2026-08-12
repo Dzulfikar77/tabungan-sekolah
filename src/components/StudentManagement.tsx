@@ -57,6 +57,8 @@ export const StudentManagement: React.FC = () => {
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
   const [fromClass, setFromClass] = useState<ClassGrade>(ALL_CLASSES[0]);
   const [toClass, setToClass] = useState<string>(ALL_CLASSES[0]);
+  // Siswa yang di-checklist di sini TETAP TINGGAL di fromClass (tidak ikut pindah/lulus).
+  const [promoteExcludeIds, setPromoteExcludeIds] = useState<Record<string, boolean>>({});
 
   const [isYearEndModalOpen, setIsYearEndModalOpen] = useState(false);
   const [yearEndClassFilter, setYearEndClassFilter] = useState<string>('ALL');
@@ -170,10 +172,19 @@ export const StudentManagement: React.FC = () => {
     }
   };
 
+  const promoteCandidates = students.filter((s) => !s.isDeleted && s.classGrade === fromClass);
+  const promoteExcludeCount = promoteCandidates.filter((s) => promoteExcludeIds[s.id]).length;
+
   const handleProcessPromote = () => {
-    if (confirm(`Apakah Anda yakin ingin memindahkan seluruh siswa aktif dari Kelas ${fromClass} ke Kelas ${toClass}?`)) {
-      bulkPromoteStudents(fromClass, toClass);
+    const excludeIds = promoteCandidates.filter((s) => promoteExcludeIds[s.id]).map((s) => s.id);
+    const movingCount = promoteCandidates.length - excludeIds.length;
+    const confirmMsg = excludeIds.length > 0
+      ? `Pindahkan ${movingCount} siswa dari Kelas ${fromClass} ke Kelas ${toClass}? (${excludeIds.length} siswa yang di-checklist "Tidak Naik" akan tetap tinggal di Kelas ${fromClass}.)`
+      : `Apakah Anda yakin ingin memindahkan seluruh siswa aktif dari Kelas ${fromClass} ke Kelas ${toClass}?`;
+    if (confirm(confirmMsg)) {
+      bulkPromoteStudents(fromClass, toClass, excludeIds);
       setIsPromoteModalOpen(false);
+      setPromoteExcludeIds({});
     }
   };
 
@@ -254,7 +265,10 @@ export const StudentManagement: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setIsPromoteModalOpen(true)}
+            onClick={() => {
+              setPromoteExcludeIds({});
+              setIsPromoteModalOpen(true);
+            }}
             className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
           >
             <ArrowRightLeft className="w-4 h-4" />
@@ -715,7 +729,7 @@ export const StudentManagement: React.FC = () => {
 
             <div className="space-y-4 text-xs">
               <p className="text-slate-600 leading-relaxed">
-                Fitur ini akan memindahkan <strong>seluruh siswa aktif</strong> pada kelas asal ke kelas tujuan secara instan untuk tahun ajaran baru.
+                Fitur ini memindahkan siswa aktif pada kelas asal ke kelas tujuan secara instan (centang "Tidak Naik" untuk siswa yang tidak ikut pindah).
               </p>
 
               <div className="grid grid-cols-2 gap-3">
@@ -723,7 +737,10 @@ export const StudentManagement: React.FC = () => {
                   <label className="block font-semibold text-slate-700 mb-1">Dari Kelas Asal</label>
                   <select
                     value={fromClass}
-                    onChange={(e) => setFromClass(e.target.value as ClassGrade)}
+                    onChange={(e) => {
+                      setFromClass(e.target.value as ClassGrade);
+                      setPromoteExcludeIds({});
+                    }}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
                   >
                     {classes.map((cls) => (
@@ -751,8 +768,39 @@ export const StudentManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 text-[11px]">
-                <strong>Catatan:</strong> Siswa yang dipindahkan ke "Lulus" statusnya akan berubah menjadi Lulus dan tersimpan selamanya.
+              {promoteCandidates.length > 0 && (
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Siswa di Kelas {fromClass} ({promoteCandidates.length})
+                    {promoteExcludeCount > 0 ? ` — ${promoteExcludeCount} tidak naik` : ''}
+                  </label>
+                  <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                    {promoteCandidates.map((s) => (
+                      <div key={s.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                        <div className="min-w-0 truncate">
+                          <span className="font-semibold text-slate-800">{s.name}</span>{' '}
+                          <span className="text-slate-400">({s.nis})</span>
+                        </div>
+                        <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={!!promoteExcludeIds[s.id]}
+                            onChange={(e) =>
+                              setPromoteExcludeIds((prev) => ({ ...prev, [s.id]: e.target.checked }))
+                            }
+                            className="w-4 h-4 accent-purple-600"
+                          />
+                          <span className="text-[11px] text-slate-600">Tidak Naik</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 text-[11px] space-y-1">
+                <p><strong>Catatan:</strong> Siswa yang dipindahkan ke "Lulus" statusnya akan berubah menjadi Lulus dan tersimpan selamanya. Siswa yang dicentang "Tidak Naik" tetap tinggal di Kelas {fromClass}.</p>
+                <p>Fitur ini <strong>hanya</strong> mengubah kelas/status — saldo tabungan tidak disentuh dan tahun ajaran tidak berubah. Untuk penarikan saldo + pindah tahun ajaran sekaligus di akhir tahun, gunakan <strong>Penutupan Tahun Ajaran</strong>.</p>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
