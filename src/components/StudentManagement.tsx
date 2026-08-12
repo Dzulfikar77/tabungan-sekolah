@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student, ClassGrade, StudentStatus } from '../types';
 import { formatRupiah, formatDate, filterByAccessLevel } from '../utils/format';
 import { downloadStudentImportTemplate, parseStudentsExcel } from '../utils/excelHandler';
 import { YearEndDecision, isGraduatingClass } from '../utils/yearEnd';
+import { generateInitialCode } from '../utils/viewerCredentials';
+import { generateViewerCredentialSlip, generateViewerCredentialSlipBatch, ViewerCredentialSlipData } from '../utils/pdfGenerator';
 import {
   UserPlus,
   FileSpreadsheet,
@@ -22,6 +24,9 @@ import {
   X,
   AlertCircle,
   CheckCircle,
+  KeyRound,
+  RotateCcw,
+  Printer,
 
 } from 'lucide-react';
 
@@ -30,12 +35,17 @@ import { ALL_CLASSES } from '../utils/initialData';
 export const StudentManagement: React.FC = () => {
   const {
     students,
+    users,
+    schoolSettings,
     addStudent,
     updateStudent,
     softDeleteStudent,
     importStudentsBulk,
     bulkPromoteStudents,
     runYearEndClosure,
+    provisionViewerAccount,
+    provisionViewersBulk,
+    resetViewerPassword,
     currentAcademicYear,
     currentUser,
     academicYears,
@@ -66,6 +76,98 @@ export const StudentManagement: React.FC = () => {
   const [yearEndDecisions, setYearEndDecisions] = useState<Record<string, 'naik' | 'tinggal'>>({});
   const [yearEndRunning, setYearEndRunning] = useState(false);
   const [yearEndResult, setYearEndResult] = useState<{ success: boolean; moved: number; repeated: number; skipped: number; totalWithdrawn: number; errors: string[] } | null>(null);
+
+  // Akun Ortu (Viewer) — hasil sukses provisioning/reset satu siswa, siap dicetak.
+  const [viewerCredentialResult, setViewerCredentialResult] = useState<ViewerCredentialSlipData | null>(null);
+  const [viewerActionError, setViewerActionError] = useState<string | null>(null);
+  const [viewerActionBusyId, setViewerActionBusyId] = useState<string | null>(null);
+
+  // Buat Akun Ortu massal (siswa yang sudah ada tapi belum punya akun)
+  const [isBulkProvisionModalOpen, setIsBulkProvisionModalOpen] = useState(false);
+  const [bulkProvisionRunning, setBulkProvisionRunning] = useState(false);
+  const [bulkProvisionResults, setBulkProvisionResults] = useState<
+    { student: Student; success: boolean; username?: string; initialCode?: string; error?: string }[] | null
+  >(null);
+
+  const viewerByStudent = useMemo(() => {
+    const map = new Map<string, (typeof users)[number]>();
+    users.forEach((u) => {
+      if (u.role === 'Viewer' && u.studentId) map.set(u.studentId, u);
+    });
+    return map;
+  }, [users]);
+
+  const canManageViewerAccounts = !!currentUser && !currentUser.demoMode && currentUser.role !== 'Wali Kelas' && currentUser.role !== 'Viewer';
+
+  const handleProvisionViewer = async (student: Student) => {
+    setViewerActionError(null);
+    setViewerActionBusyId(student.id);
+    const res = await provisionViewerAccount(student.id);
+    setViewerActionBusyId(null);
+    if (res.success && res.username && res.initialCode) {
+      setViewerCredentialResult({
+        studentName: student.name,
+        nis: student.nis,
+        classGrade: student.classGrade,
+        username: res.username,
+        initialCode: res.initialCode,
+      });
+    } else {
+      setViewerActionError(res.error || 'Gagal membuat akun ortu.');
+    }
+  };
+
+  const handleResetViewerPassword = async (student: Student) => {
+    if (!confirm(`Reset password akun ortu untuk ${student.name}? Password lama akan langsung tidak berlaku.`)) return;
+    setViewerActionError(null);
+    setViewerActionBusyId(student.id);
+    const newCode = generateInitialCode(student.nis);
+    const res = await resetViewerPassword(student.id, newCode);
+    setViewerActionBusyId(null);
+    if (res.success) {
+      const linked = viewerByStudent.get(student.id);
+      setViewerCredentialResult({
+        studentName: student.name,
+        nis: student.nis,
+        classGrade: student.classGrade,
+        username: linked?.username || '-',
+        initialCode: newCode,
+      });
+    } else {
+      setViewerActionError(res.error || 'Gagal mereset password ortu.');
+    }
+  };
+
+  const handleBulkProvision = async () => {
+    const missing = students.filter((s) => !s.isDeleted && s.status === 'Aktif' && !viewerByStudent.get(s.id));
+    setBulkProvisionRunning(true);
+    setBulkProvisionResults(null);
+    const results = await provisionViewersBulk(missing.map((s) => s.id));
+    setBulkProvisionRunning(false);
+    setBulkProvisionResults(
+      results.map((r) => ({
+        student: missing.find((s) => s.id === r.studentId)!,
+        success: r.success,
+        username: r.username,
+        initialCode: r.initialCode,
+        error: r.error,
+      }))
+    );
+  };
+
+  const handlePrintBulkSlips = () => {
+    if (!bulkProvisionResults) return;
+    const successData: ViewerCredentialSlipData[] = bulkProvisionResults
+      .filter((r) => r.success && r.username && r.initialCode)
+      .map((r) => ({
+        studentName: r.student.name,
+        nis: r.student.nis,
+        classGrade: r.student.classGrade,
+        username: r.username!,
+        initialCode: r.initialCode!,
+      }));
+    if (successData.length > 0) generateViewerCredentialSlipBatch(successData, schoolSettings);
+  };
 
   // Form State for Add
   const [nis, setNis] = useState('');
@@ -284,6 +386,19 @@ export const StudentManagement: React.FC = () => {
               Penutupan Tahun
             </button>
           )}
+
+          {canManageViewerAccounts && (
+            <button
+              onClick={() => {
+                setBulkProvisionResults(null);
+                setIsBulkProvisionModalOpen(true);
+              }}
+              className="px-3.5 py-2 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold text-xs rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+            >
+              <KeyRound className="w-4 h-4" />
+              Buat Akun Ortu (Belum Punya Akun)
+            </button>
+          )}
         </div>
       </div>
 
@@ -402,6 +517,27 @@ export const StudentManagement: React.FC = () => {
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
+                        {canManageViewerAccounts && (
+                          viewerByStudent.get(st.id) ? (
+                            <button
+                              onClick={() => handleResetViewerPassword(st)}
+                              disabled={viewerActionBusyId === st.id}
+                              title="Reset Password Ortu"
+                              className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg cursor-pointer transition-colors disabled:opacity-40"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleProvisionViewer(st)}
+                              disabled={viewerActionBusyId === st.id}
+                              title="Buat Akun Ortu"
+                              className="p-1.5 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg cursor-pointer transition-colors disabled:opacity-40"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" />
+                            </button>
+                          )
+                        )}
                         <button
                           onClick={() => handleDelete(st.id, st.name)}
                           title="Hapus Siswa (Soft Delete)"
@@ -953,6 +1089,160 @@ export const StudentManagement: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Akun Ortu — hasil sukses provisioning/reset 1 siswa, siap dicetak */}
+      {viewerCredentialResult && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-slate-100 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-purple-600" /> Akun Ortu Siap
+              </h3>
+              <button onClick={() => setViewerCredentialResult(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="text-xs text-slate-600">
+              Untuk <strong>{viewerCredentialResult.studentName}</strong> ({viewerCredentialResult.nis})
+            </div>
+            <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 space-y-1 text-sm">
+              <div>Username: <span className="font-mono font-bold">{viewerCredentialResult.username}</span></div>
+              <div>Kode Awal: <span className="font-mono font-bold">{viewerCredentialResult.initialCode}</span></div>
+            </div>
+            <p className="text-[11px] text-slate-500">Cetak slip ini dan serahkan ke orang tua siswa. Kode awal wajib diganti saat login pertama.</p>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => setViewerCredentialResult(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg cursor-pointer text-xs"
+              >
+                Tutup
+              </button>
+              <button
+                onClick={() => generateViewerCredentialSlip(viewerCredentialResult, schoolSettings)}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg cursor-pointer text-xs flex items-center gap-1.5"
+              >
+                <Printer className="w-3.5 h-3.5" /> Cetak Slip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewerActionError && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-slate-100 shadow-xl space-y-4">
+            <div className="flex items-center gap-2 text-rose-600">
+              <AlertCircle className="w-5 h-5" />
+              <h3 className="font-bold text-base">Gagal</h3>
+            </div>
+            <p className="text-xs text-slate-600">{viewerActionError}</p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setViewerActionError(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg cursor-pointer text-xs"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Buat Akun Ortu Massal (siswa aktif yang belum punya akun) */}
+      {isBulkProvisionModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full border border-slate-100 shadow-xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base">Buat Akun Ortu Massal</h3>
+              <button
+                onClick={() => {
+                  setIsBulkProvisionModalOpen(false);
+                  setBulkProvisionResults(null);
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {!bulkProvisionResults ? (
+              <>
+                {(() => {
+                  const missing = students.filter((s) => !s.isDeleted && s.status === 'Aktif' && !viewerByStudent.get(s.id));
+                  return (
+                    <>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        Ditemukan <strong>{missing.length} siswa aktif</strong> yang belum punya akun ortu. Proses ini akan membuat akun login (username + kode awal) untuk semuanya sekaligus.
+                      </p>
+                      {missing.length > 0 && (
+                        <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-56 overflow-y-auto text-xs">
+                          {missing.map((s) => (
+                            <div key={s.id} className="px-3 py-1.5 flex justify-between">
+                              <span>{s.name} <span className="text-slate-400">({s.nis})</span></span>
+                              <span className="text-slate-400">Kelas {s.classGrade}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          onClick={() => setIsBulkProvisionModalOpen(false)}
+                          className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg cursor-pointer text-xs"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          onClick={handleBulkProvision}
+                          disabled={missing.length === 0 || bulkProvisionRunning}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white font-semibold rounded-lg cursor-pointer text-xs"
+                        >
+                          {bulkProvisionRunning ? 'Memproses...' : `Buat ${missing.length} Akun`}
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </>
+            ) : (
+              <>
+                <div className="text-xs text-slate-600">
+                  {bulkProvisionResults.filter((r) => r.success).length} berhasil, {bulkProvisionResults.filter((r) => !r.success).length} gagal dari {bulkProvisionResults.length} siswa.
+                </div>
+                <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto text-xs">
+                  {bulkProvisionResults.map((r) => (
+                    <div key={r.student.id} className="px-3 py-1.5 flex justify-between items-center">
+                      <span>{r.student.name} <span className="text-slate-400">({r.student.nis})</span></span>
+                      {r.success ? (
+                        <span className="text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> {r.username}</span>
+                      ) : (
+                        <span className="text-rose-600">{r.error}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setIsBulkProvisionModalOpen(false);
+                      setBulkProvisionResults(null);
+                    }}
+                    className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg cursor-pointer text-xs"
+                  >
+                    Tutup
+                  </button>
+                  <button
+                    onClick={handlePrintBulkSlips}
+                    disabled={!bulkProvisionResults.some((r) => r.success)}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white font-semibold rounded-lg cursor-pointer text-xs flex items-center gap-1.5"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Cetak Semua Slip
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

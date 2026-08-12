@@ -177,6 +177,94 @@ export function generateTransactionReceiptPDF(transaction: Transaction, school: 
   doc.save(`Kuitansi_${transaction.transactionNumber.replace(/\//g, '-')}.pdf`);
 }
 
+// 2b. Generate Viewer Credential Slip (Slip Akun Login Orang Tua)
+export interface ViewerCredentialSlipData {
+  studentName: string;
+  nis: string;
+  classGrade: string;
+  username: string;
+  initialCode: string;
+}
+
+function drawCredentialSlip(doc: jsPDF, data: ViewerCredentialSlipData, school: SchoolSettings) {
+  drawHeader(doc, school, 'SLIP AKUN LOGIN ORANG TUA');
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+
+  const infoBody = [
+    ['Nama Siswa', `: ${data.studentName}`],
+    ['NIS', `: ${data.nis}`],
+    ['Kelas', `: ${data.classGrade}`],
+  ];
+
+  autoTable(doc, {
+    startY: 42,
+    body: infoBody,
+    theme: 'plain',
+    styles: { fontSize: 9.5, cellPadding: 1.5 },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 30 },
+      1: { cellWidth: 150 },
+    },
+  });
+
+  const afterInfoY = (doc as any).lastAutoTable.finalY || 60;
+
+  // Boxed credentials — dibuat besar & jelas biar mudah dibaca/diketik ulang ortu.
+  doc.setDrawColor(203, 213, 225);
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(14, afterInfoY + 4, 182, 26, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text('USERNAME', 22, afterInfoY + 12);
+  doc.text('KODE AWAL (PASSWORD)', 110, afterInfoY + 12);
+
+  doc.setFontSize(15);
+  doc.setTextColor(15, 23, 42);
+  doc.text(data.username, 22, afterInfoY + 22);
+  doc.text(data.initialCode, 110, afterInfoY + 22);
+
+  const instructY = afterInfoY + 38;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Cara Login:', 14, instructY);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const steps = [
+    '1. Buka portal orang tua, pilih menu login orang tua/siswa.',
+    '2. Ketik nama anak (min. 3 huruf) — pilih nama yang muncul di saran.',
+    '3. Masukkan Kode Awal di atas sebagai password.',
+    '4. Sistem akan minta ganti password baru — buat password sendiri yang mudah diingat.',
+    '5. Lupa password nanti? Klik "Lupa Password?" di halaman login, atau minta bantuan ke sekolah.',
+  ];
+  steps.forEach((line, i) => doc.text(line, 14, instructY + 6 + i * 5.5));
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Simpan slip ini baik-baik sampai selesai ganti password.', 14, instructY + 6 + steps.length * 5.5 + 6);
+}
+
+export function generateViewerCredentialSlip(data: ViewerCredentialSlipData, school: SchoolSettings) {
+  const doc = new jsPDF({ format: [210, 148], orientation: 'landscape' });
+  drawCredentialSlip(doc, data, school);
+  doc.save(`Slip_Akun_Ortu_${data.nis}_${data.studentName.replace(/\s+/g, '_')}.pdf`);
+}
+
+export function generateViewerCredentialSlipBatch(dataList: ViewerCredentialSlipData[], school: SchoolSettings) {
+  const doc = new jsPDF({ format: [210, 148], orientation: 'landscape' });
+  dataList.forEach((data, idx) => {
+    if (idx > 0) doc.addPage([210, 148], 'landscape');
+    drawCredentialSlip(doc, data, school);
+  });
+  doc.save(`Slip_Akun_Ortu_Massal_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
 // 3. Generate General Financial Report PDF
 export function generateReportPDF(
   title: string,

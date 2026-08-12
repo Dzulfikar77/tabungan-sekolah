@@ -35,3 +35,16 @@ export interface ViewerSuggestion {
   classGrade: ClassGrade;
   nisTail: string;
 }
+
+/**
+ * Generate kode reset password baru, format identik dengan initialCode yang
+ * dibuat provision-viewer di supabase/functions/admin-users/index.ts
+ * ({NIS}_{4 karakter random}) — dipakai saat staf klik "Reset Password Ortu"
+ * supaya slip cetak hasil reset punya tampilan/pola yang sama dengan slip
+ * provisioning awal.
+ */
+export function generateInitialCode(nis: string): string {
+  const normalizedNis = String(nis).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const randomSuffix = crypto.randomUUID().replace(/-/g, '').slice(0, 4);
+  return `${normalizedNis}_${randomSuffix}`;
+}

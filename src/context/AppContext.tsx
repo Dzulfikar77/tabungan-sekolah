@@ -123,6 +123,8 @@ interface AppContextType {
   changeUserPassword: (id: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   changeViewerPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   resetViewerPassword: (studentId: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  provisionViewerAccount: (studentId: string) => Promise<{ success: boolean; username?: string; initialCode?: string; error?: string }>;
+  provisionViewersBulk: (studentIds: string[]) => Promise<{ studentId: string; success: boolean; username?: string; initialCode?: string; error?: string }[]>;
   resetStaffPassword: (targetUserId: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   deleteUser: (id: string) => Promise<void>;
 }
@@ -595,6 +597,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Gagal mereset password viewer.' };
     }
+  };
+
+  const provisionViewerAccount = async (
+    studentId: string
+  ): Promise<{ success: boolean; username?: string; initialCode?: string; error?: string }> => {
+    if (!currentUser || currentUser.demoMode) {
+      return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
+    }
+    const student = students.find((s) => s.id === studentId);
+    if (!student) {
+      return { success: false, error: 'Siswa tidak ditemukan.' };
+    }
+    if (users.some((u) => u.role === 'Viewer' && u.studentId === studentId)) {
+      return { success: false, error: 'Siswa ini sudah punya akun ortu.' };
+    }
+    try {
+      const data = await callAdminUsers('provision-viewer', { student_id: studentId });
+      setUsers((prev) => [
+        ...prev,
+        {
+          id: data.userId,
+          username: data.username,
+          name: student.parentName || `${student.name} (Orang Tua)`,
+          role: 'Viewer' as UserRole,
+          studentId,
+          mustChangePassword: true,
+        },
+      ]);
+      addAuditLog('Buat Akun Ortu', student.name, data.username, `Akun viewer ${data.username} dibuat untuk ${student.name}.`);
+      return { success: true, username: data.username, initialCode: data.initialCode };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Gagal membuat akun ortu.' };
+    }
+  };
+
+  const provisionViewersBulk = async (
+    studentIds: string[]
+  ): Promise<{ studentId: string; success: boolean; username?: string; initialCode?: string; error?: string }[]> => {
+    const results: { studentId: string; success: boolean; username?: string; initialCode?: string; error?: string }[] = [];
+    for (const id of studentIds) {
+      const res = await provisionViewerAccount(id);
+      results.push({ studentId: id, ...res });
+    }
+    return results;
   };
 
   const resetStaffPassword = async (targetUserId: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
@@ -2466,6 +2512,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         changeUserPassword,
         changeViewerPassword,
         resetViewerPassword,
+        provisionViewerAccount,
+        provisionViewersBulk,
         resetStaffPassword,
         deleteUser,
       }}
