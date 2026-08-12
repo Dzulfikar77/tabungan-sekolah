@@ -32,7 +32,7 @@ import {
   initialSppPayments,
   initialAuditLogs,
 } from '../utils/initialData';
-import { generateTransactionNumber, isClassInUserLevel } from '../utils/format';
+import { generateTransactionNumber, isClassInUserLevel, formatDate } from '../utils/format';
 import { normalizeName } from '../utils/viewerCredentials';
 import { YearEndDecision, nextClassFrom } from '../utils/yearEnd';
 import { mergeSchoolSettings } from '../utils/schoolSettings';
@@ -88,7 +88,7 @@ interface AppContextType {
   rejectEditTransaction: (transactionId: string, rejectionReason?: string) => Promise<{ success: boolean; error?: string }>;
 
   toggleMonthlyDeduction: (enabled: boolean) => void;
-  runMonthlyDeduction: () => Promise<MonthlyDeductionSummary>;
+  runMonthlyDeduction: (force?: boolean) => Promise<MonthlyDeductionSummary>;
 
   books: Book[];
   addBook: (book: Omit<Book, 'id'>) => void;
@@ -1118,12 +1118,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Nominal melebihi batas maksimal transaksi (Rp 99.999.000).' };
     }
 
-    const trNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length);
-    const balanceBefore = student.balance;
-    const balanceAfter = balanceBefore + amount;
+    // Balance + nomor transaksi digenerate atomik di DB (RPC deposit_savings,
+    // 009_deposit_savings_atomic.sql) — row lock di sisi Postgres mencegah
+    // lost-update kalau 2 staf setor ke siswa yang sama nyaris bersamaan, dan
+    // sequence DB mencegah dua transaksi dapat nomor yang sama.
+    const txId = `tr-${Date.now()}`;
+    const debtTxId = `tr-auto-debt-${Date.now()}`;
+    const { data, error } = await supabase.rpc('deposit_savings', {
+      p_transaction_id: txId,
+      p_student_id: studentId,
+      p_amount: amount,
+      p_reason: reason,
+      p_academic_year_id: currentAcademicYear.id,
+      p_academic_year_label: currentAcademicYear.year,
+      p_created_by_id: currentUser.id,
+      p_created_by_name: currentUser.name,
+      p_created_by_role: currentUser.role,
+      p_debt_transaction_id: debtTxId,
+    });
+
+    if (error) {
+      return { success: false, error: `Gagal menyimpan setoran ke database: ${error.message}` };
+    }
+
+    const balanceBefore: number = data.balanceBefore;
+    const balanceAfter: number = data.balanceAfter;
+    const trNum: string = data.transactionNumber;
 
     const newTx: Transaction = {
-      id: `tr-${Date.now()}`,
+      id: txId,
       transactionNumber: trNum,
       studentId,
       studentName: student.name,
@@ -1140,90 +1163,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    // Setoran + saldo harus keduanya sukses di DB sebelum UI update
-    const txRes = await insertRow('transactions', newTx);
-    const balRes = await updateRow('students', studentId, { balance: balanceAfter });
-    if (!txRes.success || !balRes.success) {
-      return { success: false, error: `Gagal menyimpan setoran ke database: ${txRes.error || balRes.error}` };
+    const deductionTransactions: Transaction[] = [];
+    if (data.debtTransaction) {
+      const dt = data.debtTransaction;
+      const debtTx: Transaction = {
+        id: dt.id,
+        transactionNumber: dt.transactionNumber,
+        studentId,
+        studentName: student.name,
+        studentNis: student.nis,
+        classGrade: student.classGrade,
+        type: 'Potongan Bulanan',
+        amount: dt.amount,
+        status: 'Disetujui',
+        reason: dt.reason,
+        createdById: currentUser.id,
+        createdByName: `${currentUser.name} (Sistem Otomatis)`,
+        createdByRole: currentUser.role,
+        academicYearId: currentAcademicYear.id,
+        createdAt: new Date().toISOString(),
+      };
+      deductionTransactions.push(debtTx);
     }
-    setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, balance: balanceAfter } : s)));
-    setTransactions((prev) => [newTx, ...prev]);
+
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id !== studentId) return s;
+        if (data.debtTransaction) {
+          const updated = { ...s, balance: balanceAfter };
+          if (data.debtTransaction.remainingDebt > 0) {
+            updated.pendingDebt = data.debtTransaction.remainingDebt;
+          } else {
+            delete updated.pendingDebt;
+          }
+          return updated;
+        }
+        return { ...s, balance: balanceAfter };
+      })
+    );
+    setTransactions((prev) => [newTx, ...deductionTransactions, ...prev]);
     saveSnapshot();
 
-    // Auto-deduct pending debt — best-effort, gagal tidak membatalkan setoran
     const existingDebt = student.pendingDebt || 0;
-    const deductionTransactions: Transaction[] = [];
-    if (existingDebt > 0) {
-      if (balanceAfter >= existingDebt) {
-        // Saldo cukup untuk lunasi tunggakan
-        const finalBalance = balanceAfter - existingDebt;
-        const debtTrNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length + 1);
-        const debtTx: Transaction = {
-          id: `tr-auto-debt-${Date.now()}`,
-          transactionNumber: debtTrNum,
-          studentId,
-          studentName: student.name,
-          studentNis: student.nis,
-          classGrade: student.classGrade,
-          type: 'Potongan Bulanan',
-          amount: existingDebt,
-          status: 'Disetujui',
-          reason: `Pelunasan Otomatis Tunggakan Potongan Bulanan (Rp ${existingDebt.toLocaleString('id-ID')})`,
-          createdById: currentUser.id,
-          createdByName: `${currentUser.name} (Sistem Otomatis)`,
-          createdByRole: currentUser.role,
-          academicYearId: currentAcademicYear.id,
-          createdAt: new Date().toISOString(),
-        };
-        const debtTxRes = await insertRow('transactions', debtTx);
-        const debtBalRes = await updateRow('students', studentId, { balance: finalBalance, pendingDebt: 0 });
-        if (debtTxRes.success && debtBalRes.success) {
-          deductionTransactions.push(debtTx);
-          setStudents((prev) =>
-            prev.map((s) => {
-              if (s.id === studentId) {
-                const updated = { ...s, balance: finalBalance };
-                delete updated.pendingDebt;
-                return updated;
-              }
-              return s;
-            })
-          );
-          setTransactions((prev) => [debtTx, ...prev]);
-        }
-      } else if (balanceAfter > 0) {
-        // Saldo ada tapi kurang: potong habis, kurangi tunggakan
-        const remainingDebt = existingDebt - balanceAfter;
-        const debtTrNum = generateTransactionNumber('ST', currentAcademicYear.year, transactions.length + 1);
-        const debtTx: Transaction = {
-          id: `tr-auto-debt-${Date.now()}`,
-          transactionNumber: debtTrNum,
-          studentId,
-          studentName: student.name,
-          studentNis: student.nis,
-          classGrade: student.classGrade,
-          type: 'Potongan Bulanan',
-          amount: balanceAfter,
-          status: 'Disetujui',
-          reason: `Potongan Otomatis Tunggakan Sebagian (Sisa Rp ${remainingDebt.toLocaleString('id-ID')})`,
-          createdById: currentUser.id,
-          createdByName: `${currentUser.name} (Sistem Otomatis)`,
-          createdByRole: currentUser.role,
-          academicYearId: currentAcademicYear.id,
-          createdAt: new Date().toISOString(),
-        };
-        const debtTxRes = await insertRow('transactions', debtTx);
-        const debtBalRes = await updateRow('students', studentId, { balance: 0, pendingDebt: remainingDebt });
-        if (debtTxRes.success && debtBalRes.success) {
-          deductionTransactions.push(debtTx);
-          setStudents((prev) =>
-            prev.map((s) => (s.id === studentId ? { ...s, balance: 0, pendingDebt: remainingDebt } : s))
-          );
-          setTransactions((prev) => [debtTx, ...prev]);
-        }
-      }
-    }
-
     const autoDeductedAmount = deductionTransactions.reduce((sum, t) => sum + t.amount, 0);
     addAuditLog(
       'Setoran Tabungan',
@@ -1897,12 +1878,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateSchoolSettings({ monthlyDeductionEnabled: enabled });
   };
 
-  const runMonthlyDeduction = async (): Promise<MonthlyDeductionSummary> => {
+  const runMonthlyDeduction = async (force = false): Promise<MonthlyDeductionSummary> => {
     if (!currentUser || currentUser.demoMode) {
       return { runDate: new Date().toISOString(), totalStudentsDeducted: 0, totalAmountDeducted: 0, deductedStudents: [], skippedStudents: [], pendingDebtStudents: [] };
     }
     if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Developer') {
       return { runDate: new Date().toISOString(), totalStudentsDeducted: 0, totalAmountDeducted: 0, deductedStudents: [], skippedStudents: [], pendingDebtStudents: [] };
+    }
+    // Guard anti-double-run: tanpa ini, klik "Jalankan Sekarang" 2x di bulan yang
+    // sama akan memotong saldo SEMUA siswa aktif dua kali. Soft guard (client-side,
+    // dilewati kalau force=true) — cukup untuk mencegah klik ganda yang tidak
+    // disengaja, bukan proteksi keamanan.
+    const lastRun = schoolSettings.lastMonthlyDeductionRun ? new Date(schoolSettings.lastMonthlyDeductionRun) : null;
+    const now = new Date();
+    const alreadyRanThisMonth = !!lastRun && lastRun.getFullYear() === now.getFullYear() && lastRun.getMonth() === now.getMonth();
+    if (alreadyRanThisMonth && !force) {
+      return {
+        runDate: now.toISOString(),
+        totalStudentsDeducted: 0,
+        totalAmountDeducted: 0,
+        deductedStudents: [],
+        skippedStudents: [],
+        pendingDebtStudents: [],
+        blocked: true,
+        blockedReason: `Potongan bulanan sudah pernah dijalankan bulan ini (${formatDate(lastRun!.toISOString())}).`,
+      };
     }
     const activeStudents = students.filter(
       (s) => !s.isDeleted && s.status === 'Aktif' && s.academicYearId === currentAcademicYear.id

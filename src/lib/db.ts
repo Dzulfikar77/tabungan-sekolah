@@ -84,13 +84,27 @@ function fromDbRow<T>(obj: Record<string, any>): T {
   return result as T;
 }
 
+// PostgREST caps a single request at (by default) 1000 rows. Without paging,
+// a table that grows past that limit would silently return a truncated
+// result — every total computed from it (Dashboard, Reports) would then be
+// under-reported, consistently but incorrectly, with no error surfaced.
+const FETCH_PAGE_SIZE = 1000;
+
 async function fetchAll<T>(table: string): Promise<T[]> {
-  const { data, error } = await supabase.from(table).select('*');
-  if (error) {
-    reportError(table, 'fetching', error);
-    return [];
+  const rows: Record<string, any>[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase.from(table).select('*').range(from, from + FETCH_PAGE_SIZE - 1);
+    if (error) {
+      reportError(table, 'fetching', error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+    if (data.length < FETCH_PAGE_SIZE) break;
+    from += FETCH_PAGE_SIZE;
   }
-  return (data || []).map(row => fromDbRow<T>(row));
+  return rows.map(row => fromDbRow<T>(row));
 }
 
 async function insertRow(table: string, row: Record<string, any>): Promise<DbResult> {

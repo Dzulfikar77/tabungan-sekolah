@@ -210,4 +210,7 @@ export interface MonthlyDeductionSummary {
   deductedStudents: { id: string; name: string; nis: string; balanceBefore: number; balanceAfter: number }[];
   skippedStudents: { id: string; name: string; nis: string; balance: number; reason: string }[];
   pendingDebtStudents: { id: string; name: string; nis: string; debt: number; balance: number }[];
+  // true kalau ditolak karena sudah pernah jalan bulan ini (lihat runMonthlyDeduction force param)
+  blocked?: boolean;
+  blockedReason?: string;
 }

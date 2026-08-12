@@ -98,11 +98,18 @@ export const Dashboard: React.FC = () => {
 
   const handleRunDeductionNow = async () => {
     const amount = schoolSettings.monthlyDeductionAmount || 2000;
-    if (confirm(`Apakah Anda yakin ingin menjalankan Potongan Bulanan Otomatis (Rp ${amount.toLocaleString('id-ID')}) sekarang untuk semua siswa aktif? Siswa dengan saldo kurang akan dicatat sebagai tunggakan.`)) {
-      const summary = await runMonthlyDeduction();
-      setDeductionSummary(summary);
-      setSummaryModalOpen(true);
+    if (!confirm(`Apakah Anda yakin ingin menjalankan Potongan Bulanan Otomatis (Rp ${amount.toLocaleString('id-ID')}) sekarang untuk semua siswa aktif? Siswa dengan saldo kurang akan dicatat sebagai tunggakan.`)) {
+      return;
     }
+    let summary = await runMonthlyDeduction();
+    if (summary.blocked) {
+      if (!confirm(`${summary.blockedReason}\n\nJalankan LAGI sekarang? Ini akan memotong saldo semua siswa aktif SEKALI LAGI (dobel potong bulan ini).`)) {
+        return;
+      }
+      summary = await runMonthlyDeduction(true);
+    }
+    setDeductionSummary(summary);
+    setSummaryModalOpen(true);
   };
 
   const handleApprove = async (txId: string) => {
