@@ -1230,78 +1230,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (amount <= 0) {
       return { success: false, error: 'Nominal potongan harus lebih besar dari 0.' };
     }
-    if (amount > student.balance) {
-      return {
-        success: false,
-        error: `Saldo tidak mencukupi. Saldo saat ini: Rp ${student.balance.toLocaleString('id-ID')}`,
-      };
-    }
-
-    const trNum = generateTransactionNumber('PT', currentAcademicYear.year, transactions.length);
-
-    let initialStatus: TransactionStatus = 'Menunggu Approval Admin';
-    let isAdminApproved = false;
-    let adminName: string | undefined = undefined;
-    let isSuperAdminApproved = false;
-    let superAdminName: string | undefined = undefined;
-
-    if (currentUser.role === 'Wali Kelas' || currentUser.role === 'Admin') {
-      initialStatus = 'Menunggu Approval Super Admin';
-      isAdminApproved = true;
-      adminName = currentUser.name;
-    } else if (currentUser.role === 'Super Admin' || currentUser.role === 'Developer') {
-      initialStatus = 'Disetujui';
-      isAdminApproved = true;
-      adminName = currentUser.name;
-      isSuperAdminApproved = true;
-      superAdminName = currentUser.name;
+    // Saldo dicek + (kalau langsung "Disetujui" karena role Super Admin/Dev)
+    // dipotong, atomik di DB (RPC request_withdrawal_atomic, migration 011)
+    // — row lock siswa mencegah lost-update kalau 2 pengajuan nyaris
+    // bersamaan buat siswa yang sama (pola sama dengan deposit_savings &
+    // approve_withdrawal_final). Krusial di sini karena state lokal cuma
+    // di-refresh tiap poll 20 detik, bukan cuma race antar-klik.
+    const txId = `tr-${Date.now()}`;
+    const { data, error: rpcError } = await supabase.rpc('request_withdrawal_atomic', {
+      p_transaction_id: txId,
+      p_student_id: studentId,
+      p_amount: amount,
+      p_reason: reason,
+      p_academic_year_id: currentAcademicYear.id,
+      p_academic_year_label: currentAcademicYear.year,
+      p_created_by_id: currentUser.id,
+      p_created_by_name: currentUser.name,
+      p_created_by_role: currentUser.role,
+    });
+    if (rpcError) {
+      return { success: false, error: rpcError.message };
     }
 
     const newTx: Transaction = {
-      id: `tr-${Date.now()}`,
-      transactionNumber: trNum,
+      id: data.id,
+      transactionNumber: data.transactionNumber,
       studentId,
       studentName: student.name,
       studentNis: student.nis,
       classGrade: student.classGrade,
       type: 'Penarikan',
       amount,
-      status: initialStatus,
+      status: data.status,
       reason,
-      approvedByAdmin: isAdminApproved,
-      approvedByAdminName: adminName,
-      approvedBySuperAdmin: isSuperAdminApproved,
-      approvedBySuperAdminName: superAdminName,
+      approvedByAdmin: data.approvedByAdmin,
+      approvedByAdminName: data.approvedByAdminName,
+      approvedBySuperAdmin: data.approvedBySuperAdmin,
+      approvedBySuperAdminName: data.approvedBySuperAdminName,
       createdById: currentUser.id,
       createdByName: currentUser.name,
       createdByRole: currentUser.role,
       academicYearId: currentAcademicYear.id,
-      createdAt: new Date().toISOString(),
+      createdAt: data.createdAt,
     };
 
-    const txRes = await insertRow('transactions', newTx);
-    if (!txRes.success) {
-      return { success: false, error: `Gagal mengajukan penarikan ke database: ${txRes.error}` };
+    if (data.status === 'Disetujui') {
+      setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: data.balanceAfter } : s)));
     }
-
-    // Jika langsung disetujui (Super Admin/Dev), potong saldo setelah transaksi tersimpan
-    if (initialStatus === 'Disetujui') {
-      const balanceAfter = student.balance - amount;
-      const balRes = await updateRow('students', student.id, { balance: balanceAfter });
-      if (!balRes.success) {
-        await deleteRow('transactions', newTx.id);
-        return { success: false, error: `Transaksi tersimpan, tapi saldo gagal dipotong (${balRes.error}). Pengajuan dibatalkan.` };
-      }
-      setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, balance: balanceAfter } : s)));
-    }
-
     setTransactions((prev) => [newTx, ...prev]);
 
     addAuditLog(
       'Pengajuan Penarikan',
-      `Saldo ${student.name}: Rp ${student.balance.toLocaleString('id-ID')}`,
-      `Status: ${initialStatus}`,
-      `Pengajuan penarikan Rp ${amount.toLocaleString('id-ID')} untuk ${student.name} (${trNum}). Status: ${initialStatus}`
+      `Saldo ${student.name}: Rp ${data.balanceBefore.toLocaleString('id-ID')}`,
+      `Status: ${data.status}`,
+      `Pengajuan penarikan Rp ${amount.toLocaleString('id-ID')} untuk ${student.name} (${data.transactionNumber}). Status: ${data.status}`
     );
 
     return { success: true, transaction: newTx };
@@ -2171,7 +2153,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
     }
 
-    const trNum = generateTransactionNumber('KP', currentAcademicYear.year, bookPayments.length);
+    // Nomor transaksi digenerate atomik di DB (sequence, migration 011) —
+    // dulu dihitung dari bookPayments.length di memori client, bisa dobel
+    // kalau 2 pembayaran Koperasi/Kegiatan disubmit nyaris bersamaan.
+    const { data: trNumData, error: trNumError } = await supabase.rpc('next_transaction_number', {
+      p_prefix: 'KP',
+      p_year_label: currentAcademicYear.year,
+    });
+    if (trNumError) {
+      return { success: false, error: `Gagal membuat nomor transaksi: ${trNumError.message}` };
+    }
+    const trNum: string = trNumData;
 
     if (paymentMethod === 'Tunai') {
       const newPayment: BookPayment = {
