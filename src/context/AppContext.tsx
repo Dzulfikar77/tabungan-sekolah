@@ -1383,7 +1383,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Role Super Admin / Developer approval (Tier 2 / Final)
     if (currentUser.role === 'Super Admin' || currentUser.role === 'Developer') {
       if (tx.closesAccount) {
-        const finalAmount = await executeCloseAccount(student);
+        let finalAmount: number;
+        try {
+          finalAmount = await executeCloseAccount(student);
+        } catch (err) {
+          return { success: false, error: err instanceof Error ? err.message : 'Gagal menutup tabungan.' };
+        }
 
         const txRes = await updateRow('transactions', transactionId, {
           amount: finalAmount,
@@ -1733,7 +1738,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const executeCloseAccount = async (student: Student) => {
     const finalAmount = student.balance;
-    await deleteLinkedViewerUser(student.id, 'tutup tabungan');
+    // Hapus akun ortu (auth.users) DULU dan WAJIB sukses sebelum lanjut hapus
+    // apapun. Kalau ini dilewati diam-diam dan gagal, profiles ikut cascade-
+    // delete bersama students, tapi auth.users tidak — akun ortu jadi orphan,
+    // tetap bisa login (JWT valid) walau siswanya sudah tidak ada. Melempar di
+    // sini aman: belum ada state/DB lain yang disentuh.
+    const viewerDeleteRes = await deleteLinkedViewerUser(student.id, 'tutup tabungan');
+    if (!viewerDeleteRes.success) {
+      throw new Error(
+        `Gagal menutup tabungan ${student.name}: akun ortu gagal dihapus (${viewerDeleteRes.error || 'unknown error'}). Data siswa TIDAK dihapus — coba lagi.`
+      );
+    }
     setStudents((prev) => prev.filter((s) => s.id !== student.id));
     setBookDistributions((prev) => prev.filter((d) => d.studentId !== student.id));
     setBookPayments((prev) => prev.filter((p) => p.studentId !== student.id));
@@ -1852,9 +1867,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         continue;
       }
       // Transaksi tercatat dulu, baru data siswa dihapus
-      const finalAmount = await executeCloseAccount(student);
-      totalWithdrawn += finalAmount;
-      closedTxs.push(finalTx);
+      try {
+        const finalAmount = await executeCloseAccount(student);
+        totalWithdrawn += finalAmount;
+        closedTxs.push(finalTx);
+      } catch (err) {
+        // executeCloseAccount gagal (akun ortu gagal dihapus) sebelum menyentuh
+        // apapun lagi — tapi transaksi "tutup" di atas sudah tercatat sebagai
+        // Disetujui. Rollback biar gak ada transaksi tutup tabungan yang
+        // "sukses" sementara siswanya sendiri masih utuh.
+        await deleteRow('transactions', finalTx.id);
+        errors.push(err instanceof Error ? err.message : `Gagal menutup tabungan ${student.name}.`);
+      }
     }
     if (closedTxs.length > 0) {
       setTransactions((prev) => [...closedTxs, ...prev]);
