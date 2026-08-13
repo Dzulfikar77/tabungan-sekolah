@@ -108,13 +108,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* User Profile & Settings */}
           <div className="flex items-center gap-1 border-l border-slate-200 pl-3">
-            <button
-              onClick={openSettingsModal}
-              title="Pengaturan Sekolah & Backup"
-              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
+            {(currentUser.role === 'Developer' || currentUser.role === 'Super Admin') && (
+              <button
+                onClick={openSettingsModal}
+                title="Pengaturan Sekolah & Backup"
+                className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => {
                 if (confirm('Keluar dari aplikasi?')) onLogout();
