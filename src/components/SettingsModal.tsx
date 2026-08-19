@@ -323,15 +323,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto border border-slate-100 shadow-xl space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2 font-bold text-slate-900 text-base">
-            <Building2 className="w-5 h-5 text-emerald-600" />
-            Pengaturan Sekolah & Backup Database
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <X className="w-5 h-5" />
-          </button>
+      <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto border border-slate-100 shadow-xl space-y-6 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-10 w-7 h-7 bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-full flex items-center justify-center shadow-md hover:shadow-lg border border-slate-200 transition-all duration-200"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <div className="flex items-center gap-2 font-bold text-slate-900 text-base">
+          <Building2 className="w-5 h-5 text-emerald-600" />
+          Pengaturan Sekolah & Backup Database
         </div>
 
         {/* Form Pengaturan Profil Sekolah */}
