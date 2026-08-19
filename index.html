@@ -7,6 +7,35 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="loading-overlay">
+      <div id="loading-spinner"></div>
+      <span>Memuat Simu...</span>
+    </div>
+    <style>
+      @keyframes omc-spin { to { transform: rotate(360deg) } }
+      #loading-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        background: linear-gradient(135deg, #0f172a, #1e293b, #064e35);
+        color: #fff;
+        font-size: 0.875rem;
+        font-weight: 500;
+        z-index: 9999;
+      }
+      #loading-spinner {
+        width: 2rem;
+        height: 2rem;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-top-color: #fff;
+        border-radius: 0.5rem;
+        animation: omc-spin 1s linear infinite;
+      }
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

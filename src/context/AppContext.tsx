@@ -118,6 +118,8 @@ interface AppContextType {
   clearSyncErrors: () => void;
   syncState: SyncState;
 
+  authLoading: boolean;
+
   users: User[];
   addUser: (data: { username: string; name: string; role: UserRole; password: string; accessLevel?: 'TK' | 'MI'; assignedClass?: ClassGrade }) => Promise<{ success: boolean; error?: string }>;
   updateUserRole: (id: string, role: UserRole) => Promise<void>;
@@ -209,6 +211,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [dbLoaded, setDbLoaded] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // Persist the latest state into localStorage as a safety net, while Supabase remains the cloud source of truth.
   useEffect(() => {
@@ -229,6 +232,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const lastSnapshotTimeRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!currentUser) return;
     supabase
       .from('snapshots')
       .select('created_at')
@@ -241,7 +245,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           lastSnapshotTimeRef.current = data.created_at;
         }
       });
-  }, []);
+  }, [currentUser]);
 
   const buildBackupPayload = () => ({
     version: '1.0',
@@ -320,6 +324,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   useEffect(() => {
+    if (!currentUser) return;
     fetchFromSupabase();
     // polling fallback: realtime postgres_changes butuh tabel di-enable di dashboard Supabase
     const poll = setInterval(fetchFromSupabase, 20000);
@@ -333,7 +338,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       clearInterval(poll);
       supabase.removeChannel(channel);
     };
-  }, [fetchFromSupabase]);
+  }, [currentUser, fetchFromSupabase]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -358,6 +363,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         setCurrentUser(null);
       }
+      setAuthLoading(false);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -378,11 +384,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0];
 
   const login = async (username: string, password: string) => {
+    setAuthLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email: emailFor(username),
       password,
     });
     if (error) {
+      setAuthLoading(false);
       return { success: false, error: 'Username atau kata sandi salah.' };
     }
     return { success: true };
@@ -2638,10 +2646,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         restoreBackupData,
         lastSnapshotTime,
         restoreLastSnapshot,
-        syncErrors,
-        clearSyncErrors,
-        syncState,
-        users,
+         syncErrors,
+         clearSyncErrors,
+         syncState,
+         authLoading,
+         users,
     addUser,
     updateUserRole,
     updateUserAccessLevel,
@@ -2669,8 +2678,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           </div>
         </div>
       )}
-      {hasSupabase && !dbLoaded ? (
-        <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Memuat data...</div>
+      {authLoading ? (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 text-white">
+          <div className="w-8 h-8 border-2 border-slate-300/30 border-t-white rounded-full animate-spin"></div>
+          <span className="mt-3 text-sm font-medium">Memuat Simu...</span>
+        </div>
       ) : (
         children
       )}
