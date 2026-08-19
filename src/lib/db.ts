@@ -90,14 +90,14 @@ function fromDbRow<T>(obj: Record<string, any>): T {
 // under-reported, consistently but incorrectly, with no error surfaced.
 const FETCH_PAGE_SIZE = 1000;
 
-async function fetchAll<T>(table: string): Promise<T[]> {
+async function fetchAll<T>(table: string): Promise<T[] | null> {
   const rows: Record<string, any>[] = [];
   let from = 0;
   while (true) {
     const { data, error } = await supabase.from(table).select('*').range(from, from + FETCH_PAGE_SIZE - 1);
     if (error) {
       reportError(table, 'fetching', error);
-      break;
+      return null;
     }
     if (!data || data.length === 0) break;
     rows.push(...data);

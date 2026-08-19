@@ -302,26 +302,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchAll<AuditLogItem>('audit_logs'),
       fetchAll<User>('profiles'),
     ]);
-    if (dbSchoolSettings.length > 0) {
-      setSchoolSettings((prev) => mergeSchoolSettings(prev, dbSchoolSettings[0]));
-    } else {
-      upsertRow('school_settings', { id: 'singleton', ...schoolSettings });
+    // DB adalah sumber kebenaran. Result null = query gagal (jaga data lokal).
+    // Result [] = tabel memang kosong (clear data lokal agar tidak stale).
+    if (dbSchoolSettings !== null) {
+      if (dbSchoolSettings.length > 0) {
+        setSchoolSettings((prev) => mergeSchoolSettings(prev, dbSchoolSettings[0]));
+      } else {
+        upsertRow('school_settings', { id: 'singleton', ...schoolSettings });
+      }
     }
-    if (dbStudents.length > 0) setStudents((prev) => mergeById(migrateClassGrades(dbStudents), prev));
-    if (dbTransactions.length > 0) setTransactions((prev) => mergeById(migrateClassGrades(dbTransactions), prev));
-    if (dbBooks.length > 0) setBooks((prev) => mergeById(migrateClassGrades(dbBooks), prev));
-    if (dbDistributions.length > 0) setBookDistributions((prev) => mergeById(dbDistributions, prev));
-    if (dbBookPayments.length > 0) setBookPayments((prev) => mergeById(migrateClassGrades(dbBookPayments), prev));
-    if (dbSppPayments.length > 0) setSppPayments((prev) => mergeById(migrateClassGrades(dbSppPayments), prev));
-    if (dbAcademicYears.length > 0) {
-      setAcademicYears((prev) => mergeById(dbAcademicYears, prev));
-      const dbCurrent = dbAcademicYears.find((y) => y.isCurrent);
+    if (dbStudents !== null) setStudents(migrateClassGrades(dbStudents));
+    if (dbTransactions !== null) setTransactions(migrateClassGrades(dbTransactions));
+    if (dbBooks !== null) setBooks(migrateClassGrades(dbBooks));
+    if (dbDistributions !== null) setBookDistributions(dbDistributions);
+    if (dbBookPayments !== null) setBookPayments(migrateClassGrades(dbBookPayments));
+    if (dbSppPayments !== null) setSppPayments(migrateClassGrades(dbSppPayments));
+    if (dbAcademicYears !== null) {
+      setAcademicYears(dbAcademicYears.length > 0 ? mergeById(dbAcademicYears, []) : dbAcademicYears);
+      const dbCurrent = dbAcademicYears.find((y) => y.isCurrent) || dbAcademicYears[0];
       if (dbCurrent) setCurrentAcademicYearIdState(dbCurrent.id);
     }
-    if (dbAuditLogs.length > 0) setAuditLogs((prev) => mergeById(dbAuditLogs, prev));
-    if (dbUsers.length > 0) setUsers((prev) => mergeById(dbUsers, prev));
+    if (dbAuditLogs !== null) setAuditLogs(dbAuditLogs);
+    if (dbUsers !== null) setUsers(dbUsers);
     setDbLoaded(true);
-  }, []);
+  }, [schoolSettings]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -470,7 +474,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       // Re-fetch users from profiles table (fetchAll converts snake_case -> camelCase)
       const rows = await fetchAll<User>('profiles');
-      if (rows.length > 0) setUsers(rows);
+      if (rows && rows.length > 0) setUsers(rows);
       addAuditLog('Tambah User', '-', `User: ${data.username.trim()} (${data.role})`, `Menambahkan user baru ${data.name.trim()} dengan role ${data.role}`);
       return { success: true };
     } catch (err) {
