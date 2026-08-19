@@ -488,13 +488,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             <div className="p-2 rounded-lg text-xs font-semibold bg-rose-100 text-rose-800">{settingsError}</div>
           )}
 
-          <button
-            type="submit"
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-xs"
-          >
-            Simpan Pengaturan
-          </button>
-
           {/* SPP Settings */}
           <hr className="border-slate-100 my-4" />
           <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[11px] text-slate-400">
@@ -522,6 +515,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               <p className="text-[11px] text-slate-400 mt-1">0 = Gratis (tidak wajib bayar)</p>
             </div>
           </div>
+
+          <button
+            type="submit"
+            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-xs"
+          >
+            Simpan Pengaturan
+          </button>
         </form>
 
         {/* Manajemen User — khusus Developer */}
