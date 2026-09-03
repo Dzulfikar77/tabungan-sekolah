@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { simpanSesi } from '../utils/auth';
 
 export default function LoginSiswa() {
+  const navigate = useNavigate();
   const [nisn, setNisn] = useState('');
   const [password, setPassword] = useState('');
   const [angka1, setAngka1] = useState(0);
@@ -28,7 +30,9 @@ export default function LoginSiswa() {
       return;
     }
     setPesanError('');
-    alert(`Login Siswa berhasil! NISN: ${nisn}`);
+    simpanSesi('siswa', nisn);
+    alert('Login berhasil! Mengarahkan ke Dashboard...');
+    navigate('/dashboard-siswa');
   };
 
   return (

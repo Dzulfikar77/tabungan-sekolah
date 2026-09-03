@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { simpanSesi } from '../utils/auth';
 
 export default function LoginAdmin() {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [angka1, setAngka1] = useState(0);
@@ -28,7 +30,9 @@ export default function LoginAdmin() {
       return;
     }
     setPesanError('');
-    alert(`Login Admin berhasil! Username: ${username}`);
+    simpanSesi('admin', username);
+    alert('Login Admin berhasil! Mengarahkan ke Dashboard...');
+    navigate('/dashboard-admin');
   };
 
   return (

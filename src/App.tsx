@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
@@ -14,6 +15,9 @@ import { LoginPage } from './components/LoginPage';
 import { ViewerLoginPage } from './components/ViewerLoginPage';
 import { SettingsModal } from './components/SettingsModal';
 import Welcome from './components/Welcome';
+import LoginSiswa from './components/LoginSiswa';
+import LoginAdmin from './components/LoginAdmin';
+import DashboardSiswa from './components/DashboardSiswa';
 
 type AuthView = 'welcome' | 'studentLogin' | 'adminLogin';
 
@@ -56,7 +60,6 @@ function MainLayout() {
         onLogout={logout}
         openSettingsModal={() => setIsSettingsModalOpen(true)}
       />
-
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'students' && <StudentManagement />}
@@ -68,13 +71,11 @@ function MainLayout() {
         {activeTab === 'spp' && <SppPayment />}
         {activeTab === 'viewer' && <ViewerPage onLogout={logout} />}
       </main>
-
       <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
           Sistem Informasi Sekolah • Powered by Dzulfikar Dev
         </div>
       </footer>
-
       {isSettingsModalOpen && (
         <SettingsModal onClose={() => setIsSettingsModalOpen(false)} />
       )}
@@ -84,8 +85,15 @@ function MainLayout() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainLayout />
-    </AppProvider>
+    <Router>
+      <AppProvider>
+        <Routes>
+          <Route path="/login-siswa" element={<LoginSiswa />} />
+          <Route path="/login-admin" element={<LoginAdmin />} />
+          <Route path="/dashboard-siswa" element={<DashboardSiswa />} />
+          <Route path="*" element={<MainLayout />} />
+        </Routes>
+      </AppProvider>
+    </Router>
   );
 }
