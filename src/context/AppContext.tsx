@@ -330,15 +330,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!currentUser) return;
     fetchFromSupabase();
-    // polling fallback: realtime postgres_changes butuh tabel di-enable di dashboard Supabase
-    const poll = setInterval(fetchFromSupabase, 20000);
-    const channel = supabase
-      .channel('tabungan-sekolah-sync')
-      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+    
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
         fetchFromSupabase();
-      })
+      }, 500);
+    };
+
+    const POLLING_INTERVAL_MS = 60000;
+
+    const channel = supabase
+      .channel('tabungan-sekolah-transactions-only')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'transactions'
+      }, debouncedFetch)
       .subscribe();
+
+    const poll = setInterval(fetchFromSupabase, POLLING_INTERVAL_MS);
+    
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       clearInterval(poll);
       supabase.removeChannel(channel);
     };
