@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
@@ -18,21 +13,26 @@ import { SppPayment } from './components/SppPayment';
 import { LoginPage } from './components/LoginPage';
 import { ViewerLoginPage } from './components/ViewerLoginPage';
 import { SettingsModal } from './components/SettingsModal';
+import Welcome from './components/Welcome';
+
+type AuthView = 'welcome' | 'studentLogin' | 'adminLogin';
 
 function MainLayout() {
   const { currentUser, logout } = useApp();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [viewerLoginMode, setViewerLoginMode] = useState(true);
+  const [authView, setAuthView] = useState<AuthView>('welcome');
 
   if (!currentUser) {
-    if (viewerLoginMode) {
-      return <ViewerLoginPage onBackToAdmin={() => setViewerLoginMode(false)} />;
+    if (authView === 'studentLogin') {
+      return <ViewerLoginPage onBackToAdmin={() => setAuthView('welcome')} />;
     }
-    return <LoginPage onViewerLogin={() => setViewerLoginMode(true)} />;
+    if (authView === 'adminLogin') {
+      return <LoginPage onViewerLogin={() => setAuthView('studentLogin')} />;
+    }
+    return <Welcome onStudentLogin={() => setAuthView('studentLogin')} onAdminLogin={() => setAuthView('adminLogin')} />;
   }
 
-  // Viewer sees full-page viewer portal without navbar
   if (currentUser.role === 'Viewer') {
     return (
       <div className="min-h-screen bg-slate-100/70 text-slate-900 font-sans flex flex-col antialiased">
