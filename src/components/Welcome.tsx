@@ -1,36 +1,25 @@
-interface WelcomeProps {
-  onStudentLogin: () => void;
-  onAdminLogin: () => void;
-}
+import { Link } from 'react-router-dom';
 
-export default function Welcome({ onStudentLogin, onAdminLogin }: WelcomeProps) {
+export default function Welcome() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-      <div className="bg-white p-10 rounded-xl shadow-lg text-center max-w-lg">
-        <h1 className="text-3xl font-bold text-green-700 mb-4">
-          Selamat Datang di Mambaul Ulum
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+      <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-sm w-full border-t-4 border-green-600">
+        <h1 className="text-2xl font-bold text-green-700 mb-2">
+          Tabungan Siswa
         </h1>
-        <p className="text-gray-600 mb-8">
-          Sistem Informasi Tabungan Sekolah
+        <h2 className="text-xl font-bold text-gray-800 mb-6">
+          Mambaul Ulum
+        </h2>
+        <p className="text-gray-600 mb-8 text-sm">
+          Silakan masuk untuk mengecek saldo tabungan putra/putri Anda.
         </p>
 
-        <button
-          type="button"
-          onClick={onStudentLogin}
-          className="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+        <Link
+          to="/login-siswa"
+          className="block w-full py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors text-lg shadow-md"
         >
-          Masuk sebagai Siswa
-        </button>
-
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={onAdminLogin}
-            className="text-xs text-gray-400 hover:text-gray-600 underline cursor-pointer"
-          >
-            Login Admin
-          </button>
-        </div>
+          Cek Tabungan Sekarang
+        </Link>
       </div>
     </div>
   );

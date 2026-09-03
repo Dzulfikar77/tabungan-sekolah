@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
@@ -11,7 +11,6 @@ import { Reports } from './components/Reports';
 import { AuditLogView } from './components/AuditLogView';
 import { ViewerPage } from './components/ViewerPage';
 import { SppPayment } from './components/SppPayment';
-import { LoginPage } from './components/LoginPage';
 import { ViewerLoginPage } from './components/ViewerLoginPage';
 import { SettingsModal } from './components/SettingsModal';
 import Welcome from './components/Welcome';
@@ -19,22 +18,13 @@ import LoginSiswa from './components/LoginSiswa';
 import LoginAdmin from './components/LoginAdmin';
 import DashboardSiswa from './components/DashboardSiswa';
 
-type AuthView = 'welcome' | 'studentLogin' | 'adminLogin';
-
-function MainLayout() {
+function MainApp() {
   const { currentUser, logout } = useApp();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [authView, setAuthView] = useState<AuthView>('welcome');
 
   if (!currentUser) {
-    if (authView === 'studentLogin') {
-      return <ViewerLoginPage onBackToAdmin={() => setAuthView('welcome')} />;
-    }
-    if (authView === 'adminLogin') {
-      return <LoginPage onViewerLogin={() => setAuthView('studentLogin')} />;
-    }
-    return <Welcome onStudentLogin={() => setAuthView('studentLogin')} onAdminLogin={() => setAuthView('adminLogin')} />;
+    return <ViewerLoginPage onBackToAdmin={() => {}} />;
   }
 
   if (currentUser.role === 'Viewer') {
@@ -85,15 +75,21 @@ function MainLayout() {
 
 export default function App() {
   return (
-    <Router>
-      <AppProvider>
-        <Routes>
-          <Route path="/login-siswa" element={<LoginSiswa />} />
-          <Route path="/login-admin" element={<LoginAdmin />} />
-          <Route path="/dashboard-siswa" element={<DashboardSiswa />} />
-          <Route path="*" element={<MainLayout />} />
-        </Routes>
-      </AppProvider>
-    </Router>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Welcome />} />
+        <Route path="/login-siswa" element={<LoginSiswa />} />
+        <Route path="/admin" element={<LoginAdmin />} />
+        <Route path="/dashboard-siswa" element={<DashboardSiswa />} />
+        <Route
+          path="*"
+          element={
+            <AppProvider>
+              <MainApp />
+            </AppProvider>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
