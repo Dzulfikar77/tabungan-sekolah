@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatDate, filterByAccessLevel, filterByUserLevel, isPendingApprovalStatus, isClassInUserLevel } from '../utils/format';
 import { MonthlyDeductionSummary, ClassGrade, Transaction } from '../types';
@@ -43,6 +44,13 @@ export const Dashboard: React.FC = () => {
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [rejectingTxId, setRejectingTxId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  // Tanpa sesi Supabase aktif (belum login / sesi habis / akses langsung),
+  // arahkan ke halaman login admin — mencegah crash `currentUser.role`
+  // yang sebelumnya membuat halaman blank.
+  if (!currentUser) {
+    return <Navigate to="/admin" replace />;
+  }
 
   // Active students in current academic year
   const activeStudents = filterByAccessLevel(students.filter(

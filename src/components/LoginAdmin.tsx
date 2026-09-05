@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { simpanSesi } from '../utils/auth';
+import { useApp } from '../context/AppContext';
 
 export default function LoginAdmin() {
   const navigate = useNavigate();
+  const { login } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [angka1, setAngka1] = useState(0);
   const [angka2, setAngka2] = useState(0);
   const [jawabanCaptcha, setJawabanCaptcha] = useState('');
   const [pesanError, setPesanError] = useState('');
+  const [sedangLogin, setSedangLogin] = useState(false);
 
   const buatSoalCaptcha = useCallback(() => {
     setAngka1(Math.floor(Math.random() * 10) + 1);
@@ -21,7 +23,7 @@ export default function LoginAdmin() {
     buatSoalCaptcha();
   }, [buatSoalCaptcha]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const jawabanBenar = angka1 + angka2;
     if (parseInt(jawabanCaptcha) !== jawabanBenar) {
@@ -30,8 +32,18 @@ export default function LoginAdmin() {
       return;
     }
     setPesanError('');
-    simpanSesi('admin', username);
-    alert('Login Admin berhasil! Mengarahkan ke Dashboard...');
+    setSedangLogin(true);
+    // Login asli via Supabase Auth — currentUser di AppContext hanya terisi
+    // setelah autentikasi berhasil, lalu onAuthStateChange mengarahkan sesuai role.
+    const hasil = await login(username, password);
+    setSedangLogin(false);
+    if (!hasil.success) {
+      setPesanError(hasil.error || 'Username atau kata sandi salah.');
+      buatSoalCaptcha();
+      return;
+    }
+    // Fallback instan: AppContext akan tetap memuat ulang ke /dashboard
+    // (atau /dashboard-siswa untuk Viewer) lewat onAuthStateChange.
     navigate('/dashboard');
   };
 
@@ -86,8 +98,12 @@ export default function LoginAdmin() {
             />
           </div>
 
-          <button type="submit" className="w-full bg-gray-800 text-white font-bold py-2 px-4 rounded hover:bg-black transition">
-            Masuk Sistem
+          <button
+            type="submit"
+            disabled={sedangLogin}
+            className="w-full bg-gray-800 text-white font-bold py-2 px-4 rounded hover:bg-black transition disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {sedangLogin ? 'Masuk...' : 'Masuk Sistem'}
           </button>
         </form>
 

@@ -420,15 +420,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0] || { id: 'fallback', year: 'Memuat...', isCurrent: true, createdAt: new Date().toISOString() };
 
   const login = async (username: string, password: string) => {
-    setAuthLoading(true);
+    // authLoading TIDAK disetel true di awal: bila disetel, provider
+    // mengganti children dengan spinner sehingga LoginAdmin unmount dan
+    // pesan error gagal login (state lokal) ikut hilang saat remount.
     const { error } = await supabase.auth.signInWithPassword({
       email: emailFor(username),
       password,
     });
     if (error) {
-      setAuthLoading(false);
       return { success: false, error: 'Username atau kata sandi salah.' };
     }
+    // Sukses: tahan layar loading sampai onAuthStateChange selesai memuat
+    // profil dan mengarahkan sesuai role — mencegah flash /dashboard
+    // sebelum currentUser terisi.
+    setAuthLoading(true);
     return { success: true };
   };
 
