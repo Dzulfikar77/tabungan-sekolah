@@ -386,7 +386,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // Redirect based on user role
             if (role === 'Admin' || role === 'Super Admin' || role === 'Developer' || role === 'Wali Kelas' || role === 'Admin Koperasi') {
               // Staff roles → Dashboard Admin
-              window.location.href = '/admin';
+              window.location.href = '/dashboard';
             } else if (role === 'Viewer') {
               // Viewer role → Dashboard Siswa
               window.location.href = '/dashboard-siswa';
