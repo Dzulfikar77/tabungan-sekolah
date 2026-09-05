@@ -378,6 +378,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             demoMode: profile.demo_mode ?? false,
             mustChangePassword: profile.must_change_password ?? false,
           });
+
+          // Role-based redirect after successful login
+          if (_event === 'SIGNED_IN') {
+            const role = profile.role;
+            
+            // Redirect based on user role
+            if (role === 'Admin' || role === 'Super Admin' || role === 'Developer' || role === 'Wali Kelas' || role === 'Admin Koperasi') {
+              // Staff roles → Dashboard Admin
+              window.location.href = '/admin';
+            } else if (role === 'Viewer') {
+              // Viewer role → Dashboard Siswa
+              window.location.href = '/dashboard-siswa';
+            } else {
+              // Fallback for unknown roles
+              window.location.href = '/';
+            }
+          }
         }
       } else {
         setCurrentUser(null);

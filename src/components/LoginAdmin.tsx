@@ -32,7 +32,7 @@ export default function LoginAdmin() {
     setPesanError('');
     simpanSesi('admin', username);
     alert('Login Admin berhasil! Mengarahkan ke Dashboard...');
-    navigate('/dashboard-admin');
+    navigate('/admin');
   };
 
   return (
