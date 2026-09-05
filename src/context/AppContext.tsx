@@ -417,7 +417,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return onSyncState((s) => setSyncState(s));
   }, []);
 
-  const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0];
+  const currentAcademicYear = academicYears.find((y) => y.id === currentAcademicYearId) || academicYears[0] || { id: 'fallback', year: 'Memuat...', isCurrent: true, createdAt: new Date().toISOString() };
 
   const login = async (username: string, password: string) => {
     setAuthLoading(true);
@@ -2714,7 +2714,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           </div>
         </div>
       )}
-      {authLoading ? (
+      {authLoading || (currentUser && !dbLoaded) ? (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 text-white">
           <div className="w-8 h-8 border-2 border-slate-300/30 border-t-white rounded-full animate-spin"></div>
           <span className="mt-3 text-sm font-medium">Memuat Simu...</span>
