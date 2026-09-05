@@ -73,14 +73,14 @@ export const BookManagement: React.FC = () => {
 
   // Distribution Filter
   const [distClassFilter, setDistClassFilter] = useState<ClassGrade>(
-    lockedClass || (currentUser.accessLevel === 'TK' ? 'TK A.1' : 'Kelas 1A')
+    lockedClass || (currentUser?.accessLevel === 'TK' ? 'TK A.1' : 'Kelas 1A')
   );
 
   // Transaction Input Form State
   const [transType, setTransType] = useState<KoperasiKegiatanType>(fixedTransType || 'Koperasi');
   const [selectedItemId, setSelectedItemId] = useState('');
   const [selectedStudentClass, setSelectedStudentClass] = useState<ClassGrade>(
-    lockedClass || (currentUser.accessLevel === 'TK' ? 'TK A.1' : 'Kelas 1A')
+    lockedClass || (currentUser?.accessLevel === 'TK' ? 'TK A.1' : 'Kelas 1A')
   );
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<BookPaymentMethod>('Tunai');

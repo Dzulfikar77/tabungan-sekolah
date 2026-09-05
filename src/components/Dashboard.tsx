@@ -83,8 +83,8 @@ export const Dashboard: React.FC = () => {
 
   // Admin TK/MI only see their own jenjang's cards/breakdown; Developer,
   // Super Admin, and Wali Kelas (no accessLevel set) see both.
-  const showTk = !currentUser.accessLevel || currentUser.accessLevel === 'TK';
-  const showMi = !currentUser.accessLevel || currentUser.accessLevel === 'MI';
+  const showTk = !currentUser?.accessLevel || currentUser?.accessLevel === 'TK';
+  const showMi = !currentUser?.accessLevel || currentUser?.accessLevel === 'MI';
 
   // Class Balance Breakdown
   const classes = ALL_CLASSES.filter((cls) => isClassInUserLevel(cls, currentUser));
@@ -143,7 +143,7 @@ export const Dashboard: React.FC = () => {
             Selamat Datang, {currentUser.name}
           </h2>
           <p className="text-xs text-slate-300 mt-1">
-            Hak Akses: <strong className="text-emerald-400">{currentUser.role}{currentUser.accessLevel ? ` (${currentUser.accessLevel})` : ''}</strong> | Sistem Manajemen Keuangan & Tabungan Siswa
+            Hak Akses: <strong className="text-emerald-400">{currentUser.role}{currentUser?.accessLevel ? ` (${currentUser?.accessLevel})` : ''}</strong> | Sistem Manajemen Keuangan & Tabungan Siswa
           </p>
         </div>
 

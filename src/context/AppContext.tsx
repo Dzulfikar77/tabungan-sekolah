@@ -975,7 +975,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser || currentUser.demoMode) {
       return { success: false, error: 'Mode Demo: Akun ini hanya untuk melihat, tidak dapat melakukan perubahan.' };
     }
-    if (currentUser.accessLevel && !isClassInUserLevel(studentData.classGrade, currentUser)) {
+    if (currentUser?.accessLevel && !isClassInUserLevel(studentData.classGrade, currentUser)) {
       return { success: false, error: 'Akses ditolak: kelas siswa berada di luar level Anda.' };
     }
     // Validate NIS uniqueness
@@ -1038,7 +1038,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const student = students.find((s) => s.id === id);
     if (!student) return { success: false, error: 'Siswa tidak ditemukan.' };
     if (!canAccessStudent(student)) return { success: false, error: 'Akses ditolak: siswa berada di luar level Anda.' };
-    if (data.classGrade && currentUser.accessLevel && !isClassInUserLevel(data.classGrade, currentUser)) {
+    if (data.classGrade && currentUser?.accessLevel && !isClassInUserLevel(data.classGrade, currentUser)) {
       return { success: false, error: 'Akses ditolak: kelas tujuan berada di luar level Anda.' };
     }
 
